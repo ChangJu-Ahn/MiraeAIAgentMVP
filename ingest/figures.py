@@ -11,6 +11,8 @@ from openai import AzureOpenAI
 from PIL import Image
 
 from config.settings import get_settings
+from ingest.chunker import HEADING_ROLES, _heading_depth
+from ingest.models import Chunk, ParsedDoc
 
 _SCOPE = "https://cognitiveservices.azure.com/.default"
 _PROMPT = (
@@ -69,14 +71,10 @@ def describe_figure(png: bytes) -> str:
     return (resp.choices[0].message.content or "").strip()
 
 
-from ingest.chunker import HEADING_ROLES, _heading_depth
-from ingest.models import Chunk, ParsedDoc
-
-
 def heading_path_at(doc: ParsedDoc, offset: int) -> str:
     stack: list[str] = []
-    for p in sorted(doc.paragraphs, key=lambda x: getattr(x, "offset", 0)):
-        if getattr(p, "offset", 0) > offset:
+    for p in sorted(doc.paragraphs, key=lambda x: x.offset):
+        if p.offset > offset:
             break
         if p.role in HEADING_ROLES:
             if p.role == "title":

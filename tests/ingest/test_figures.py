@@ -19,7 +19,7 @@ def test_parser_captures_figures_from_cache():
     data = json.loads(cache.read_text(encoding="utf-8"))
     doc = _result_to_parsed("gicheum-2025-asset", data)
     assert isinstance(doc, ParsedDoc)
-    assert len(doc.figures) >= 1
+    assert len(doc.figures) == 12  # 캐시된 DI 결과 기준 (plan 확정)
     assert all(len(fig.polygon) >= 8 for fig in doc.figures)
     assert all(fig.page >= 1 for fig in doc.figures)
 

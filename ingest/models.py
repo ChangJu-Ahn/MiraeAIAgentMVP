@@ -36,7 +36,7 @@ class Chunk(BaseModel):
     id: str
     doc_id: str
     content: str
-    chunk_type: str  # "narrative" | "table"
+    chunk_type: str  # "narrative" | "table" | "figure"
     section_path: str
     page_printed: int | None = None
     page_physical: int
