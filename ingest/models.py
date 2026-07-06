@@ -26,7 +26,6 @@ class ParsedFigure(BaseModel):
 
 class ParsedDoc(BaseModel):
     doc_id: str
-    markdown: str
     paragraphs: list[ParsedParagraph]
     tables: list[ParsedTable]
     figures: list[ParsedFigure] = []
@@ -40,6 +39,4 @@ class Chunk(BaseModel):
     section_path: str
     page_printed: int | None = None
     page_physical: int
-    year: int | None = None
-    fund_name: str | None = None
     content_vector: list[float] | None = None

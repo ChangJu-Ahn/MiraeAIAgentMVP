@@ -10,11 +10,9 @@ from ingest.embedder import embed_texts
 
 
 class SearchHit(BaseModel):
-    id: str
     content: str
     section_path: str
     page_physical: int
-    score: float
     chunk_type: str
 
 
@@ -37,11 +35,9 @@ def hybrid_search(index_name: str, query: str, top: int = 5) -> list[SearchHit]:
     for r in results:
         hits.append(
             SearchHit(
-                id=r["id"],
                 content=r["content"],
                 section_path=r.get("section_path", ""),
                 page_physical=r.get("page_physical", 0),
-                score=r["@search.score"],
                 chunk_type=r.get("chunk_type", ""),
             )
         )

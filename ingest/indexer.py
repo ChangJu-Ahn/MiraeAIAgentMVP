@@ -81,10 +81,8 @@ def _chunk_to_doc(chunk: Chunk) -> dict:
         "section_path": chunk.section_path,
         "page_physical": chunk.page_physical,
     }
-    for k in ("year", "fund_name", "page_printed"):
-        v = getattr(chunk, k)
-        if v is not None:
-            doc[k] = v
+    if chunk.page_printed is not None:
+        doc["page_printed"] = chunk.page_printed
     return doc
 
 

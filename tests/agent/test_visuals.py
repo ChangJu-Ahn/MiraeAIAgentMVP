@@ -44,11 +44,3 @@ def test_show_source_page_records_image_marker():
     assert len(rec.items) == 1
     assert rec.items[0].kind == "image"
     assert rec.items[0].path == "__page__:241"
-
-
-def test_reset_clears_items():
-    rec = VisualRecorder()
-    make_table, _c, _p = make_visual_tools(rec)
-    make_table(title="t", columns_json='["a"]', rows_json='[["1"]]')
-    rec.reset()
-    assert rec.items == []

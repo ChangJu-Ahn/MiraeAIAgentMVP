@@ -4,7 +4,6 @@ from ingest.models import Chunk, ParsedDoc, ParsedParagraph, ParsedTable
 def test_parsed_doc_holds_elements():
     doc = ParsedDoc(
         doc_id="d1",
-        markdown="# T",
         paragraphs=[ParsedParagraph(role="title", content="T", page=1)],
         tables=[ParsedTable(markdown="| a |\n|---|", page=2, caption="cap")],
     )
@@ -22,6 +21,5 @@ def test_chunk_defaults():
         page_printed=24,
         page_physical=40,
     )
-    assert c.year is None
-    assert c.fund_name is None
+    assert c.page_printed == 24
     assert c.content_vector is None

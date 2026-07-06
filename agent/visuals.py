@@ -35,9 +35,6 @@ Visual = Union[TableVisual, ChartVisual, ImageVisual]
 class VisualRecorder(BaseModel):
     items: list[Visual] = []
 
-    def reset(self) -> None:
-        self.items.clear()
-
 
 def make_visual_tools(recorder: VisualRecorder) -> list[Callable[..., str]]:
     def make_table(title: str, columns_json: str, rows_json: str) -> str:

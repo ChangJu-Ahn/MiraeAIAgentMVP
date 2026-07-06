@@ -27,10 +27,6 @@ class TraceRecorder(BaseModel):
     steps: list[TraceStep] = Field(default_factory=list)
     sources: list[RetrievedSource] = Field(default_factory=list)
 
-    def reset(self) -> None:
-        self.steps.clear()
-        self.sources.clear()
-
 
 def _run_tool(
     recorder: TraceRecorder, tool_name: str, index_name: str, query: str, top: int = 5

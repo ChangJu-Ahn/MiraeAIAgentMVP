@@ -70,7 +70,6 @@ def _result_to_parsed(doc_id: str, data: dict) -> ParsedDoc:
     ]
     return ParsedDoc(
         doc_id=doc_id,
-        markdown=data.get("content", ""),
         paragraphs=paragraphs,
         tables=tables,
         figures=figures,
