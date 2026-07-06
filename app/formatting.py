@@ -15,10 +15,25 @@ def cited_sources(answer: str, sources: list[RetrievedSource]) -> list[Retrieved
     return [s for s in sources if s.n in nums]
 
 
-def format_citations(sources: list[RetrievedSource]) -> str:
+def dedup_sources(sources: list[RetrievedSource], limit: int = 8) -> list[RetrievedSource]:
+    """(섹션 경로, 페이지) 기준으로 중복을 제거하고 상위 limit개만 반환."""
+    seen: set[tuple[str, int]] = set()
+    out: list[RetrievedSource] = []
+    for s in sources:
+        key = (s.section_path, s.page_physical)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(s)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def format_citations(sources: list[RetrievedSource], heading: str = "근거") -> str:
     if not sources:
         return ""
-    lines = ["### 근거"]
+    lines = [f"### {heading}"]
     for s in sources:
         lines.append(f"- **[출처 {s.n}]** ({s.index}) {s.section_path} · p.{s.page_physical}")
     return "\n".join(lines)
