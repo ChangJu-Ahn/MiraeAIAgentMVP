@@ -21,3 +21,6 @@ venv/
 # Local artifacts
 *.log
 .ingest_cache/
+
+# Office temp lock files
+~$*
