@@ -17,6 +17,26 @@ class ProcessRecorder(BaseModel):
         self.events.clear()
 
 
+def _stringify(result: object) -> str:
+    if result is None:
+        return ""
+    if isinstance(result, str):
+        return result
+    items = result if isinstance(result, (list, tuple)) else [result]
+    parts: list[str] = []
+    for it in items:
+        text = getattr(it, "text", None)
+        if text is None:
+            to_dict = getattr(it, "to_dict", None)
+            if callable(to_dict):
+                try:
+                    text = to_dict().get("text")
+                except Exception:  # noqa: BLE001
+                    text = None
+        parts.append(text if isinstance(text, str) else str(it))
+    return " ".join(p for p in parts if p)
+
+
 class ToolProcessMiddleware(FunctionMiddleware):
     def __init__(self, recorder: ProcessRecorder) -> None:
         self._recorder = recorder
@@ -25,12 +45,11 @@ class ToolProcessMiddleware(FunctionMiddleware):
         name = getattr(getattr(context, "function", None), "name", "tool")
         args = getattr(context, "arguments", None)
         await call_next()
-        result = getattr(context, "result", "")
-        result_str = str(result)
-        if len(result_str) > 200:
-            result_str = result_str[:200] + "…"
+        result_str = _stringify(getattr(context, "result", ""))
+        if len(result_str) > 240:
+            result_str = result_str[:240] + "…"
         self._recorder.events.append(
-            ProcessEvent(kind="tool", title=str(name), detail=f"{args} → {result_str}")
+            ProcessEvent(kind="tool", title=str(name), detail=f"입력: {args}\n결과: {result_str}")
         )
 
 
