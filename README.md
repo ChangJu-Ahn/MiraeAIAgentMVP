@@ -18,4 +18,11 @@ bash scripts/deploy.sh                # 배포 + .env 생성
 uv run python scripts/smoke_test.py   # 연결 스모크 테스트
 ```
 
+## 문서 인제스트 (P2)
+```bash
+# PDF를 파싱·청킹·임베딩하여 AI Search 2개 인덱스에 적재
+uv run python -m ingest.run --pdf "Docs/<파일>.pdf" --doc-id "<고유ID>"
+```
+추가 자료는 전달받는 대로 동일 명령을 새 --doc-id로 재실행하면 upsert 됩니다.
+
 설계: `specs/2026-07-06-agentic-rag-chatbot-design.md`
