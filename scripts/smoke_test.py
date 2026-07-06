@@ -18,11 +18,12 @@ def check_search(cred, s) -> None:
 
 
 def check_doc_intelligence(cred, s) -> None:
-    from azure.ai.documentintelligence import DocumentIntelligenceClient
+    from azure.ai.documentintelligence import DocumentIntelligenceAdministrationClient
 
-    DocumentIntelligenceClient(endpoint=s.doc_intelligence_endpoint, credential=cred)
-    # 클라이언트 생성 + 토큰 획득으로 엔드포인트/권한 확인
-    cred.get_token("https://cognitiveservices.azure.com/.default")
+    client = DocumentIntelligenceAdministrationClient(
+        endpoint=s.doc_intelligence_endpoint, credential=cred
+    )
+    client.get_resource_details()  # real GET; requires DI auth
 
 
 def check_foundry(cred, s) -> None:
