@@ -25,6 +25,8 @@ uv run python -m ingest.run --pdf "Docs/<파일>.pdf" --doc-id "<고유ID>"
 ```
 추가 자료는 전달받는 대로 동일 명령을 새 --doc-id로 재실행하면 upsert 됩니다.
 
+> 그림(figures)은 Foundry gpt-4o 멀티모달로 설명을 생성해 함께 인덱싱합니다(`--no-figures`로 비활성).
+
 ## 에이전트 질의 (P3)
 ```bash
 uv run python -m agent.ask "자산운용 평가의 목적은?"

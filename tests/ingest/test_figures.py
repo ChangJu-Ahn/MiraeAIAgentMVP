@@ -40,3 +40,22 @@ def test_render_and_describe_first_figure():
     assert png[:8] == b"\x89PNG\r\n\x1a\n"  # PNG magic
     desc = describe_figure(png)
     assert desc and len(desc) > 10
+
+
+def test_build_figure_chunks_subset():
+    import pytest
+
+    from config.settings import get_settings
+    from ingest.figures import build_figure_chunks
+    from ingest.parser import analyze_pdf
+
+    s = get_settings()
+    doc = analyze_pdf(s.source_pdf_path, "gicheum-2025-asset", use_cache=True)
+    if not doc.figures:
+        pytest.skip("no figures")
+    doc.figures = doc.figures[:2]
+    chunks = build_figure_chunks(doc, s.source_pdf_path)
+    assert len(chunks) == 2
+    assert all(c.chunk_type == "figure" for c in chunks)
+    assert all(c.id.startswith("gicheum-2025-asset-fig-") for c in chunks)
+    assert all("[그림]" in c.content for c in chunks)

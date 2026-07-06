@@ -67,3 +67,44 @@ def describe_figure(png: bytes) -> str:
         max_tokens=400,
     )
     return (resp.choices[0].message.content or "").strip()
+
+
+from ingest.chunker import HEADING_ROLES, _heading_depth
+from ingest.models import Chunk, ParsedDoc
+
+
+def heading_path_at(doc: ParsedDoc, offset: int) -> str:
+    stack: list[str] = []
+    for p in sorted(doc.paragraphs, key=lambda x: getattr(x, "offset", 0)):
+        if getattr(p, "offset", 0) > offset:
+            break
+        if p.role in HEADING_ROLES:
+            if p.role == "title":
+                stack = [p.content]
+            else:
+                depth = _heading_depth(p.content)
+                stack = stack[:depth] + [p.content]
+    return " > ".join(stack)
+
+
+def build_figure_chunks(doc: ParsedDoc, pdf_path: str) -> list[Chunk]:
+    chunks: list[Chunk] = []
+    for i, fig in enumerate(doc.figures):
+        try:
+            png = render_figure_png(pdf_path, fig.page, fig.polygon)
+            desc = describe_figure(png)
+        except Exception as exc:  # noqa: BLE001
+            desc = f"(그림 설명 생성 실패: {exc})"
+        prefix = f"[그림] {fig.caption}\n" if fig.caption else "[그림] "
+        chunks.append(
+            Chunk(
+                id=f"{doc.doc_id}-fig-{i}",
+                doc_id=doc.doc_id,
+                content=prefix + desc,
+                chunk_type="figure",
+                section_path=heading_path_at(doc, fig.offset),
+                page_physical=fig.page,
+                page_printed=None,
+            )
+        )
+    return chunks
