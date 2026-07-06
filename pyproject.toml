@@ -1,0 +1,20 @@
+[project]
+name = "mirae-ai-agent-mvp"
+version = "0.1.0"
+description = "문서 기반 Agentic RAG 챗봇 PoC (Azure)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pydantic-settings>=2.5",
+    "azure-identity>=1.19",
+    "azure-search-documents>=11.6",
+    "azure-ai-documentintelligence>=1.0",
+    "openai>=1.54",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
