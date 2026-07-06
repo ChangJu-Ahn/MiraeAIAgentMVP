@@ -37,6 +37,7 @@ srch=$(echo "$OUT"  | python3 -c "import sys,json;print(json.load(sys.stdin)['se
 proj=$(echo "$OUT"  | python3 -c "import sys,json;print(json.load(sys.stdin)['foundryProjectEndpoint']['value'])")
 chat=$(echo "$OUT"  | python3 -c "import sys,json;print(json.load(sys.stdin)['chatDeploymentName']['value'])")
 embed=$(echo "$OUT" | python3 -c "import sys,json;print(json.load(sys.stdin)['embeddingDeploymentName']['value'])")
+appi=$(echo "$OUT"  | python3 -c "import sys,json;print(json.load(sys.stdin)['appInsightsConnectionString']['value'])")
 
 cat > .env <<EOF
 DOC_INTELLIGENCE_ENDPOINT=$di
@@ -47,6 +48,7 @@ FOUNDRY_PROJECT_ENDPOINT=$proj
 FOUNDRY_CHAT_DEPLOYMENT=$chat
 FOUNDRY_EMBEDDING_DEPLOYMENT=$embed
 FOUNDRY_API_VERSION=2024-10-21
+APPINSIGHTS_CONNECTION_STRING=$appi
 EOF
 
 echo "== .env 생성 완료 =="
