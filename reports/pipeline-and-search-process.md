@@ -2,7 +2,7 @@
 
 > 대상: 수익자 홈페이지 AI 챗봇 PoC (MiraeAIAgentMVP)
 > 작성 목적: 문서 인식→적재→검색→에이전트 응답 전 과정의 동작 방식, 특히 **Azure Document Intelligence(DI)의 역할**과 **표 형태 값 추출** 방식을 상세히 조사·기록.
-> 코드 기준: `ingest/`, `search/`, `agent/`, `app/` (main 브랜치, P1~P10 반영)
+> 코드 기준: `ingest/`, `search/`, `agent/`, `app/` (main 브랜치, P1~P12 + 추론 요약 스트리밍/2단계 접이식 UI 반영)
 
 ---
 
@@ -18,12 +18,13 @@
                     ┌──────────────────────── 질의 처리 (실시간) ──────────────────▼───────────┐
  사용자 질문 ───────▶│  Agent(MAF)  ─▶ 도구: search_narrative/search_tables/make_*/show_source  │
                     │  질문분해→다중조회(하이브리드)→교차참조→인용→시각화→거부가드              │
-                    │  미들웨어(계획/툴 트레이스) + OTel→App Insights + 토큰 스트리밍            │
+                    │  추론요약·툴콜 스트림 파싱 → 2단계 접이식 UI + OTel→App Insights + 토큰 스트리밍 │
                     └──────────────────────────────────────────────────────────────────────────┘
 ```
 
 - **필수 Azure 스택**: DI(파싱) · AI Search(검색+벡터) · Microsoft Foundry(LLM/임베딩/평가) · Microsoft Agent Framework(오케스트레이션). 전부 **키리스(Managed Identity/Entra RBAC)**.
 - **현재 적재 규모**: 1개 문서(2025 자산운용부문) → **817 청크 = 서술 606 + 표 199 + 그림 12**.
+- **추론(reasoning) 모델**: 채팅/추론 배포는 Foundry **`gpt-5.4-mini`**(배포명 `reasoning`, GlobalStandard). 진행 과정 노출을 위해 **reasoning summary**를 사용(`default_options`의 `reasoning.summary="auto"`, `effort="medium"`). 배포 용량은 스트리밍 추론 부하에 맞춰 **200K TPM**로 상향.
 
 ---
 
@@ -179,10 +180,10 @@ DI의 방대한 JSON을 SDK와 분리된 단순 모델로 변환(→ 청킹 로�
   - `search_narrative(query)` → `narrative-index` 하이브리드
   - `search_tables(query)` → `table-index` 하이브리드
 - 여러 인덱스·여러 질의 결과를 **교차 참조**해 답변 합성 → 이것이 스펙의 "Agentic Retrieval / 다중 문서 교차참조(V5)" 검증축. (관리형 AI Search Knowledge Base 대신 **에이전트 오케스트레이션으로 구현** — 제어·관측 우위, 안정 API.)
-- 각 검색 결과는 `TraceRecorder`에 **출처(RetrievedSource)** 로 기록 → 답변의 `[출처 N]` 인용 + UI 근거 카드.
+- 각 검색 결과는 `TraceRecorder`에 **출처(RetrievedSource)** 로 기록. 답변이 인용한 `[출처 N]`이 있으면 그 출처만 **"근거"** 카드로 표시하고, 모델이 인용 형식을 누락하면 이번 답변 생성에 검색된 자료를 (섹션·페이지 기준) 중복 제거해 **"참고한 자료"** 카드로 표시한다(`app/formatting.py` `cited_sources`·`dedup_sources`).
 
 ### 7.3 응답 합성 규칙 (시스템 프롬프트)
-- 도구 호출 전 **한 문장 계획** 서술(유도)
+- **언어 규칙(최우선)**: 최종 답변뿐 아니라 사고 과정·추론 요약까지 **사용자 질문 언어**로 서술하도록 유도.
 - 정성=narrative, 수치/등급/표=tables, 필요 시 다중 호출·교차 확인
 - **`[출처 N]` 인용**(section_path+page)
 - **근거 없으면 "제공된 자료에서 확인할 수 없습니다"로 거부**(할루시네이션 방어)
@@ -190,13 +191,19 @@ DI의 방대한 JSON을 SDK와 분리된 단순 모델로 변환(→ 청킹 로�
 
 ---
 
-## 8. 응답 & UI — 시각화·스트리밍·관측
+## 8. 응답 & UI — 시각화·스트리밍·2단계 접이식 진행 표시·관측
 
-`agent/visuals.py`, `app/chat.py`, `app/visual_bind.py`
+`agent/visuals.py`, `agent/translate.py`, `app/chat.py`, `app/visual_bind.py`, `app/formatting.py`
 
 - **시각화 도구**(에이전트가 필요 시 호출): `make_table`→`cl.Dataframe`, `make_chart`→`cl.Plotly`(line/bar), `show_source_page(page)`→원문 페이지 렌더 `cl.Image`.
 - **토큰 스트리밍**: `agent.run(stream=True)` → 답변이 토큰 단위로 흐름.
-- **계획/도구 과정 라이브 표시**(MAF 미들웨어): `🧠 계획`·`🔧 도구(입력=근거 질의·결과)`를 진행되는 대로 step으로.
+- **진행 과정 라이브 표시(스트림 콘텐츠 직접 파싱)**: 별도 미들웨어 없이, 스트림 업데이트의 `contents`를 유형별로 파싱해 **2단계 접이식**으로 노출.
+  - **부모 "생각 중" 스텝**: 모델의 **추론 요약**(`text_reasoning`)을 도착 순서대로 누적. (`default_options`의 `reasoning.summary="auto"`로 활성화.)
+  - **자식 도구 스텝**: 각 도구 호출(`function_call`)을 **`call_id`별 독립 자식 스텝**으로 열고(입력=검색어), 결과(`function_result`) 도착 시 해당 스텝의 출력(검색 결과 전문)을 채움. 병렬 호출·결과가 뒤섞여 도착해도 각자의 접이식 스텝에 정확히 담겨 **정렬이 엇갈리지 않음**.
+- **추론 요약 언어 번역**(`agent/translate.py`): reasoning summary는 모델이 영어로 생성하는 경우가 많으므로, 질문 언어와 다르면 **세그먼트 단위로 번역**(Foundry gpt-4o 평가 배포 재사용)해 "생각 중"에 표시. 도구 입력/결과는 이미 질문 언어라 원문 그대로.
+- **출처 카드**: 답변이 인용한 `[출처 N]`은 **"근거"**, 인용 누락 시 검색된 자료를 dedup해 **"참고한 자료"**로 표시(§7.2).
+- **UI 언어**: `.chainlit/translations/ko-KR.json` + `config.toml`의 `language="ko-KR"`로 강제. 스텝 상태 라벨("Using/Used")을 비워 **"생각 중"** 등 스텝명만 노출.
+- **자가 점검 루프(P12)**: 최대 2라운드. 1라운드 답변을 Foundry judge로 점검(`critique`)해 부족하면 보완 질의로 재조회(`augmented_question`), 점검 실패 시 안전하게 통과.
 - **관측성**: OpenTelemetry로 에이전트 실행·툴 콜(근거/답변)을 **Azure Application Insights**에 기록(민감 데이터 포함).
 
 ---
