@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     foundry_chat_deployment: str = "chat"
     foundry_embedding_deployment: str = "embedding"
     foundry_api_version: str = "2024-10-21"
+    source_pdf_path: str = "Docs/2025회계연도 기금운용평가보고서(자산운용부문).pdf"
 
 
 @lru_cache

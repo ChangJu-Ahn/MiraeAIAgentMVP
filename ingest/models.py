@@ -17,11 +17,19 @@ class ParsedTable(BaseModel):
     offset: int = 0
 
 
+class ParsedFigure(BaseModel):
+    page: int
+    polygon: list[float]
+    offset: int = 0
+    caption: str | None = None
+
+
 class ParsedDoc(BaseModel):
     doc_id: str
     markdown: str
     paragraphs: list[ParsedParagraph]
     tables: list[ParsedTable]
+    figures: list[ParsedFigure] = []
 
 
 class Chunk(BaseModel):
