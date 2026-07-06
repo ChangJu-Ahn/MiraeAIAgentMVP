@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 
+from functools import lru_cache
+
 from agent_framework.foundry import FoundryChatClient
 from azure.identity import DefaultAzureCredential
 
@@ -26,16 +28,16 @@ def needs_translation(segment: str, target: str) -> bool:
     return detect_lang(seg) != target
 
 
-async def translate(text: str, target: str) -> str:
-    """추론 요약 등 짧은 텍스트를 목표 언어로 번역. 실패 시 원문 반환."""
-    lang_name = {"ko": "한국어", "en": "English"}.get(target, target)
+@lru_cache(maxsize=None)
+def _translator(lang_name: str):
+    """목표 언어별 번역 에이전트를 한 번만 생성해 재사용한다."""
     s = get_settings()
     client = FoundryChatClient(
         project_endpoint=s.foundry_project_endpoint,
         model=s.foundry_eval_deployment,
         credential=DefaultAzureCredential(),
     )
-    agent = client.as_agent(
+    return client.as_agent(
         name="reasoning-translator",
         instructions=(
             f"You are a translator. Translate the user's text into {lang_name}, "
@@ -43,8 +45,13 @@ async def translate(text: str, target: str) -> str:
             "Output only the translation, nothing else."
         ),
     )
+
+
+async def translate(text: str, target: str) -> str:
+    """추론 요약 등 짧은 텍스트를 목표 언어로 번역. 실패 시 원문 반환."""
+    lang_name = {"ko": "한국어", "en": "English"}.get(target, target)
     try:
-        resp = await agent.run(text)
+        resp = await _translator(lang_name).run(text)
         out = (resp.text or "").strip()
         return out or text
     except Exception:  # noqa: BLE001

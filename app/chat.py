@@ -68,7 +68,7 @@ async def _run_round(question: str) -> tuple[str, object, object]:
     모델의 추론 요약은 영어로 생성되는 경우가 많으므로, 질문 언어와 다르면 세그먼트
     단위로 번역하여 표시한다(도구 입력/결과는 이미 질문 언어이므로 그대로 표시).
     """
-    stream, trace, visual, _process = start_stream(question)
+    stream, trace, visual = start_stream(question)
     answer_msg = cl.Message(content="")
 
     target_lang = detect_lang(question)
