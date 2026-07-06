@@ -5,8 +5,6 @@ from typing import Callable, Literal, Union
 
 from pydantic import BaseModel
 
-from config.settings import get_settings
-
 
 class TableVisual(BaseModel):
     kind: Literal["table"] = "table"
@@ -42,8 +40,6 @@ class VisualRecorder(BaseModel):
 
 
 def make_visual_tools(recorder: VisualRecorder) -> list[Callable[..., str]]:
-    _settings = get_settings()
-
     def make_table(title: str, columns_json: str, rows_json: str) -> str:
         """표(정형 데이터)를 사용자 화면에 표시합니다. 검색으로 확인한 실제 값만 사용하세요.
 

@@ -23,8 +23,6 @@ async def on_chat_start() -> None:
 
 
 def _visual_elements(visuals: list) -> list:
-    import tempfile
-
     elements: list = []
     for v in visuals:
         if isinstance(v, TableVisual):
@@ -36,15 +34,12 @@ def _visual_elements(visuals: list) -> list:
                 cl.Plotly(figure=chart_to_figure(v), name=v.title, display="inline")
             )
         elif isinstance(v, ImageVisual):
-            path = v.path
-            if path.startswith("__page__:"):
-                page = int(path.split(":", 1)[1])
+            if v.path.startswith("__page__:"):
+                page = int(v.path.split(":", 1)[1])
                 png = render_page_png(get_settings().source_pdf_path, page)
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                tmp.write(png)
-                tmp.close()
-                path = tmp.name
-            elements.append(cl.Image(path=path, name=v.title, display="inline"))
+                elements.append(cl.Image(content=png, name=v.title, display="inline"))
+            else:
+                elements.append(cl.Image(path=v.path, name=v.title, display="inline"))
     return elements
 
 
