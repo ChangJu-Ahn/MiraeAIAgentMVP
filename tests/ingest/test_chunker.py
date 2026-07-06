@@ -38,3 +38,14 @@ def test_ids_unique_and_prefixed():
     ids = [c.id for c in chunks]
     assert len(ids) == len(set(ids))
     assert all(i.startswith("d1-") for i in ids)
+
+
+def test_table_section_path_reflects_document_position():
+    """Tables must get section_path active at their offset position, not the final heading."""
+    chunks = chunk_document(make_doc())
+    tables = [c for c in chunks if c.chunk_type == "table"]
+    assert len(tables) == 1
+    # Table offset=500 is AFTER "가. 평가의 특징" (offset=200) but BEFORE "나. 평가결과 공개" (offset=600)
+    # So section_path should end with "가. 평가의 특징", NOT "나. 평가결과 공개"
+    expected = "Ⅱ. 자산운용부문 평가결과 > 1. 평가 개요 > 가. 평가의 특징"
+    assert tables[0].section_path == expected, f"Expected '{expected}' but got '{tables[0].section_path}'"

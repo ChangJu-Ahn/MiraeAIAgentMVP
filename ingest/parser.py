@@ -41,13 +41,21 @@ def _page_of(element: dict) -> int:
     return regions[0]["pageNumber"] if regions else 1
 
 
+def _offset_of(element: dict) -> int:
+    """Extract document offset from DI element spans."""
+    spans = element.get("spans") or []
+    return spans[0]["offset"] if spans else 0
+
+
 def _result_to_parsed(doc_id: str, data: dict) -> ParsedDoc:
     paragraphs = [
-        ParsedParagraph(role=p.get("role"), content=p.get("content", ""), page=_page_of(p))
+        ParsedParagraph(
+            role=p.get("role"), content=p.get("content", ""), page=_page_of(p), offset=_offset_of(p)
+        )
         for p in data.get("paragraphs", [])
     ]
     tables = [
-        ParsedTable(markdown=_table_to_markdown(t), page=_page_of(t))
+        ParsedTable(markdown=_table_to_markdown(t), page=_page_of(t), offset=_offset_of(t))
         for t in data.get("tables", [])
     ]
     return ParsedDoc(

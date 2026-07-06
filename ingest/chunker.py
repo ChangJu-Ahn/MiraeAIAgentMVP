@@ -74,33 +74,45 @@ def chunk_document(doc: ParsedDoc, max_chars: int = 3600, overlap_chars: int = 5
             idx += 1
         buffer.clear()
 
+    # Merge paragraphs and tables into single stream ordered by offset
+    items: list[tuple[str, ParsedParagraph | dict]] = []
     for p in doc.paragraphs:
-        if p.role == "pageNumber":
-            continue
-        if p.role in HEADING_ROLES:
-            flush()
-            # 헤딩 레벨: title=0, sectionHeading은 번호 패턴으로 깊이 추정
-            if p.role == "title":
-                heading_stack = [p.content]
-            else:
-                depth = _heading_depth(p.content)
-                heading_stack = heading_stack[:depth] + [p.content]
-            continue
-        buffer.append(p)
-    flush()
-
+        items.append(("paragraph", p))
     for t in doc.tables:
-        content = (f"{t.caption}\n" if t.caption else "") + t.markdown
-        chunks.append(
-            Chunk(
-                id=f"{doc.doc_id}-{idx}",
-                doc_id=doc.doc_id,
-                content=content,
-                chunk_type="table",
-                section_path=" > ".join(heading_stack),
-                page_physical=t.page,
-                page_printed=printed.get(t.page),
+        items.append(("table", {"markdown": t.markdown, "page": t.page, "caption": t.caption, "offset": t.offset}))
+    items.sort(key=lambda x: x[1].offset if hasattr(x[1], "offset") else x[1]["offset"])
+
+    for item_type, item in items:
+        if item_type == "paragraph":
+            p = item
+            if p.role == "pageNumber":
+                continue
+            if p.role in HEADING_ROLES:
+                flush()
+                if p.role == "title":
+                    heading_stack = [p.content]
+                else:
+                    depth = _heading_depth(p.content)
+                    heading_stack = heading_stack[:depth] + [p.content]
+                continue
+            buffer.append(p)
+        elif item_type == "table":
+            # Flush narrative buffer FIRST, then emit table with current section_path
+            flush()
+            t = item
+            content = (f"{t['caption']}\n" if t["caption"] else "") + t["markdown"]
+            chunks.append(
+                Chunk(
+                    id=f"{doc.doc_id}-{idx}",
+                    doc_id=doc.doc_id,
+                    content=content,
+                    chunk_type="table",
+                    section_path=" > ".join(heading_stack),
+                    page_physical=t["page"],
+                    page_printed=printed.get(t["page"]),
+                )
             )
-        )
-        idx += 1
+            idx += 1
+
+    flush()
     return chunks

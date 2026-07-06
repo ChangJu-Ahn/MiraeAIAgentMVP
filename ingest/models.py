@@ -7,12 +7,14 @@ class ParsedParagraph(BaseModel):
     role: str | None
     content: str
     page: int
+    offset: int = 0
 
 
 class ParsedTable(BaseModel):
     markdown: str
     page: int
     caption: str | None = None
+    offset: int = 0
 
 
 class ParsedDoc(BaseModel):
