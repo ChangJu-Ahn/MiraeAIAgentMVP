@@ -39,6 +39,8 @@ uv run chainlit run app/chat.py -w
 ```
 브라우저에서 챗봇에 질문하면 추론 단계(도구 호출)·답변·근거 출처가 표시됩니다.
 
+> 답변에 표(정형 데이터)·차트(추세/비교)·원문 페이지 이미지가 필요하면 에이전트가 자동으로 함께 표시합니다.
+
 ## 평가 (P5)
 ```bash
 uv run python -m eval.run_eval            # 전체 Golden Q&A 평가 → reports/eval-report.md

@@ -13,6 +13,7 @@ dependencies = [
     "chainlit>=2.11.1",
     "azure-ai-evaluation>=1.17.0",
     "pillow>=12.3.0",
+    "plotly>=6.8.0",
 ]
 
 [dependency-groups]
