@@ -1,0 +1,50 @@
+from __future__ import annotations
+
+import asyncio
+
+from azure.identity import DefaultAzureCredential
+from agent_framework.foundry import FoundryChatClient
+from pydantic import BaseModel
+
+from agent.tools import RetrievedSource, TraceRecorder, TraceStep, make_search_tools
+from config.settings import get_settings
+
+SYSTEM_PROMPT = """당신은 기금운용평가보고서 전문 분석 어시스턴트입니다.
+
+원칙:
+1. 질문을 필요한 하위 질의로 분해하세요.
+2. 정성·서술형 정보는 search_narrative, 수치·등급·표 데이터는 search_tables 도구를 사용하세요. 필요하면 두 도구를 여러 번 호출해 교차 확인하세요.
+3. 답변에는 반드시 근거를 [출처 N] 형식으로 인용하고, 가능하면 섹션 경로와 페이지를 함께 제시하세요.
+4. 검색 결과에 답의 근거가 없으면 지어내지 말고 "제공된 자료에서 확인할 수 없습니다"라고 답하세요.
+5. 한국어로 간결하고 정확하게 답변하세요."""
+
+
+class AnswerResult(BaseModel):
+    answer: str
+    steps: list[TraceStep]
+    sources: list[RetrievedSource]
+
+
+def build_agent(recorder: TraceRecorder):
+    settings = get_settings()
+    client = FoundryChatClient(
+        project_endpoint=settings.foundry_project_endpoint,
+        model=settings.foundry_chat_deployment,
+        credential=DefaultAzureCredential(),
+    )
+    return client.as_agent(
+        name="mirae-fund-agent",
+        instructions=SYSTEM_PROMPT,
+        tools=make_search_tools(recorder),
+    )
+
+
+async def ask(question: str) -> AnswerResult:
+    recorder = TraceRecorder()
+    agent = build_agent(recorder)
+    response = await agent.run(question)
+    return AnswerResult(answer=response.text, steps=recorder.steps, sources=recorder.sources)
+
+
+def ask_sync(question: str) -> AnswerResult:
+    return asyncio.run(ask(question))
