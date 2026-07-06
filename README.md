@@ -31,4 +31,10 @@ uv run python -m agent.ask "자산운용 평가의 목적은?"
 ```
 에이전트가 질문을 분해해 narrative/table 인덱스를 조회하고(agentic retrieval), 근거를 인용해 답변합니다. 근거가 없으면 답변을 거부합니다.
 
+## 웹 UI 데모 (P4)
+```bash
+uv run chainlit run app/chat.py -w
+```
+브라우저에서 챗봇에 질문하면 추론 단계(도구 호출)·답변·근거 출처가 표시됩니다.
+
 설계: `specs/2026-07-06-agentic-rag-chatbot-design.md`
