@@ -4,7 +4,7 @@ param location string
 param projectName string = 'proj-mirae-poc'
 
 param chatModelName string = 'gpt-4o'
-param chatModelVersion string = '2024-08-06'
+param chatModelVersion string = '2024-11-20'
 param chatDeploymentName string = 'chat'
 param chatCapacity int = 20
 

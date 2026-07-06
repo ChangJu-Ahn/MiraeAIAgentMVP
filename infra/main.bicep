@@ -7,7 +7,7 @@ param developerObjectId string
 param suffix string = uniqueString(resourceGroup().id)
 
 param chatModelName string = 'gpt-4o'
-param chatModelVersion string = '2024-08-06'
+param chatModelVersion string = '2024-11-20'
 param embeddingModelName string = 'text-embedding-3-large'
 param embeddingModelVersion string = '1'
 
