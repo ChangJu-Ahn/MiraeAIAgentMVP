@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import chainlit as cl
 
 from agent.orchestrator import ask
-from app.formatting import format_citations
+from app.formatting import format_citations, format_reasoning_step
 
 
 @cl.on_chat_start
@@ -26,7 +26,7 @@ async def on_message(message: cl.Message) -> None:
     for step in result.steps:
         async with cl.Step(name=step.tool, type="tool") as s:
             s.input = step.query
-            s.output = f"{step.n_hits}건 검색"
+            s.output = format_reasoning_step(step)
 
     # 답변 (마크다운 표 네이티브 렌더)
     await cl.Message(content=result.answer).send()
