@@ -6,6 +6,7 @@ def test_grounded_answer_cites_and_uses_tools():
     assert r.answer.strip()
     assert r.steps, "expected at least one tool call (agentic retrieval)"
     assert r.sources, "expected retrieved sources"
+    assert "[출처" in r.answer, f"expected grounded citation in answer, got: {r.answer}"
 
 
 def test_hallucination_guard_refuses_unknown():
