@@ -91,8 +91,12 @@ async def on_message(message: cl.Message) -> None:
         answer_text, trace, visual = await _run_round(question)
         if rnd == max_rounds:
             break
-        # 자가 점검: 답변이 충분한가?
-        verdict = await critique(message.content, answer_text, trace.sources)
+        # 자가 점검: 답변이 충분한가? (점검 실패 시 안전하게 통과 처리)
+        try:
+            verdict = await critique(message.content, answer_text, trace.sources)
+        except Exception as exc:  # noqa: BLE001
+            cl.logger.warning(f"reflection critique failed: {exc}; treating as sufficient")
+            break
         if verdict.sufficient:
             break
         async with cl.Step(name="🔍 자가 점검: 보완 필요", type="reflection") as s:
