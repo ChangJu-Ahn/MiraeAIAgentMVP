@@ -10,7 +10,7 @@ import chainlit as cl
 from agent.observability import setup_observability
 from agent.orchestrator import start_stream
 from agent.visuals import ChartVisual, ImageVisual, TableVisual
-from app.formatting import format_citations, format_reasoning_step
+from app.formatting import format_citations
 from app.visual_bind import chart_to_figure, table_to_dataframe
 from config.settings import get_settings
 from ingest.figures import render_page_png
@@ -48,26 +48,26 @@ def _visual_elements(visuals: list) -> list:
 
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
-    stream, trace, visual = start_stream(message.content)
+    stream, trace, visual, process = start_stream(message.content)
 
     answer_msg = cl.Message(content="")
-    shown_steps = 0
+    shown = 0
 
-    async def flush_steps() -> None:
-        nonlocal shown_steps
-        while shown_steps < len(trace.steps):
-            st = trace.steps[shown_steps]
-            async with cl.Step(name=st.tool, type="tool") as s:
-                s.input = st.query
-                s.output = format_reasoning_step(st)
-            shown_steps += 1
+    async def flush_process() -> None:
+        nonlocal shown
+        while shown < len(process.events):
+            e = process.events[shown]
+            icon = "🧠" if e.kind == "plan" else "🔧"
+            async with cl.Step(name=f"{icon} {e.title}", type=e.kind) as s:
+                s.output = e.detail
+            shown += 1
 
-    # 도구 호출(추론 단계)을 진행되는 대로 표시하고, 답변을 토큰 단위로 스트리밍
+    # 계획(🧠)·도구 실행(🔧)을 진행되는 대로 표시하고, 답변을 토큰 단위로 스트리밍
     async for update in stream:
-        await flush_steps()
+        await flush_process()
         if update.text:
             await answer_msg.stream_token(update.text)
-    await flush_steps()
+    await flush_process()
     await answer_msg.update()
 
     # 시각물 바인딩 (표/차트/원문 이미지)

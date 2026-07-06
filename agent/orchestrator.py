@@ -6,6 +6,7 @@ from azure.identity import DefaultAzureCredential
 from agent_framework.foundry import FoundryChatClient
 from pydantic import BaseModel
 
+from agent.middleware import ProcessRecorder, PlanningChatMiddleware, ToolProcessMiddleware
 from agent.tools import RetrievedSource, TraceRecorder, TraceStep, make_search_tools
 from agent.visuals import Visual, VisualRecorder, make_visual_tools
 from config.settings import get_settings
@@ -13,6 +14,7 @@ from config.settings import get_settings
 SYSTEM_PROMPT = """당신은 기금운용평가보고서 전문 분석 어시스턴트입니다.
 
 원칙:
+0. 도구를 호출하기 전에 한 문장으로 무엇을 왜 조회할지 계획을 밝히세요.
 1. 질문을 필요한 하위 질의로 분해하세요.
 2. 정성·서술형 정보는 search_narrative, 수치·등급·표 데이터는 search_tables 도구를 사용하세요. 필요하면 두 도구를 여러 번 호출해 교차 확인하세요.
 3. 답변에는 반드시 근거를 [출처 N] 형식으로 인용하고, 가능하면 섹션 경로와 페이지를 함께 제시하세요.
@@ -28,7 +30,7 @@ class AnswerResult(BaseModel):
     visuals: list[Visual] = []
 
 
-def build_agent(recorder: TraceRecorder, visual_recorder: VisualRecorder):
+def build_agent(recorder: TraceRecorder, visual_recorder: VisualRecorder, process_recorder: ProcessRecorder | None = None):
     settings = get_settings()
     client = FoundryChatClient(
         project_endpoint=settings.foundry_project_endpoint,
@@ -36,10 +38,17 @@ def build_agent(recorder: TraceRecorder, visual_recorder: VisualRecorder):
         credential=DefaultAzureCredential(),
     )
     tools = make_search_tools(recorder) + make_visual_tools(visual_recorder)
+    middleware = None
+    if process_recorder is not None:
+        middleware = [
+            ToolProcessMiddleware(process_recorder),
+            PlanningChatMiddleware(process_recorder),
+        ]
     return client.as_agent(
         name="mirae-fund-agent",
         instructions=SYSTEM_PROMPT,
         tools=tools,
+        middleware=middleware,
     )
 
 
@@ -61,13 +70,15 @@ def ask_sync(question: str) -> AnswerResult:
 
 
 def start_stream(question: str):
-    """Return (response_stream, trace_recorder, visual_recorder) for live UIs.
+    """Return (response_stream, trace_recorder, visual_recorder, process_recorder) for live UIs.
 
     Caller iterates the stream (async) for text deltas; recorders fill with
-    tool-call steps, retrieved sources, and visuals during iteration.
+    tool-call steps, retrieved sources, visuals, and process events (plan/tool)
+    during iteration.
     """
     recorder = TraceRecorder()
     visual_recorder = VisualRecorder()
-    agent = build_agent(recorder, visual_recorder)
+    process_recorder = ProcessRecorder()
+    agent = build_agent(recorder, visual_recorder, process_recorder)
     stream = agent.run(question, stream=True)
-    return stream, recorder, visual_recorder
+    return stream, recorder, visual_recorder, process_recorder
