@@ -6,6 +6,9 @@ from agent.orchestrator import ask_sync
 
 
 def main() -> None:
+    from agent.observability import setup_observability
+
+    setup_observability()
     ap = argparse.ArgumentParser(description="Ask the fund-evaluation agent")
     ap.add_argument("question", help="질문 (한국어)")
     args = ap.parse_args()
