@@ -51,4 +51,6 @@ Foundry judge(azure-ai-evaluation)로 Groundedness·Relevance·Retrieval·Cohere
 ## 관측성 (P8)
 `.env`에 `APPINSIGHTS_CONNECTION_STRING`이 있으면 에이전트 실행·툴 콜(입력=근거, 출력=답변)이 OpenTelemetry로 Azure Application Insights에 자동 기록됩니다(민감 데이터 포함). 각 진입점(챗봇/CLI)이 시작 시 `setup_observability()`를 호출합니다. 미설정 시 안전하게 no-op.
 
+**트레이스 확인**: Azure Portal → Application Insights → Transaction search 또는 Logs(KQL): `dependencies | where timestamp > ago(30m)` (에이전트 실행·툴 콜 gen_ai 스팬).
+
 설계: `specs/2026-07-06-agentic-rag-chatbot-design.md`
