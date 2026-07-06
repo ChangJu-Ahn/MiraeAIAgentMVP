@@ -50,7 +50,7 @@ def build_report(rows: list[EvalRow]) -> str:
     lines += ["## 지표별 평균 점수 (1~5, Foundry judge)", "| 지표 | 평균 | 통과율 |", "|---|---|---|"]
     for m in METRICS:
         vals = [r.metrics[m] for r in rows if m in r.metrics]
-        flags = [r.passed[m] for r in rows if m in r.passed]
+        flags = [r.passed.get(m, False) for r in rows if m in r.metrics]
         if vals:
             lines.append(f"| {m} | {_avg(vals):.2f} | {_rate(flags):.1f}% |")
     lines.append("")
