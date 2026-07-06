@@ -25,4 +25,10 @@ uv run python -m ingest.run --pdf "Docs/<파일>.pdf" --doc-id "<고유ID>"
 ```
 추가 자료는 전달받는 대로 동일 명령을 새 --doc-id로 재실행하면 upsert 됩니다.
 
+## 에이전트 질의 (P3)
+```bash
+uv run python -m agent.ask "자산운용 평가의 목적은?"
+```
+에이전트가 질문을 분해해 narrative/table 인덱스를 조회하고(agentic retrieval), 근거를 인용해 답변합니다. 근거가 없으면 답변을 거부합니다.
+
 설계: `specs/2026-07-06-agentic-rag-chatbot-design.md`
