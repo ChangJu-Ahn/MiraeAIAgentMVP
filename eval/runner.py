@@ -38,7 +38,7 @@ def _judge():
     base = s.foundry_project_endpoint.split("/api/projects")[0]
     mc = AzureOpenAIModelConfiguration(
         azure_endpoint=base,
-        azure_deployment=s.foundry_chat_deployment,
+        azure_deployment=s.foundry_eval_deployment,
         api_version=s.foundry_api_version,
     )
     cred = DefaultAzureCredential()
