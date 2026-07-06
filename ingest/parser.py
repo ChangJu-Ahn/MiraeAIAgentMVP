@@ -22,11 +22,14 @@ CACHE_DIR = Path(".ingest_cache")
 def _table_to_markdown(table: dict) -> str:
     rows = table["rowCount"]
     cols = table["columnCount"]
+    if rows == 0 or cols == 0:
+        return ""
     grid = [["" for _ in range(cols)] for _ in range(rows)]
     for cell in table["cells"]:
         r, c = cell["rowIndex"], cell["columnIndex"]
         if r < rows and c < cols:
-            grid[r][c] = (cell.get("content") or "").replace("\n", " ").strip()
+            content = (cell.get("content") or "").replace("\n", " ").replace("|", "\\|").strip()
+            grid[r][c] = content
     lines = ["| " + " | ".join(grid[0]) + " |", "|" + "|".join(["---"] * cols) + "|"]
     for row in grid[1:]:
         lines.append("| " + " | ".join(row) + " |")
