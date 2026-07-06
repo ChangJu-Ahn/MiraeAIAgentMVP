@@ -4,7 +4,7 @@
 Microsoft Foundry(gpt-5.4-mini, 추론) + Azure AI Search + Azure Document Intelligence + Microsoft Agent Framework.
 
 ## 에이전트가 하는 일
-질문을 하위 질의로 분해해 여러 인덱스를 조회하고(**agentic retrieval**), 결과가 부족하면 질의를 바꿔 **다시 조회**하며, 근거를 인용해 답변합니다. 자료에 없으면 답변을 거부합니다(**할루시네이션 방어**). 추론(reasoning)·도구 실행 과정이 단계로 표시되고, 답변은 토큰 단위로 스트리밍됩니다.
+질문을 하위 질의로 분해해 여러 인덱스를 조회하고(**agentic retrieval**), 답변 후 스스로 충분성을 점검해 부족하면 **보완 질의로 다시 조회**하며(reflection, 최대 2라운드), 근거를 인용해 답변합니다. 자료에 없으면 답변을 거부합니다(**할루시네이션 방어**). 추론(reasoning)·도구 실행 과정이 단계로 표시되고, 답변은 토큰 단위로 스트리밍됩니다.
 
 ## 사용 가능한 도구
 | 도구 | 동작 |

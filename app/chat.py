@@ -10,6 +10,7 @@ import chainlit as cl
 
 from agent.observability import setup_observability
 from agent.orchestrator import start_stream
+from agent.reflection import augmented_question, critique
 from agent.visuals import ChartVisual, ImageVisual, TableVisual
 from app.formatting import cited_sources, format_citations
 from app.visual_bind import chart_to_figure, table_to_dataframe
@@ -54,10 +55,9 @@ def _visual_elements(visuals: list) -> list:
     return elements
 
 
-@cl.on_message
-async def on_message(message: cl.Message) -> None:
-    stream, trace, visual, process = start_stream(message.content)
-
+async def _run_round(question: str) -> tuple[str, object, object]:
+    """스트리밍으로 한 라운드를 실행. (answer_text, trace, visual) 반환."""
+    stream, trace, visual, process = start_stream(question)
     answer_msg = cl.Message(content="")
     shown = 0
 
@@ -70,7 +70,6 @@ async def on_message(message: cl.Message) -> None:
                 s.output = e.detail
             shown += 1
 
-    # 계획(🧠)·도구 실행(🔧)을 진행되는 대로 표시하고, 답변을 토큰 단위로 스트리밍
     answer_text = ""
     async for update in stream:
         await flush_process()
@@ -79,13 +78,37 @@ async def on_message(message: cl.Message) -> None:
             await answer_msg.stream_token(update.text)
     await flush_process()
     await answer_msg.update()
+    return answer_text, trace, visual
 
-    # 시각물 바인딩 (표/차트/원문 이미지)
+
+@cl.on_message
+async def on_message(message: cl.Message) -> None:
+    max_rounds = 2
+    question = message.content
+    answer_text, trace, visual = "", None, None
+
+    for rnd in range(1, max_rounds + 1):
+        answer_text, trace, visual = await _run_round(question)
+        if rnd == max_rounds:
+            break
+        # 자가 점검: 답변이 충분한가? (점검 실패 시 안전하게 통과 처리)
+        try:
+            verdict = await critique(message.content, answer_text, trace.sources)
+        except Exception as exc:  # noqa: BLE001
+            cl.logger.warning(f"reflection critique failed: {exc}; treating as sufficient")
+            break
+        if verdict.sufficient:
+            break
+        async with cl.Step(name="🔍 자가 점검: 보완 필요", type="reflection") as s:
+            s.output = f"부족한 부분: {verdict.missing}\n→ 보완 질의로 다시 조회합니다."
+        question = augmented_question(message.content, verdict.missing)
+
+    # 시각물 바인딩 (표/차트/원문 이미지) — 최종 라운드
     elements = _visual_elements(visual.items)
     if elements:
         await cl.Message(content="📊 시각화", elements=elements).send()
 
-    # 근거 출처 카드 — 답변이 실제 인용한 [출처 N]만 표시
+    # 근거 출처 카드 — 최종 답변이 실제 인용한 [출처 N]만 표시
     used = cited_sources(answer_text, trace.sources)
     citations = format_citations(used)
     if citations:
