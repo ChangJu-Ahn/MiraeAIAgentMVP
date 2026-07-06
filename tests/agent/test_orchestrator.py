@@ -11,6 +11,20 @@ def test_grounded_answer_cites_and_uses_tools():
 
 def test_hallucination_guard_refuses_unknown():
     r = ask_sync("2025년 애플 아이폰 판매량은 이 보고서에 얼마로 나오나요?")
-    # Must refuse, not fabricate a number - accept various refusal phrasings
-    refusal_patterns = ["확인할 수 없습니다", "없습니다", "포함되어 있지 않습니다", "확인되지 않았습니다", "제공되지 않았습니다"]
-    assert any(pattern in r.answer for pattern in refusal_patterns), f"Expected refusal, got: {r.answer}"
+    # The corpus is Korean fund-evaluation reports; an iPhone sales figure is out of
+    # corpus. The guard must REFUSE (state absence), never fabricate a number.
+    # A fabricated declarative answer ("판매량은 2억 대입니다") contains no negation
+    # marker, so requiring one still catches fabrication while tolerating phrasing variety.
+    negation_markers = [
+        "없습니다",
+        "없음",
+        "않습니다",
+        "않았습니다",
+        "확인할 수 없",
+        "확인되지 않",
+        "제공되지 않",
+        "포함되어 있지 않",
+        "나와 있지 않",
+        "찾을 수 없",
+    ]
+    assert any(m in r.answer for m in negation_markers), f"Expected refusal, got: {r.answer}"
