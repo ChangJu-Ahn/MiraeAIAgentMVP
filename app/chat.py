@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -40,9 +41,16 @@ def _visual_elements(visuals: list) -> list:
             if v.path.startswith("__page__:"):
                 page = int(v.path.split(":", 1)[1])
                 png = render_page_png(get_settings().source_pdf_path, page)
-                elements.append(cl.Image(content=png, name=v.title, display="inline"))
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                tmp.write(png)
+                tmp.close()
+                elements.append(
+                    cl.Image(
+                        path=tmp.name, name=v.title, display="inline", mime="image/png", size="large"
+                    )
+                )
             else:
-                elements.append(cl.Image(path=v.path, name=v.title, display="inline"))
+                elements.append(cl.Image(path=v.path, name=v.title, display="inline", size="large"))
     return elements
 
 
