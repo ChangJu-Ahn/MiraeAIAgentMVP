@@ -29,6 +29,9 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
 
 
 def main() -> None:
+    from agent.observability import setup_observability
+
+    setup_observability()
     ap = argparse.ArgumentParser(description="Ingest a PDF into Azure AI Search")
     ap.add_argument("--pdf", required=True)
     ap.add_argument("--doc-id", required=True)

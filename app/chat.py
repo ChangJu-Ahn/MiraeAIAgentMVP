@@ -7,12 +7,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import chainlit as cl
 
+from agent.observability import setup_observability
 from agent.orchestrator import ask
 from agent.visuals import ChartVisual, ImageVisual, TableVisual
 from app.formatting import format_citations, format_reasoning_step
 from app.visual_bind import chart_to_figure, table_to_dataframe
 from config.settings import get_settings
 from ingest.figures import render_page_png
+
+setup_observability()
 
 
 @cl.on_chat_start

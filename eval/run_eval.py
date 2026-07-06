@@ -9,6 +9,9 @@ from eval.runner import run_eval_sync
 
 
 def main() -> None:
+    from agent.observability import setup_observability
+
+    setup_observability()
     ap = argparse.ArgumentParser(description="Run Foundry evaluation over the golden Q&A set")
     ap.add_argument("--limit", type=int, default=None, help="평가할 최대 문항 수")
     ap.add_argument("--out", default="reports/eval-report.md")

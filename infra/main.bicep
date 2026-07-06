@@ -51,8 +51,17 @@ module rbac 'modules/rbac.bicep' = {
   }
 }
 
+module observability 'modules/observability.bicep' = {
+  name: 'observability'
+  params: {
+    name: 'mirae-${suffix}'
+    location: location
+  }
+}
+
 output docIntelligenceEndpoint string = di.outputs.docIntelligenceEndpoint
 output searchEndpoint string = search.outputs.searchEndpoint
 output foundryProjectEndpoint string = foundry.outputs.foundryProjectEndpoint
 output chatDeploymentName string = foundry.outputs.chatDeploymentName
 output embeddingDeploymentName string = foundry.outputs.embeddingDeploymentName
+output appInsightsConnectionString string = observability.outputs.appInsightsConnectionString
