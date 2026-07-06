@@ -60,8 +60,10 @@ class PlanningChatMiddleware(ChatMiddleware):
     async def process(self, context, call_next) -> None:  # noqa: ANN001
         await call_next()
         result = getattr(context, "result", None)
-        # 스트림은 소비하지 않는다. 텍스트를 안전히 읽을 수 있을 때만 계획 이벤트 기록.
-        text = getattr(result, "text", None) if result is not None else None
+        # 스트림(ResponseStream 등)은 절대 소비하지 않는다.
+        if result is None or hasattr(result, "__aiter__") or hasattr(result, "__iter__") and not isinstance(result, (str, list, tuple)):
+            return
+        text = getattr(result, "text", None)
         if isinstance(text, str) and text.strip():
             snippet = text.strip()
             if len(snippet) > 200:

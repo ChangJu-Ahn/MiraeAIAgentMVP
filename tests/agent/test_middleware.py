@@ -32,3 +32,16 @@ def test_tool_middleware_records_tool_event():
     assert rec.events and rec.events[-1].kind == "tool"
     assert rec.events[-1].title == "search_narrative"
     assert "탁월" in rec.events[-1].detail
+
+
+def test_stringify_handles_content_types():
+    from agent.middleware import _stringify
+
+    class _C:
+        def __init__(self, text):
+            self.text = text
+
+    assert _stringify(None) == ""
+    assert _stringify("plain") == "plain"
+    assert _stringify(_C("x")) == "x"
+    assert _stringify([_C("a"), _C("b")]) == "a b"
