@@ -19,6 +19,7 @@ Microsoft & Azure AI 서비스를 기반으로, **오케스트레이션 가능�
 | 답변 평가 | **Microsoft Foundry Evaluation** |
 | 에이전트 오케스트레이션 | **Microsoft Agent Framework** (GA, `agent-framework` Python) |
 | UI | **Chainlit** (오픈소스) |
+| 인프라 프로비저닝 | **Bicep** (전용 RG, Managed Identity RBAC) |
 | 청킹 방법론 | 오픈소스 허용 |
 
 ### 포함 (In-scope)
@@ -39,8 +40,12 @@ Microsoft & Azure AI 서비스를 기반으로, **오케스트레이션 가능�
 ### 운영 방식
 수동 실행 인제스트 CLI 1개로 구성. 지금은 PDF 1개(532p)로 인덱싱하고, 추가 자료(기금운용평가보고서·경영실적평가보고서·평가근거 자료 등)는 전달받는 대로 동일 CLI를 재실행하여 upsert한다.
 
-### 배포 목표
+### 배포 목표 & 인프라
 최종적으로 **Azure Container Apps(ACA)** 배포 예정. 컨테이너화(Dockerfile)와 환경변수 기반 설정을 처음부터 전제로 설계한다.
+
+- **프로비저닝**: **Bicep(IaC)** 로 전용 리소스 그룹 `rg-mirae-ai-agent-poc` (region `koreacentral`)에 DI · AI Search · Foundry(프로젝트/LLM/임베딩 배포)를 생성하고, 추후 ACA도 동일 RG에 배포하여 한곳에서 관리한다.
+- **인증**: **Managed Identity / Entra ID RBAC (키리스)** 우선. 로컬 개발은 `DefaultAzureCredential`(Azure CLI 로그인), ACA는 시스템/사용자 할당 관리 ID. 필요한 RBAC(예: Search Index Data Contributor, Cognitive Services User, Foundry 접근)를 Bicep에서 함께 할당.
+- ⚠️ **리전 가용성 검증 필요**: `koreacentral`은 AI Search **Agentic Retrieval(Knowledge Agent)** 및 일부 Foundry 모델 가용성이 제한될 수 있음 → 플랜 초기에 가용성 확인 단계 포함. 미지원 시 대체 리전(예: eastus2) 또는 해당 서비스만 별도 리전 배치.
 
 ## 2. 아키텍처 & 컴포넌트
 
@@ -162,6 +167,7 @@ MiraeAIAgentMVP/
 ├── app/           # Chainlit UI
 ├── eval/          # Golden Q&A + Foundry Evaluation
 ├── config/        # 설정 로더 (.env, 모델·엔드포인트)
+├── infra/         # Bicep IaC (RG 리소스 + RBAC + 추후 ACA)
 ├── tests/         # 모듈별 단위 테스트
 ├── Docs/          # 원본 문서 (기존)
 ├── docs/          # 설계·플랜 문서
