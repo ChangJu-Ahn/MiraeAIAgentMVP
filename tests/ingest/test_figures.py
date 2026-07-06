@@ -22,3 +22,21 @@ def test_parser_captures_figures_from_cache():
     assert len(doc.figures) >= 1
     assert all(len(fig.polygon) >= 8 for fig in doc.figures)
     assert all(fig.page >= 1 for fig in doc.figures)
+
+
+def test_render_and_describe_first_figure():
+    import pytest
+
+    from config.settings import get_settings
+    from ingest.figures import describe_figure, render_figure_png
+    from ingest.parser import analyze_pdf
+
+    s = get_settings()
+    doc = analyze_pdf(s.source_pdf_path, "gicheum-2025-asset", use_cache=True)
+    if not doc.figures:
+        pytest.skip("no figures")
+    fig = doc.figures[0]
+    png = render_figure_png(s.source_pdf_path, fig.page, fig.polygon)
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"  # PNG magic
+    desc = describe_figure(png)
+    assert desc and len(desc) > 10
