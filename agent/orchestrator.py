@@ -58,3 +58,16 @@ async def ask(question: str) -> AnswerResult:
 
 def ask_sync(question: str) -> AnswerResult:
     return asyncio.run(ask(question))
+
+
+def start_stream(question: str):
+    """Return (response_stream, trace_recorder, visual_recorder) for live UIs.
+
+    Caller iterates the stream (async) for text deltas; recorders fill with
+    tool-call steps, retrieved sources, and visuals during iteration.
+    """
+    recorder = TraceRecorder()
+    visual_recorder = VisualRecorder()
+    agent = build_agent(recorder, visual_recorder)
+    stream = agent.run(question, stream=True)
+    return stream, recorder, visual_recorder
