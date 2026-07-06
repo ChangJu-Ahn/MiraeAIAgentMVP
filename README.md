@@ -37,4 +37,11 @@ uv run chainlit run app/chat.py -w
 ```
 브라우저에서 챗봇에 질문하면 추론 단계(도구 호출)·답변·근거 출처가 표시됩니다.
 
+## 평가 (P5)
+```bash
+uv run python -m eval.run_eval            # 전체 Golden Q&A 평가 → reports/eval-report.md
+uv run python -m eval.run_eval --limit 3  # 소규모 실행
+```
+Foundry judge(azure-ai-evaluation)로 Groundedness·Relevance·Retrieval·Coherence·Fluency를 측정하고, 인용율·할루시네이션 방어를 목표선(정확도 80%·인용 90%·방어 90%)과 비교합니다.
+
 설계: `specs/2026-07-06-agentic-rag-chatbot-design.md`
