@@ -106,3 +106,18 @@ def build_figure_chunks(doc: ParsedDoc, pdf_path: str) -> list[Chunk]:
             )
         )
     return chunks
+
+
+def render_page_png(pdf_path: str, page: int, dpi: int = 130) -> bytes:
+    with tempfile.TemporaryDirectory() as d:
+        prefix = os.path.join(d, "pg")
+        subprocess.run(
+            ["pdftoppm", "-f", str(page), "-l", str(page), "-r", str(dpi), "-png", pdf_path, prefix],
+            check=True,
+            capture_output=True,
+        )
+        pngs = sorted(f for f in os.listdir(d) if f.endswith(".png"))
+        img = Image.open(os.path.join(d, pngs[0]))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
