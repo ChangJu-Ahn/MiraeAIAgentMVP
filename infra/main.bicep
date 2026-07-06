@@ -64,4 +64,5 @@ output searchEndpoint string = search.outputs.searchEndpoint
 output foundryProjectEndpoint string = foundry.outputs.foundryProjectEndpoint
 output chatDeploymentName string = foundry.outputs.chatDeploymentName
 output embeddingDeploymentName string = foundry.outputs.embeddingDeploymentName
+output reasoningDeploymentName string = foundry.outputs.reasoningDeploymentName
 output appInsightsConnectionString string = observability.outputs.appInsightsConnectionString

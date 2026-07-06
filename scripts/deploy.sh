@@ -37,6 +37,7 @@ srch=$(echo "$OUT"  | python3 -c "import sys,json;print(json.load(sys.stdin)['se
 proj=$(echo "$OUT"  | python3 -c "import sys,json;print(json.load(sys.stdin)['foundryProjectEndpoint']['value'])")
 chat=$(echo "$OUT"  | python3 -c "import sys,json;print(json.load(sys.stdin)['chatDeploymentName']['value'])")
 embed=$(echo "$OUT" | python3 -c "import sys,json;print(json.load(sys.stdin)['embeddingDeploymentName']['value'])")
+reasoning=$(echo "$OUT" | python3 -c "import sys,json;print(json.load(sys.stdin)['reasoningDeploymentName']['value'])")
 appi=$(echo "$OUT"  | python3 -c "import sys,json;print(json.load(sys.stdin)['appInsightsConnectionString']['value'])")
 
 cat > .env <<EOF
@@ -45,7 +46,9 @@ SEARCH_ENDPOINT=$srch
 SEARCH_INDEX_NARRATIVE=narrative-index
 SEARCH_INDEX_TABLE=table-index
 FOUNDRY_PROJECT_ENDPOINT=$proj
-FOUNDRY_CHAT_DEPLOYMENT=$chat
+FOUNDRY_CHAT_DEPLOYMENT=$reasoning
+FOUNDRY_VISION_DEPLOYMENT=$chat
+FOUNDRY_EVAL_DEPLOYMENT=$chat
 FOUNDRY_EMBEDDING_DEPLOYMENT=$embed
 FOUNDRY_API_VERSION=2024-10-21
 APPINSIGHTS_CONNECTION_STRING=$appi

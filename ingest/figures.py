@@ -56,7 +56,7 @@ def describe_figure(png: bytes) -> str:
     )
     b64 = base64.b64encode(png).decode()
     resp = client.chat.completions.create(
-        model=s.foundry_chat_deployment,
+        model=s.foundry_vision_deployment,
         messages=[
             {
                 "role": "user",

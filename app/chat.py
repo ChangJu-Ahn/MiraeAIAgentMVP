@@ -11,7 +11,7 @@ import chainlit as cl
 from agent.observability import setup_observability
 from agent.orchestrator import start_stream
 from agent.visuals import ChartVisual, ImageVisual, TableVisual
-from app.formatting import format_citations
+from app.formatting import cited_sources, format_citations
 from app.visual_bind import chart_to_figure, table_to_dataframe
 from config.settings import get_settings
 from ingest.figures import render_page_png
@@ -71,9 +71,11 @@ async def on_message(message: cl.Message) -> None:
             shown += 1
 
     # 계획(🧠)·도구 실행(🔧)을 진행되는 대로 표시하고, 답변을 토큰 단위로 스트리밍
+    answer_text = ""
     async for update in stream:
         await flush_process()
         if update.text:
+            answer_text += update.text
             await answer_msg.stream_token(update.text)
     await flush_process()
     await answer_msg.update()
@@ -83,7 +85,8 @@ async def on_message(message: cl.Message) -> None:
     if elements:
         await cl.Message(content="📊 시각화", elements=elements).send()
 
-    # 근거 출처 카드
-    citations = format_citations(trace.sources)
+    # 근거 출처 카드 — 답변이 실제 인용한 [출처 N]만 표시
+    used = cited_sources(answer_text, trace.sources)
+    citations = format_citations(used)
     if citations:
         await cl.Message(content=citations).send()
