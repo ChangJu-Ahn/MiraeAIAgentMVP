@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from ingest.models import Chunk, ParsedDoc, ParsedParagraph
+from ingest.models import Chunk, ParsedDoc, ParsedParagraph, ParsedTable
 
 HEADING_ROLES = {"title", "sectionHeading"}
 
@@ -75,12 +75,12 @@ def chunk_document(doc: ParsedDoc, max_chars: int = 3600, overlap_chars: int = 5
         buffer.clear()
 
     # Merge paragraphs and tables into single stream ordered by offset
-    items: list[tuple[str, ParsedParagraph | dict]] = []
+    items: list[tuple[str, ParsedParagraph | ParsedTable]] = []
     for p in doc.paragraphs:
         items.append(("paragraph", p))
     for t in doc.tables:
-        items.append(("table", {"markdown": t.markdown, "page": t.page, "caption": t.caption, "offset": t.offset}))
-    items.sort(key=lambda x: x[1].offset if hasattr(x[1], "offset") else x[1]["offset"])
+        items.append(("table", t))
+    items.sort(key=lambda x: x[1].offset)
 
     for item_type, item in items:
         if item_type == "paragraph":
@@ -100,7 +100,7 @@ def chunk_document(doc: ParsedDoc, max_chars: int = 3600, overlap_chars: int = 5
             # Flush narrative buffer FIRST, then emit table with current section_path
             flush()
             t = item
-            content = (f"{t['caption']}\n" if t["caption"] else "") + t["markdown"]
+            content = (f"{t.caption}\n" if t.caption else "") + t.markdown
             chunks.append(
                 Chunk(
                     id=f"{doc.doc_id}-{idx}",
@@ -108,8 +108,8 @@ def chunk_document(doc: ParsedDoc, max_chars: int = 3600, overlap_chars: int = 5
                     content=content,
                     chunk_type="table",
                     section_path=" > ".join(heading_stack),
-                    page_physical=t["page"],
-                    page_printed=printed.get(t["page"]),
+                    page_physical=t.page,
+                    page_printed=printed.get(t.page),
                 )
             )
             idx += 1
