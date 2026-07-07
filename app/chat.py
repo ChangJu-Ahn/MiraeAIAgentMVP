@@ -11,6 +11,7 @@ import chainlit as cl
 from chainlit.context import local_steps
 from chainlit.input_widget import Switch
 
+from agent.followups import suggest_followups
 from agent.observability import collect_trace_json, reset_trace, setup_observability
 from agent.orchestrator import start_stream
 from agent.reflection import augmented_question, critique
@@ -195,8 +196,27 @@ async def _run_round(question: str) -> tuple[str, object, object]:
 
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
+    await answer_and_render(message.content)
+
+
+@cl.action_callback("ask_followup")
+async def ask_followup(action: cl.Action) -> None:
+    q = action.payload.get("q", "")
+    await action.remove()  # 클릭한 제안 버튼 정리
+    if not q:
+        return
+    await cl.Message(content=q, type="user_message").send()  # 사용자가 물은 것처럼 표시
+    await answer_and_render(q)
+
+
+async def answer_and_render(question_input: str) -> None:
+    """한 질문에 대해 라운드 실행 → 답변·시각물·근거·디버그·후속질문까지 렌더링.
+
+    on_message와 후속 질문 버튼(ask_followup) 양쪽에서 재사용한다.
+    """
     max_rounds = 2
-    question = message.content
+    original_question = question_input
+    question = question_input
     answer_text, trace, visual = "", None, None
     rounds: list[tuple[str, list, list]] = []  # 디버그용 라운드별 (질의, 트레이스, 검색결과)
     reset_trace()  # 이번 턴의 OpenTelemetry 스팬만 모으도록 캡처 버퍼 초기화
@@ -208,7 +228,7 @@ async def on_message(message: cl.Message) -> None:
             break
         # 자가 점검: 답변이 충분한가? (점검 실패 시 안전하게 통과 처리)
         try:
-            verdict = await critique(message.content, answer_text, trace.sources)
+            verdict = await critique(original_question, answer_text, trace.sources)
         except Exception as exc:  # noqa: BLE001
             cl.logger.warning(f"reflection critique failed: {exc}; treating as sufficient")
             break
@@ -216,7 +236,7 @@ async def on_message(message: cl.Message) -> None:
             break
         async with cl.Step(name="🔍 자가 점검: 보완 필요", type="reflection") as s:
             s.output = f"부족한 부분: {verdict.missing}\n→ 보완 질의로 다시 조회합니다."
-        question = augmented_question(message.content, verdict.missing)
+        question = augmented_question(original_question, verdict.missing)
 
     # 시각물 바인딩 (표/차트/원문 이미지) — 최종 라운드
     elements = _visual_elements(visual.items)
@@ -241,3 +261,12 @@ async def on_message(message: cl.Message) -> None:
         await cl.ElementSidebar.set_elements(
             [cl.Text(content=debug_md, name="debug-trace")]
         )
+
+    # 관련 후속 질문 — 클릭하면 바로 이어서 질문할 수 있는 버튼 바
+    followups = await suggest_followups(original_question, answer_text)
+    if followups:
+        actions = [
+            cl.Action(name="ask_followup", payload={"q": q}, label=q, tooltip="이 질문으로 이어서 물어보기")
+            for q in followups
+        ]
+        await cl.Message(content="💡 **이어서 물어보기**", actions=actions).send()
