@@ -14,6 +14,7 @@ class SearchHit(BaseModel):
     section_path: str
     page_physical: int
     chunk_type: str
+    score: float
 
 
 def hybrid_search(index_name: str, query: str, top: int = 5) -> list[SearchHit]:
@@ -33,12 +34,16 @@ def hybrid_search(index_name: str, query: str, top: int = 5) -> list[SearchHit]:
     )
     hits: list[SearchHit] = []
     for r in results:
+        # 시맨틱 리랭커 관련도(0~4)를 우선 사용, 없으면 하이브리드 점수로 대체
+        reranker = r.get("@search.reranker_score")
+        score = reranker if reranker is not None else r["@search.score"]
         hits.append(
             SearchHit(
                 content=r["content"],
                 section_path=r.get("section_path", ""),
                 page_physical=r.get("page_physical", 0),
                 chunk_type=r.get("chunk_type", ""),
+                score=score,
             )
         )
     return hits

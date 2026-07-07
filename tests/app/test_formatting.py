@@ -6,11 +6,11 @@ def test_format_citations_lists_sources():
     sources = [
         RetrievedSource(
             n=1, index="narrative-index", section_path="Ⅱ > 1 > 가",
-            page_physical=24, chunk_type="narrative", snippet="...",
+            page_physical=24, chunk_type="narrative", snippet="...", score=3.42,
         ),
         RetrievedSource(
             n=2, index="table-index", section_path="03. 방송통신발전기금 > 2. 기금현황",
-            page_physical=89, chunk_type="table", snippet="...",
+            page_physical=89, chunk_type="table", snippet="...", score=2.10,
         ),
     ]
     out = format_citations(sources)
@@ -18,6 +18,7 @@ def test_format_citations_lists_sources():
     assert "[출처 1]" in out and "[출처 2]" in out
     assert "p.24" in out
     assert "03. 방송통신발전기금" in out
+    assert "관련도 3.42" in out
 
 
 def test_format_citations_empty():

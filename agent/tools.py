@@ -15,6 +15,7 @@ class RetrievedSource(BaseModel):
     page_physical: int
     chunk_type: str
     snippet: str
+    score: float = 0.0
 
 
 class TraceStep(BaseModel):
@@ -46,6 +47,7 @@ def _run_tool(
                 page_physical=h.page_physical,
                 chunk_type=h.chunk_type,
                 snippet=h.content[:300],
+                score=h.score,
             )
         )
         lines.append(f"[출처 {n}] ({h.section_path}, p.{h.page_physical})\n{h.content[:500]}")

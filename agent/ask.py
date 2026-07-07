@@ -25,7 +25,7 @@ def main() -> None:
     print("=" * 60)
     print("[근거]")
     for s in result.sources:
-        print(f"  [출처 {s.n}] ({s.index}) {s.section_path} p.{s.page_physical}")
+        print(f"  [출처 {s.n}] ({s.index}) {s.section_path} p.{s.page_physical} (관련도 {s.score:.2f})")
 
 
 if __name__ == "__main__":

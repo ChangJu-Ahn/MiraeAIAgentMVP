@@ -31,5 +31,7 @@ def format_citations(sources: list[RetrievedSource], heading: str = "근거") ->
         return ""
     lines = [f"### {heading}"]
     for s in sources:
-        lines.append(f"- **[출처 {s.n}]** ({s.index}) {s.section_path} · p.{s.page_physical}")
+        lines.append(
+            f"- **[출처 {s.n}]** ({s.index}) {s.section_path} · p.{s.page_physical} · 관련도 {s.score:.2f}"
+        )
     return "\n".join(lines)
