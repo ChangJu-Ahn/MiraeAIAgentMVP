@@ -31,21 +31,21 @@ def format_citations(sources: list[RetrievedSource], heading: str = "근거") ->
         return ""
     lines = [f"### {heading}"]
     for s in sources:
-        lines.append(
-            f"- **[출처 {s.n}]** ({s.index}) {s.section_path} · p.{s.page_physical} · 관련도 {s.score:.2f}"
-        )
+        lines.append(f"- **[출처 {s.n}]** ({s.index}) {s.section_path} · p.{s.page_physical}")
     return "\n".join(lines)
 
 
 def format_debug(
     rounds: list[tuple[str, list[TraceStep], list[RetrievedSource]]],
     cited: list[RetrievedSource],
+    raw_trace: str = "",
 ) -> str:
     """디버그 사이드바용 마크다운.
 
     라운드별로 (1) 에이전트가 호출한 검색 도구 트레이스, (2) AI Search가
     하이브리드+시맨틱 리랭킹을 거쳐 반환한 전체 결과와 관련도 점수, 그리고
     마지막에 (3) 답변이 실제 인용한 최종 근거를 함께 보여준다.
+    raw_trace(OpenTelemetry 표준 JSON)가 주어지면 맨 아래에 접힌 상태로 덧붙인다.
     """
     lines: list[str] = ["# 🐞 디버그 트레이스"]
     for i, (question, steps, sources) in enumerate(rounds, 1):
@@ -74,4 +74,16 @@ def format_debug(
         ]
     else:
         lines.append("- (모델이 [출처 N] 형식으로 인용하지 않음)")
+    if raw_trace:
+        lines += [
+            "\n---",
+            "<details>",
+            "<summary>🔬 Raw OpenTelemetry Trace (OTel 표준 포맷)</summary>",
+            "",
+            "```json",
+            raw_trace,
+            "```",
+            "",
+            "</details>",
+        ]
     return "\n".join(lines)

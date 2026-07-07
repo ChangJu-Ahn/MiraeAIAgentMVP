@@ -11,7 +11,7 @@ import chainlit as cl
 from chainlit.context import local_steps
 from chainlit.input_widget import Switch
 
-from agent.observability import setup_observability
+from agent.observability import collect_trace_json, reset_trace, setup_observability
 from agent.orchestrator import start_stream
 from agent.reflection import augmented_question, critique
 from agent.translate import detect_lang, needs_translation, translate
@@ -188,6 +188,7 @@ async def on_message(message: cl.Message) -> None:
     question = message.content
     answer_text, trace, visual = "", None, None
     rounds: list[tuple[str, list, list]] = []  # 디버그용 라운드별 (질의, 트레이스, 검색결과)
+    reset_trace()  # 이번 턴의 OpenTelemetry 스팬만 모으도록 캡처 버퍼 초기화
 
     for rnd in range(1, max_rounds + 1):
         answer_text, trace, visual = await _run_round(question)
@@ -223,7 +224,8 @@ async def on_message(message: cl.Message) -> None:
 
     # 디버그 모드: 우측 사이드바에 전체 트레이스 + AI Search 결과·스코어 + 최종 인용 표시
     if cl.user_session.get("debug"):
-        debug_md = format_debug(rounds, used)
+        raw_trace = collect_trace_json()  # OpenTelemetry 표준 raw 트레이스
+        debug_md = format_debug(rounds, used, raw_trace=raw_trace)
         await cl.ElementSidebar.set_title("🐞 디버그 트레이스")
         await cl.ElementSidebar.set_elements(
             [cl.Text(content=debug_md, name="debug-trace")]

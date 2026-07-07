@@ -29,6 +29,16 @@ def test_format_debug_handles_empty_results():
     assert "인용하지 않음" in out
 
 
+def test_format_debug_appends_collapsed_raw_trace():
+    raw = '[\n  {"name": "chat gpt-4o"}\n]'
+    out = format_debug([("q", [], [])], cited=[], raw_trace=raw)
+    assert "<details>" in out and "</details>" in out
+    assert "Raw OpenTelemetry Trace" in out
+    assert '"name": "chat gpt-4o"' in out
+    # raw_trace 미지정 시 details 블록 없음
+    assert "<details>" not in format_debug([("q", [], [])], cited=[])
+
+
 def test_format_citations_lists_sources():
     sources = [
         RetrievedSource(
@@ -45,7 +55,7 @@ def test_format_citations_lists_sources():
     assert "[출처 1]" in out and "[출처 2]" in out
     assert "p.24" in out
     assert "03. 방송통신발전기금" in out
-    assert "관련도 3.42" in out
+    assert "관련도" not in out  # 일반 모드 카드에는 점수 미표시 (디버그 전용)
 
 
 def test_format_citations_empty():
