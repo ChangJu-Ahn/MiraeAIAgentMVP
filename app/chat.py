@@ -9,13 +9,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import chainlit as cl
 from chainlit.context import local_steps
+from chainlit.input_widget import Switch
 
 from agent.observability import setup_observability
 from agent.orchestrator import start_stream
 from agent.reflection import augmented_question, critique
 from agent.translate import detect_lang, needs_translation, translate
 from agent.visuals import ChartVisual, ImageVisual, TableVisual
-from app.formatting import cited_sources, dedup_sources, format_citations
+from app.formatting import cited_sources, dedup_sources, format_citations, format_debug
 from app.visual_bind import chart_to_figure, table_to_dataframe
 from config.settings import get_settings
 from ingest.figures import render_page_png
@@ -25,9 +26,21 @@ setup_observability()
 
 @cl.on_chat_start
 async def on_chat_start() -> None:
+    cl.user_session.set("debug", False)
+    await cl.ChatSettings(
+        [Switch(id="debug", label="🐞 디버그 모드 (전체 트레이스 · 검색 결과 · 스코어)", initial=False)]
+    ).send()
     await cl.Message(
         content="안녕하세요! 기금운용평가보고서 기반 AI 어시스턴트입니다. 질문을 입력해 주세요."
     ).send()
+
+
+@cl.on_settings_update
+async def on_settings_update(settings: dict) -> None:
+    debug = bool(settings.get("debug", False))
+    cl.user_session.set("debug", debug)
+    if not debug:
+        await cl.ElementSidebar.set_elements([])  # 디버그 끄면 우측 패널 비움
 
 
 def _visual_elements(visuals: list) -> list:
@@ -174,9 +187,11 @@ async def on_message(message: cl.Message) -> None:
     max_rounds = 2
     question = message.content
     answer_text, trace, visual = "", None, None
+    rounds: list[tuple[str, list, list]] = []  # 디버그용 라운드별 (질의, 트레이스, 검색결과)
 
     for rnd in range(1, max_rounds + 1):
         answer_text, trace, visual = await _run_round(question)
+        rounds.append((question, trace.steps, trace.sources))
         if rnd == max_rounds:
             break
         # 자가 점검: 답변이 충분한가? (점검 실패 시 안전하게 통과 처리)
@@ -205,3 +220,11 @@ async def on_message(message: cl.Message) -> None:
         citations = format_citations(dedup_sources(trace.sources), heading="참고한 자료")
     if citations:
         await cl.Message(content=citations).send()
+
+    # 디버그 모드: 우측 사이드바에 전체 트레이스 + AI Search 결과·스코어 + 최종 인용 표시
+    if cl.user_session.get("debug"):
+        debug_md = format_debug(rounds, used)
+        await cl.ElementSidebar.set_title("🐞 디버그 트레이스")
+        await cl.ElementSidebar.set_elements(
+            [cl.Text(content=debug_md, name="debug-trace")]
+        )

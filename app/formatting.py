@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from agent.tools import RetrievedSource
+from agent.tools import RetrievedSource, TraceStep
 
 
 def cited_sources(answer: str, sources: list[RetrievedSource]) -> list[RetrievedSource]:
@@ -34,4 +34,44 @@ def format_citations(sources: list[RetrievedSource], heading: str = "근거") ->
         lines.append(
             f"- **[출처 {s.n}]** ({s.index}) {s.section_path} · p.{s.page_physical} · 관련도 {s.score:.2f}"
         )
+    return "\n".join(lines)
+
+
+def format_debug(
+    rounds: list[tuple[str, list[TraceStep], list[RetrievedSource]]],
+    cited: list[RetrievedSource],
+) -> str:
+    """디버그 사이드바용 마크다운.
+
+    라운드별로 (1) 에이전트가 호출한 검색 도구 트레이스, (2) AI Search가
+    하이브리드+시맨틱 리랭킹을 거쳐 반환한 전체 결과와 관련도 점수, 그리고
+    마지막에 (3) 답변이 실제 인용한 최종 근거를 함께 보여준다.
+    """
+    lines: list[str] = ["# 🐞 디버그 트레이스"]
+    for i, (question, steps, sources) in enumerate(rounds, 1):
+        lines.append(f"\n## 라운드 {i}")
+        lines.append(f"**질의:** {question}")
+        lines.append("\n**도구 호출:**")
+        if steps:
+            lines += [f'- `{st.tool}("{st.query}")` → {st.n_hits}건' for st in steps]
+        else:
+            lines.append("- (없음)")
+        lines.append("\n**AI Search 결과 (하이브리드 + 리랭킹, 관련도순):**")
+        if sources:
+            for s in sources:
+                lines.append(
+                    f"- **[출처 {s.n}]** `{s.index}` · {s.section_path} · "
+                    f"p.{s.page_physical} · **관련도 {s.score:.2f}**"
+                )
+                lines.append(f"  > {s.snippet[:160]}")
+        else:
+            lines.append("- (검색 결과 없음)")
+    lines.append("\n## 최종 인용")
+    if cited:
+        lines += [
+            f"- **[출처 {s.n}]** {s.section_path} · p.{s.page_physical} · 관련도 {s.score:.2f}"
+            for s in cited
+        ]
+    else:
+        lines.append("- (모델이 [출처 N] 형식으로 인용하지 않음)")
     return "\n".join(lines)

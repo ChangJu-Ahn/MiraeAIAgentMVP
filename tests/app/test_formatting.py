@@ -1,5 +1,32 @@
-from agent.tools import RetrievedSource
-from app.formatting import format_citations
+from agent.tools import RetrievedSource, TraceStep
+from app.formatting import format_citations, format_debug
+
+
+def test_format_debug_includes_trace_scores_and_citations():
+    steps = [TraceStep(tool="search_narrative", query="탁월 등급", n_hits=2)]
+    sources = [
+        RetrievedSource(
+            n=1, index="narrative-index", section_path="Ⅱ > 1 > 가",
+            page_physical=24, chunk_type="narrative", snippet="탁월 등급 설명 본문", score=3.42,
+        ),
+        RetrievedSource(
+            n=2, index="narrative-index", section_path="Ⅱ > 2",
+            page_physical=25, chunk_type="narrative", snippet="추가 근거", score=2.10,
+        ),
+    ]
+    out = format_debug([("원 질문", steps, sources)], cited=[sources[0]])
+    assert "디버그 트레이스" in out
+    assert "라운드 1" in out
+    assert 'search_narrative("탁월 등급")' in out and "2건" in out
+    assert "관련도 3.42" in out and "관련도 2.10" in out  # 전체 검색 결과 스코어
+    assert "최종 인용" in out
+    assert "탁월 등급 설명 본문" in out  # 스니펫 노출
+
+
+def test_format_debug_handles_empty_results():
+    out = format_debug([("q", [], [])], cited=[])
+    assert "검색 결과 없음" in out
+    assert "인용하지 않음" in out
 
 
 def test_format_citations_lists_sources():
