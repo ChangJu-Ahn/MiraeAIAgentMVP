@@ -55,7 +55,12 @@ def _result_to_parsed(doc_id: str, data: dict) -> ParsedDoc:
         for p in data.get("paragraphs", [])
     ]
     tables = [
-        ParsedTable(markdown=_table_to_markdown(t), page=_page_of(t), offset=_offset_of(t))
+        ParsedTable(
+            markdown=_table_to_markdown(t),
+            page=_page_of(t),
+            offset=_offset_of(t),
+            caption=(t.get("caption") or {}).get("content"),
+        )
         for t in data.get("tables", [])
     ]
     figures = [

@@ -7,6 +7,49 @@ from ingest.models import Chunk, ParsedDoc, ParsedParagraph, ParsedTable
 HEADING_ROLES = {"title", "sectionHeading"}
 
 
+def _table_header(markdown: str) -> str:
+    """표 마크다운의 헤더 행(첫 줄)을 반환. 없으면 빈 문자열."""
+    return markdown.split("\n", 1)[0].strip() if markdown else ""
+
+
+def _table_body(markdown: str) -> str:
+    """헤더 행 + 구분선(|---|)을 제외한 본문 데이터 행만 반환."""
+    lines = markdown.split("\n")
+    return "\n".join(lines[2:]) if len(lines) > 2 else ""
+
+
+def merge_continuation_tables(tables: list[ParsedTable]) -> list[ParsedTable]:
+    """페이지 경계로 분리된 '연속 표'를 하나로 병합한다.
+
+    DI(prebuilt-layout)는 페이지를 넘는 표를 이어붙이지 않고 페이지별 별개 표로
+    출력한다. 다만 연속되는 조각은 (1) 다음 페이지에서 헤더 행을 반복하고,
+    (2) caption이 없다(캡션은 표의 첫 조각에만 붙는다). 이 두 신호로 연속 조각을
+    판별해 본문 행을 이어붙인다. caption을 가진 별개 표(예: '참고 7'/'참고 8')는
+    헤더가 같아도 병합하지 않는다.
+
+    판별 조건(모두 충족): 직전 표 바로 다음 물리 페이지 + 동일 헤더 행 + 조각 caption 없음.
+    """
+    ordered = sorted(tables, key=lambda t: t.offset)
+    merged: list[ParsedTable] = []
+    last_page: int | None = None
+    for t in ordered:
+        if (
+            merged
+            and not (t.caption or "").strip()
+            and last_page is not None
+            and t.page == last_page + 1
+            and _table_header(t.markdown) == _table_header(merged[-1].markdown)
+            and _table_body(t.markdown)
+        ):
+            prev = merged[-1]
+            prev.markdown = prev.markdown + "\n" + _table_body(t.markdown)  # 본문 행 이어붙임
+            last_page = t.page
+            continue
+        merged.append(t.model_copy())
+        last_page = t.page
+    return merged
+
+
 def _printed_pages(doc: ParsedDoc) -> dict[int, int]:
     """physical page -> printed page number (from role=='pageNumber' paragraphs)."""
     out: dict[int, int] = {}
@@ -78,7 +121,7 @@ def chunk_document(doc: ParsedDoc, max_chars: int = 3600, overlap_chars: int = 5
     items: list[tuple[str, ParsedParagraph | ParsedTable]] = []
     for p in doc.paragraphs:
         items.append(("paragraph", p))
-    for t in doc.tables:
+    for t in merge_continuation_tables(doc.tables):
         items.append(("table", t))
     items.sort(key=lambda x: x[1].offset)
 
