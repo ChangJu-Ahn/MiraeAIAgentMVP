@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import chainlit as cl
 from chainlit.context import local_steps
+from chainlit.input_widget import Switch
 
 from agent.observability import collect_trace_json, reset_trace, setup_observability
 from agent.orchestrator import start_stream
@@ -23,42 +24,34 @@ from ingest.figures import render_page_png
 setup_observability()
 
 
-def _debug_action(debug: bool) -> cl.Action:
-    """현재 디버그 상태를 라벨에 표시하는 토글 버튼. 클릭하면 상태가 반전된다."""
-    return cl.Action(
-        name="toggle_debug",
-        payload={},
-        label=f"🐞 디버그 모드: {'ON ✅' if debug else 'OFF'}",
-        tooltip="전체 트레이스 · AI Search 결과·스코어 · OpenTelemetry raw 트레이스 토글",
-    )
-
-
 @cl.on_chat_start
 async def on_chat_start() -> None:
     cl.user_session.set("debug", False)
+    # 헤더(우측 상단)에 디버그 토글 표시 (config.toml의 chat_settings_location="sidebar")
+    await cl.ChatSettings(
+        [
+            Switch(
+                id="debug",
+                label="🐞 디버그 모드 (전체 트레이스 · 검색 결과 · 스코어 · OTel raw)",
+                initial=False,
+            )
+        ]
+    ).send()
     await cl.Message(
         content=(
             "안녕하세요! 기금운용평가보고서 기반 AI 어시스턴트입니다. 질문을 입력해 주세요.\n\n"
-            "아래 버튼으로 **디버그 모드**(전체 트레이스 · 검색 결과 · 관련도 스코어 · "
-            "OpenTelemetry raw 트레이스)를 켜고 끌 수 있습니다."
-        ),
-        actions=[_debug_action(False)],
+            "우측 상단 **⚙️ 설정**에서 디버그 모드를 켜면, 답변과 함께 전체 트레이스·검색 결과·"
+            "관련도 스코어·OpenTelemetry raw 트레이스를 볼 수 있습니다."
+        )
     ).send()
 
 
-@cl.action_callback("toggle_debug")
-async def toggle_debug(action: cl.Action) -> None:
-    debug = not bool(cl.user_session.get("debug"))
+@cl.on_settings_update
+async def on_settings_update(settings: dict) -> None:
+    debug = bool(settings.get("debug", False))
     cl.user_session.set("debug", debug)
-    await action.remove()  # 이전 버튼 제거 후 갱신된 라벨의 버튼을 다시 보냄
     if not debug:
         await cl.ElementSidebar.set_elements([])  # 디버그 끄면 우측 패널 비움
-    msg = (
-        "디버그 모드 **ON** — 이후 질문부터 우측 사이드바에 전체 트레이스·검색 결과·스코어·raw 트레이스가 표시됩니다."
-        if debug
-        else "디버그 모드 **OFF** — 이제 답변과 인용 근거만 표시됩니다."
-    )
-    await cl.Message(content=msg, actions=[_debug_action(debug)]).send()
 
 
 def _visual_elements(visuals: list) -> list:
