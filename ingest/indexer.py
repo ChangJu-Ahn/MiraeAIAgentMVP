@@ -38,8 +38,6 @@ def build_index(name: str) -> SearchIndex:
         SimpleField(name="doc_id", type=SearchFieldDataType.String, filterable=True),
         SimpleField(name="chunk_type", type=SearchFieldDataType.String, filterable=True, facetable=True),
         SearchableField(name="section_path", type=SearchFieldDataType.String, filterable=True),
-        SimpleField(name="fund_name", type=SearchFieldDataType.String, filterable=True, facetable=True),
-        SimpleField(name="year", type=SearchFieldDataType.Int32, filterable=True, facetable=True),
         SimpleField(name="page_physical", type=SearchFieldDataType.Int32, filterable=True),
         SimpleField(name="page_printed", type=SearchFieldDataType.Int32, filterable=True),
     ]
@@ -68,6 +66,23 @@ def ensure_indexes() -> None:
     s = get_settings()
     client = SearchIndexClient(endpoint=s.search_endpoint, credential=DefaultAzureCredential())
     for name in (s.search_index_narrative, s.search_index_table):
+        client.create_or_update_index(build_index(name))
+
+
+def reset_indexes() -> None:
+    """인덱스를 삭제 후 재생성한다.
+
+    Azure AI Search는 기존 인덱스에서 필드를 삭제할 수 없어(업데이트로 필드 제거 불가),
+    스키마에서 필드를 뺀 변경(예: year/fund_name 제거)을 반영하려면 재생성이 필요하다.
+    삭제 후에는 반드시 재인제스트(upload_chunks)로 문서를 다시 채워야 한다.
+    """
+    s = get_settings()
+    client = SearchIndexClient(endpoint=s.search_endpoint, credential=DefaultAzureCredential())
+    for name in (s.search_index_narrative, s.search_index_table):
+        try:
+            client.delete_index(name)
+        except Exception:  # noqa: BLE001 - 인덱스가 없으면 무시
+            pass
         client.create_or_update_index(build_index(name))
 
 

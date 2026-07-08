@@ -5,12 +5,12 @@ import argparse
 from ingest.chunker import chunk_document
 from ingest.embedder import embed_texts
 from ingest.figures import build_figure_chunks
-from ingest.indexer import ensure_indexes, upload_chunks
+from ingest.indexer import ensure_indexes, reset_indexes, upload_chunks
 from ingest.parser import analyze_pdf
 
 
-def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool = True) -> int:
-    ensure_indexes()
+def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool = True, reset: bool = False) -> int:
+    reset_indexes() if reset else ensure_indexes()
     doc = analyze_pdf(pdf, doc_id, pages=pages, use_cache=use_cache)
     chunks = chunk_document(doc)
     if figures:
@@ -38,6 +38,11 @@ def main() -> None:
     ap.add_argument("--pages", default=None, help="e.g. '1-100' (DI page range)")
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--no-figures", action="store_true", help="그림 설명 인덱싱 비활성")
+    ap.add_argument(
+        "--reset",
+        action="store_true",
+        help="인덱스를 삭제 후 재생성(스키마 변경 반영). 기존 문서는 재인제스트로 다시 채움",
+    )
     args = ap.parse_args()
     run(
         args.pdf,
@@ -45,6 +50,7 @@ def main() -> None:
         args.pages,
         use_cache=not args.no_cache,
         figures=not args.no_figures,
+        reset=args.reset,
     )
 
 
