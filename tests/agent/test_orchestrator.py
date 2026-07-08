@@ -33,3 +33,13 @@ def test_hallucination_guard_refuses_unknown():
         "찾을 수 없",
     ]
     assert any(m in r.answer for m in negation_markers), f"Expected refusal, got: {r.answer}"
+
+
+def test_reasoning_options_valid_and_fallback():
+    from agent.orchestrator import _reasoning_options
+    assert _reasoning_options("high") == {"reasoning": {"effort": "high", "summary": "auto"}}
+    assert _reasoning_options("low")["reasoning"]["effort"] == "low"
+    assert _reasoning_options("medium")["reasoning"]["effort"] == "medium"
+    # 잘못된 값 → medium 대체
+    assert _reasoning_options("bogus")["reasoning"]["effort"] == "medium"
+    assert _reasoning_options()["reasoning"]["effort"] == "medium"

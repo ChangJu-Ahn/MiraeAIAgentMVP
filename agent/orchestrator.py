@@ -33,7 +33,19 @@ class AnswerResult(BaseModel):
     visuals: list[Visual] = []
 
 
-def build_agent(recorder: TraceRecorder, visual_recorder: VisualRecorder):
+VALID_EFFORTS = ("low", "medium", "high")
+
+
+def _reasoning_options(effort: str = "medium") -> dict:
+    """추론 강도(effort)로 Foundry reasoning 옵션을 만든다. 잘못된 값은 medium으로 대체."""
+    if effort not in VALID_EFFORTS:
+        effort = "medium"
+    return {"reasoning": {"effort": effort, "summary": "auto"}}
+
+
+def build_agent(
+    recorder: TraceRecorder, visual_recorder: VisualRecorder, effort: str = "medium"
+):
     settings = get_settings()
     client = FoundryChatClient(
         project_endpoint=settings.foundry_project_endpoint,
@@ -46,7 +58,7 @@ def build_agent(recorder: TraceRecorder, visual_recorder: VisualRecorder):
         name="mirae-fund-agent",
         instructions=instructions,
         tools=tools,
-        default_options={"reasoning": {"effort": "medium", "summary": "auto"}},
+        default_options=_reasoning_options(effort),
     )
 
 
@@ -67,14 +79,15 @@ def ask_sync(question: str) -> AnswerResult:
     return asyncio.run(ask(question))
 
 
-def start_stream(question: str):
+def start_stream(question: str, effort: str = "medium"):
     """Return (response_stream, trace_recorder, visual_recorder) for live UIs.
 
     Caller iterates the stream (async) for text/reasoning/tool deltas; recorders
     fill with tool-call steps, retrieved sources, and visuals during iteration.
+    effort는 추론 강도(low/medium/high).
     """
     recorder = TraceRecorder()
     visual_recorder = VisualRecorder()
-    agent = build_agent(recorder, visual_recorder)
+    agent = build_agent(recorder, visual_recorder, effort)
     stream = agent.run(question, stream=True)
     return stream, recorder, visual_recorder

@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import chainlit as cl
 from chainlit.context import local_steps
-from chainlit.input_widget import Switch
+from chainlit.input_widget import Select, Switch
 
 from agent.followups import suggest_followups
 from agent.observability import collect_trace_json, reset_trace, setup_observability
@@ -28,21 +28,27 @@ setup_observability()
 @cl.on_chat_start
 async def on_chat_start() -> None:
     cl.user_session.set("debug", False)
-    # 헤더(우측 상단)에 디버그 토글 표시 (config.toml의 chat_settings_location="sidebar")
+    cl.user_session.set("effort", "medium")
+    # 헤더(우측 상단)에 디버그 토글 + 추론 강도 선택 표시 (config.toml chat_settings_location="sidebar")
     await cl.ChatSettings(
         [
             Switch(
                 id="debug",
                 label="🐞 디버그 모드 (전체 트레이스 · 검색 결과 · 스코어 · OTel raw)",
                 initial=False,
-            )
+            ),
+            Select(
+                id="effort",
+                label="🧠 추론 강도 (낮을수록 빠르고, 높을수록 깊게 사고)",
+                values=["low", "medium", "high"],
+                initial_index=1,
+            ),
         ]
     ).send()
     await cl.Message(
         content=(
             "안녕하세요! 기금운용평가보고서 기반 AI 어시스턴트입니다. 질문을 입력해 주세요.\n\n"
-            "우측 상단 **⚙️ 설정**에서 디버그 모드를 켜면, 답변과 함께 전체 트레이스·검색 결과·"
-            "관련도 스코어·OpenTelemetry raw 트레이스를 볼 수 있습니다."
+            "우측 상단 **⚙️ 설정**에서 디버그 모드와 **추론 강도(low/medium/high)** 를 조절할 수 있습니다."
         )
     ).send()
 
@@ -51,6 +57,7 @@ async def on_chat_start() -> None:
 async def on_settings_update(settings: dict) -> None:
     debug = bool(settings.get("debug", False))
     cl.user_session.set("debug", debug)
+    cl.user_session.set("effort", settings.get("effort", "medium"))
     if not debug:
         await cl.ElementSidebar.set_elements([])  # 디버그 끄면 우측 패널 비움
 
@@ -93,7 +100,7 @@ async def _run_round(question: str) -> tuple[str, object, object]:
     모델의 추론 요약은 영어로 생성되는 경우가 많으므로, 질문 언어와 다르면 세그먼트
     단위로 번역하여 표시한다(도구 입력/결과는 이미 질문 언어이므로 그대로 표시).
     """
-    stream, trace, visual = start_stream(question)
+    stream, trace, visual = start_stream(question, cl.user_session.get("effort") or "medium")
     answer_msg = cl.Message(content="")
 
     target_lang = detect_lang(question)
