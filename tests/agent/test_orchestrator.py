@@ -1,4 +1,9 @@
-from agent.orchestrator import ask_sync
+from agent.orchestrator import ask_sync, SYSTEM_PROMPT
+
+
+def test_system_prompt_has_today_placeholder_and_filter_rule():
+    assert "{today}" in SYSTEM_PROMPT
+    assert "필터" in SYSTEM_PROMPT and "최신" in SYSTEM_PROMPT
 
 
 def test_grounded_answer_cites_and_uses_tools():
