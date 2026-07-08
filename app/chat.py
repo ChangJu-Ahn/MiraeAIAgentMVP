@@ -17,12 +17,48 @@ from agent.orchestrator import start_stream
 from agent.reflection import augmented_question, critique
 from agent.translate import detect_lang, needs_translation, translate
 from agent.visuals import ChartVisual, ImageVisual, TableVisual
-from app.formatting import cited_sources, dedup_sources, format_citations, format_debug, format_source_docs
+from app.formatting import cited_sources, dedup_sources, format_citations, format_debug
 from app.visual_bind import chart_to_figure, table_to_dataframe
 from config.settings import get_settings
 from ingest.figures import render_page_png
 
 setup_observability()
+
+
+# 헤더의 "원본자료" 링크가 여는 페이지 — 매 요청마다 신선한 SAS 링크 목록 서빙.
+# Chainlit의 SPA catch-all보다 먼저 매칭되도록 라우트를 맨 앞에 삽입한다.
+try:
+    import html as _html
+
+    from chainlit.server import app as _fastapi_app
+    from fastapi.responses import HTMLResponse
+
+    from app.source_docs import source_doc_links
+
+    async def _source_docs_page() -> HTMLResponse:
+        links = source_doc_links()
+        rows = "".join(
+            f'<li><a href="{_html.escape(url, quote=True)}" target="_blank" rel="noopener">{_html.escape(label)}</a></li>'
+            for label, url in links
+        )
+        page = (
+            "<!doctype html><html lang='ko'><head><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+            "<title>원본자료</title><style>"
+            "body{font-family:system-ui,-apple-system,sans-serif;max-width:760px;margin:48px auto;padding:0 20px;color:#1f2937}"
+            "h1{font-size:1.25rem} p{color:#4b5563} ul{line-height:2} a{color:#2563eb;text-decoration:none} a:hover{text-decoration:underline}"
+            "</style></head><body>"
+            "<h1>📎 원본자료 (데이터소스)</h1>"
+            "<p>기금운용평가 원본 PDF입니다. 클릭하면 새 탭에서 열립니다.</p>"
+            f"<ul>{rows or '<li>(자료를 불러올 수 없습니다)</li>'}</ul>"
+            "</body></html>"
+        )
+        return HTMLResponse(page)
+
+    _fastapi_app.add_api_route("/source-docs", _source_docs_page, methods=["GET"])
+    _fastapi_app.router.routes.insert(0, _fastapi_app.router.routes.pop())
+except Exception:  # noqa: BLE001 - 라우트 등록 실패는 앱 기동을 막지 않음
+    pass
 
 
 @cl.on_chat_start
@@ -48,15 +84,10 @@ async def on_chat_start() -> None:
     await cl.Message(
         content=(
             "안녕하세요! 기금운용평가보고서 기반 AI 어시스턴트입니다. 질문을 입력해 주세요.\n\n"
-            "우측 상단 **⚙️ 설정**에서 디버그 모드와 **추론 강도(low/medium/high)** 를 조절할 수 있습니다."
+            "우측 상단 **⚙️ 설정**에서 디버그 모드와 **추론 강도(low/medium/high)**, "
+            "우측 상단 **원본자료**에서 데이터소스 원본 PDF를 열람할 수 있습니다."
         )
     ).send()
-    # 원본 데이터소스(5개 PDF) 열람 링크 — 비공개 Blob 단기 SAS
-    from app.source_docs import source_doc_links
-
-    docs_md = format_source_docs(source_doc_links())
-    if docs_md:
-        await cl.Message(content=docs_md).send()
 
 
 @cl.on_settings_update
