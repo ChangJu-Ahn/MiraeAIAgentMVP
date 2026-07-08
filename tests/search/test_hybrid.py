@@ -15,3 +15,10 @@ def test_hybrid_search_table_index():
     hits = hybrid_search(s.search_index_table, "등급 내용 표", top=5)
     assert hits
     assert hits[0].chunk_type == "table"
+
+
+def test_hybrid_search_accepts_odata_filter():
+    s = get_settings()
+    # 존재하지 않는 연도로 필터 → 0건(필터가 실제 적용됨을 확인)
+    hits = hybrid_search(s.search_index_narrative, "평가", top=5, odata_filter="year eq 1900")
+    assert hits == []

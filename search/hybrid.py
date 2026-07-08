@@ -17,7 +17,9 @@ class SearchHit(BaseModel):
     score: float
 
 
-def hybrid_search(index_name: str, query: str, top: int = 5) -> list[SearchHit]:
+def hybrid_search(
+    index_name: str, query: str, top: int = 5, odata_filter: str | None = None
+) -> list[SearchHit]:
     s = get_settings()
     vector = embed_texts([query])[0]
     client = SearchClient(
@@ -31,6 +33,7 @@ def hybrid_search(index_name: str, query: str, top: int = 5) -> list[SearchHit]:
         query_type="semantic",
         semantic_configuration_name="sem",
         top=top,
+        filter=odata_filter,
     )
     hits: list[SearchHit] = []
     for r in results:
