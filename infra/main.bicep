@@ -11,6 +11,9 @@ param chatModelVersion string = '2024-11-20'
 param embeddingModelName string = 'text-embedding-3-large'
 param embeddingModelVersion string = '1'
 
+@description('ACA 컨테이너 이미지 (초기 배포는 placeholder, 이후 실이미지로 갱신)')
+param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+
 module search 'modules/search.bicep' = {
   name: 'search'
   params: {
@@ -66,3 +69,84 @@ output chatDeploymentName string = foundry.outputs.chatDeploymentName
 output embeddingDeploymentName string = foundry.outputs.embeddingDeploymentName
 output reasoningDeploymentName string = foundry.outputs.reasoningDeploymentName
 output appInsightsConnectionString string = observability.outputs.appInsightsConnectionString
+
+// ── ACA 앱 배포용 리소스 ──────────────────────────────────────────────
+module identity 'modules/identity.bicep' = {
+  name: 'identity'
+  params: {
+    name: 'id-mirae-${suffix}'
+    location: location
+  }
+}
+
+module acr 'modules/acr.bicep' = {
+  name: 'acr'
+  params: {
+    name: 'acrmirae${suffix}'
+    location: location
+  }
+}
+
+module storage 'modules/storage.bicep' = {
+  name: 'storage'
+  params: {
+    name: 'stmirae${suffix}'
+    location: location
+  }
+}
+
+module containerenv 'modules/containerenv.bicep' = {
+  name: 'containerenv'
+  params: {
+    name: 'cae-mirae-${suffix}'
+    location: location
+    logAnalyticsName: observability.outputs.logAnalyticsName
+  }
+}
+
+module containerapp 'modules/containerapp.bicep' = {
+  name: 'containerapp'
+  params: {
+    name: 'ca-mirae-${suffix}'
+    location: location
+    environmentId: containerenv.outputs.id
+    acrLoginServer: acr.outputs.loginServer
+    uamiId: identity.outputs.id
+    image: containerImage
+    envVars: [
+      { name: 'SEARCH_ENDPOINT', value: search.outputs.searchEndpoint }
+      { name: 'SEARCH_INDEX_NARRATIVE', value: 'narrative-index' }
+      { name: 'SEARCH_INDEX_TABLE', value: 'table-index' }
+      { name: 'FOUNDRY_PROJECT_ENDPOINT', value: foundry.outputs.foundryProjectEndpoint }
+      { name: 'FOUNDRY_CHAT_DEPLOYMENT', value: foundry.outputs.reasoningDeploymentName }
+      { name: 'FOUNDRY_VISION_DEPLOYMENT', value: foundry.outputs.chatDeploymentName }
+      { name: 'FOUNDRY_EVAL_DEPLOYMENT', value: foundry.outputs.chatDeploymentName }
+      { name: 'FOUNDRY_EMBEDDING_DEPLOYMENT', value: foundry.outputs.embeddingDeploymentName }
+      { name: 'FOUNDRY_API_VERSION', value: '2024-10-21' }
+      { name: 'APPINSIGHTS_CONNECTION_STRING', value: observability.outputs.appInsightsConnectionString }
+      { name: 'AZURE_CLIENT_ID', value: identity.outputs.clientId }
+      { name: 'SOURCE_DOCS_BASE_URL', value: storage.outputs.blobBaseUrl }
+    ]
+  }
+}
+
+module apprbac 'modules/apprbac.bicep' = {
+  name: 'apprbac'
+  params: {
+    uamiPrincipalId: identity.outputs.principalId
+    developerObjectId: developerObjectId
+    searchName: search.outputs.searchName
+    foundryName: foundry.outputs.foundryName
+    acrName: acr.outputs.name
+    storageAccountName: storage.outputs.accountName
+  }
+}
+
+output acrLoginServer string = acr.outputs.loginServer
+output acrName string = acr.outputs.name
+output storageAccountName string = storage.outputs.accountName
+output sourceDocsContainer string = storage.outputs.containerName
+output sourceDocsBaseUrl string = storage.outputs.blobBaseUrl
+output containerAppName string = containerapp.outputs.name
+output containerAppFqdn string = containerapp.outputs.fqdn
+output uamiClientId string = identity.outputs.clientId

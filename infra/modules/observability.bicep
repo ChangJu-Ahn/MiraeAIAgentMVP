@@ -26,3 +26,4 @@ resource appi 'Microsoft.Insights/components@2020-02-02' = {
 
 output appInsightsName string = appi.name
 output appInsightsConnectionString string = appi.properties.ConnectionString
+output logAnalyticsName string = law.name

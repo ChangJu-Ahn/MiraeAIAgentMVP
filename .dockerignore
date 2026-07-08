@@ -1,0 +1,24 @@
+# 빌드 컨텍스트 최소화 (특히 .ingest_cache 대용량, .git)
+.git
+.github
+.venv
+.ingest_cache
+.pytest_cache
+.superpowers
+.azure
+__pycache__
+**/__pycache__
+*.pyc
+.env
+.env.*
+.files
+tests
+reports
+docs
+plans
+specs
+eval
+scripts
+*.log
+infra
+.chainlit/translations

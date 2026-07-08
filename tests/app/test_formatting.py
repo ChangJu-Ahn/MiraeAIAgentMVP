@@ -82,3 +82,13 @@ def test_cited_sources_empty_when_no_refs():
 
     srcs = [RetrievedSource(n=1, index="x", section_path="A", page_physical=1, chunk_type="narrative", snippet="s")]
     assert cited_sources("인용 없음", srcs) == []
+
+
+def test_format_source_docs():
+    from app.formatting import format_source_docs
+    out = format_source_docs("https://x.blob.core.windows.net/source-docs", [("2025 보고서", "2025 report(a).pdf")])
+    assert "원본 자료" in out
+    assert "[2025 보고서](https://x.blob.core.windows.net/source-docs/2025%20report%28a%29.pdf)" in out
+    # base_url 없으면 빈 문자열
+    assert format_source_docs("", [("l", "f.pdf")]) == ""
+    assert format_source_docs("http://x", []) == ""

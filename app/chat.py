@@ -17,7 +17,7 @@ from agent.orchestrator import start_stream
 from agent.reflection import augmented_question, critique
 from agent.translate import detect_lang, needs_translation, translate
 from agent.visuals import ChartVisual, ImageVisual, TableVisual
-from app.formatting import cited_sources, dedup_sources, format_citations, format_debug
+from app.formatting import cited_sources, dedup_sources, format_citations, format_debug, format_source_docs
 from app.visual_bind import chart_to_figure, table_to_dataframe
 from config.settings import get_settings
 from ingest.figures import render_page_png
@@ -51,6 +51,18 @@ async def on_chat_start() -> None:
             "우측 상단 **⚙️ 설정**에서 디버그 모드와 **추론 강도(low/medium/high)** 를 조절할 수 있습니다."
         )
     ).send()
+    # 원본 데이터소스(5개 PDF) 열람 링크 — 공개 Blob 기반
+    base_url = get_settings().source_docs_base_url
+    if base_url:
+        from ingest.corpus import CORPUS
+
+        items = [
+            (f"{d.year} {'보고서' if d.doc_type == 'report' else '지침'}", d.pdf.split("/")[-1])
+            for d in CORPUS
+        ]
+        docs_md = format_source_docs(base_url, items)
+        if docs_md:
+            await cl.Message(content=docs_md).send()
 
 
 @cl.on_settings_update
