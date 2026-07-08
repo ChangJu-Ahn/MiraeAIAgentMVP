@@ -1,4 +1,10 @@
-from agent.tools import TraceRecorder, make_search_tools
+from agent.tools import TraceRecorder, make_search_tools, _build_odata_filter
+
+
+def test_build_odata_filter_combines_nonnull():
+    assert _build_odata_filter(year=2022, doc_type="report") == "year eq 2022 and doc_type eq 'report'"
+    assert _build_odata_filter() is None
+    assert _build_odata_filter(fund_name="국민'연금") == "fund_name eq '국민''연금'"
 
 
 def test_search_narrative_returns_citations_and_records():
