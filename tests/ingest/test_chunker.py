@@ -101,3 +101,19 @@ def test_merge_skips_different_header():
         _tbl("| 구분 | 값 |\n|---|---|\n| A | 1 |", page=2, caption=None, offset=100),
     ]
     assert len(merge_continuation_tables(tables)) == 2
+
+
+def test_derive_fund_name():
+    from ingest.chunker import derive_fund_name
+    assert derive_fund_name("Ⅲ > 【보건복지부】 > 8. 국민연금기금 > 4.4 총평") == "국민연금기금"
+    assert derive_fund_name("Ⅱ > 3. 방송통신발전기금") == "방송통신발전기금"
+    assert derive_fund_name("Ⅰ 개요 > 1. 평가의 목적") is None
+    assert derive_fund_name("") is None
+
+
+def test_derive_fund_scale():
+    from ingest.chunker import derive_fund_scale
+    assert derive_fund_scale("Ⅱ > 3. 평가 결과(대규모 기금)") == "대규모"
+    assert derive_fund_scale("Ⅱ > 2. 평가 결과(대형·중소형 기금)") == "대형중소형"
+    assert derive_fund_scale("Ⅰ 개요", default="대형중소형") == "대형중소형"
+    assert derive_fund_scale("Ⅰ 개요") is None

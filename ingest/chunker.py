@@ -7,6 +7,24 @@ from ingest.models import Chunk, ParsedDoc, ParsedParagraph, ParsedTable
 HEADING_ROLES = {"title", "sectionHeading"}
 
 
+def derive_fund_name(section_path: str) -> str | None:
+    """섹션 경로에서 '…기금/…계정' 형태의 기금명을 파생한다(가장 깊은 세그먼트 우선). 없으면 None."""
+    for seg in reversed([s.strip() for s in section_path.split(">")]):
+        m = re.search(r"([가-힣A-Za-z0-9·()]+(?:기금|계정))", seg)
+        if m:
+            return re.sub(r"^\d+\.\s*", "", m.group(1))
+    return None
+
+
+def derive_fund_scale(section_path: str, default: str | None = None) -> str | None:
+    """섹션 경로 키워드로 기금 규모 유형을 파생한다. 없으면 default."""
+    if "대규모" in section_path:
+        return "대규모"
+    if "대형" in section_path or "중소형" in section_path:
+        return "대형중소형"
+    return default
+
+
 def _table_header(markdown: str) -> str:
     """표 마크다운의 헤더 행(첫 줄)을 반환. 없으면 빈 문자열."""
     return markdown.split("\n", 1)[0].strip() if markdown else ""
