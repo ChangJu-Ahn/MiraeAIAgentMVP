@@ -89,13 +89,11 @@ def format_debug(
     return "\n".join(lines)
 
 
-def format_source_docs(base_url: str, items: list[tuple[str, str]]) -> str:
-    """원본 데이터소스 PDF 링크 블록을 만든다. items=(라벨, 파일명). base_url 없으면 빈 문자열."""
-    from urllib.parse import quote
-
-    if not base_url or not items:
+def format_source_docs(items: list[tuple[str, str]]) -> str:
+    """원본 데이터소스 PDF 링크 블록. items=(라벨, URL). 없으면 빈 문자열."""
+    if not items:
         return ""
     lines = ["📎 **원본 자료 (데이터소스)** — 클릭하면 원본 PDF를 새 탭에서 볼 수 있습니다:"]
-    for label, fname in items:
-        lines.append(f"- [{label}]({base_url.rstrip('/')}/{quote(fname)})")
+    for label, url in items:
+        lines.append(f"- [{label}]({url})")
     return "\n".join(lines)

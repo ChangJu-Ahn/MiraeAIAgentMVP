@@ -19,7 +19,7 @@ COPY app/ app/
 COPY search/ search/
 COPY ingest/ ingest/
 COPY config/ config/
-COPY Docs/ Docs/
+COPY docs/ docs/
 COPY .chainlit/ .chainlit/
 COPY chainlit.md ./
 

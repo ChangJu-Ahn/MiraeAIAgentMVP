@@ -14,6 +14,9 @@ param embeddingModelVersion string = '1'
 @description('ACA 컨테이너 이미지 (초기 배포는 placeholder, 이후 실이미지로 갱신)')
 param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
+@description('Container App 배포 여부 (1단계=false로 인프라만, 이미지 빌드 후 2단계=true)')
+param deployApp bool = false
+
 module search 'modules/search.bicep' = {
   name: 'search'
   params: {
@@ -104,7 +107,7 @@ module containerenv 'modules/containerenv.bicep' = {
   }
 }
 
-module containerapp 'modules/containerapp.bicep' = {
+module containerapp 'modules/containerapp.bicep' = if (deployApp) {
   name: 'containerapp'
   params: {
     name: 'ca-mirae-${suffix}'
@@ -125,7 +128,8 @@ module containerapp 'modules/containerapp.bicep' = {
       { name: 'FOUNDRY_API_VERSION', value: '2024-10-21' }
       { name: 'APPINSIGHTS_CONNECTION_STRING', value: observability.outputs.appInsightsConnectionString }
       { name: 'AZURE_CLIENT_ID', value: identity.outputs.clientId }
-      { name: 'SOURCE_DOCS_BASE_URL', value: storage.outputs.blobBaseUrl }
+      { name: 'STORAGE_ACCOUNT_NAME', value: storage.outputs.accountName }
+      { name: 'SOURCE_DOCS_CONTAINER', value: storage.outputs.containerName }
     ]
   }
 }
@@ -146,7 +150,7 @@ output acrLoginServer string = acr.outputs.loginServer
 output acrName string = acr.outputs.name
 output storageAccountName string = storage.outputs.accountName
 output sourceDocsContainer string = storage.outputs.containerName
-output sourceDocsBaseUrl string = storage.outputs.blobBaseUrl
-output containerAppName string = containerapp.outputs.name
-output containerAppFqdn string = containerapp.outputs.fqdn
+output blobEndpoint string = storage.outputs.blobEndpoint
+output containerAppName string = deployApp ? containerapp.outputs.name : ''
+output containerAppFqdn string = deployApp ? containerapp.outputs.fqdn : ''
 output uamiClientId string = identity.outputs.clientId

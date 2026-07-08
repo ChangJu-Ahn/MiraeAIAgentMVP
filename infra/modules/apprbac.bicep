@@ -12,6 +12,8 @@ var openAIUser = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 var cognitiveServicesUser = 'a97b65f3-24c7-4388-baec-2e87135dc908'
 var acrPull = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 var storageBlobDataContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+var storageBlobDataReader = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
+var storageBlobDelegator = 'db58b8e5-c6ad-4a2a-8342-4190687cbf4a'
 
 resource search 'Microsoft.Search/searchServices@2024-06-01-preview' existing = {
   name: searchName
@@ -76,5 +78,25 @@ resource devStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributor)
     principalId: developerObjectId
     principalType: 'User'
+  }
+}
+
+// UAMI → Storage (단기 SAS 발급: blob 읽기 + user delegation key 생성)
+resource uamiStorageRead 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: storage
+  name: guid(storage.id, uamiPrincipalId, storageBlobDataReader)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataReader)
+    principalId: uamiPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+resource uamiStorageDelegator 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: storage
+  name: guid(storage.id, uamiPrincipalId, storageBlobDelegator)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDelegator)
+    principalId: uamiPrincipalId
+    principalType: 'ServicePrincipal'
   }
 }

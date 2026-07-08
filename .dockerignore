@@ -14,7 +14,6 @@ __pycache__
 .files
 tests
 reports
-docs
 plans
 specs
 eval
@@ -22,3 +21,6 @@ scripts
 *.log
 infra
 .chainlit/translations
+# docs/ 는 원본 PDF가 있어 포함하되, 스펙/시나리오 문서는 제외
+docs/superpowers
+docs/*.docx

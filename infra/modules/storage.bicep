@@ -13,8 +13,8 @@ resource sa 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   kind: 'StorageV2'
   properties: {
     minimumTlsVersion: 'TLS1_2'
-    allowBlobPublicAccess: true // 공개자료 익명 읽기 허용
-    allowSharedKeyAccess: false // 키리스: 업로드는 Entra RBAC로만
+    allowBlobPublicAccess: false // 정책 준수: 익명 공개 액세스 금지 → 앱이 단기 SAS 발급
+    allowSharedKeyAccess: false // 키리스: Entra RBAC만
     publicNetworkAccess: 'Enabled'
   }
 }
@@ -28,11 +28,11 @@ resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@20
   parent: blobService
   name: containerName
   properties: {
-    publicAccess: 'Blob' // 컨테이너 아닌 blob 단위 익명 읽기
+    publicAccess: 'None'
   }
 }
 
 output accountName string = sa.name
 output accountId string = sa.id
 output containerName string = containerName
-output blobBaseUrl string = '${sa.properties.primaryEndpoints.blob}${containerName}'
+output blobEndpoint string = sa.properties.primaryEndpoints.blob

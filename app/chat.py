@@ -51,18 +51,12 @@ async def on_chat_start() -> None:
             "우측 상단 **⚙️ 설정**에서 디버그 모드와 **추론 강도(low/medium/high)** 를 조절할 수 있습니다."
         )
     ).send()
-    # 원본 데이터소스(5개 PDF) 열람 링크 — 공개 Blob 기반
-    base_url = get_settings().source_docs_base_url
-    if base_url:
-        from ingest.corpus import CORPUS
+    # 원본 데이터소스(5개 PDF) 열람 링크 — 비공개 Blob 단기 SAS
+    from app.source_docs import source_doc_links
 
-        items = [
-            (f"{d.year} {'보고서' if d.doc_type == 'report' else '지침'}", d.pdf.split("/")[-1])
-            for d in CORPUS
-        ]
-        docs_md = format_source_docs(base_url, items)
-        if docs_md:
-            await cl.Message(content=docs_md).send()
+    docs_md = format_source_docs(source_doc_links())
+    if docs_md:
+        await cl.Message(content=docs_md).send()
 
 
 @cl.on_settings_update
@@ -87,19 +81,44 @@ def _visual_elements(visuals: list) -> list:
             )
         elif isinstance(v, ImageVisual):
             if v.path.startswith("__page__:"):
-                page = int(v.path.split(":", 1)[1])
-                png = render_page_png(get_settings().source_pdf_path, page)
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                tmp.write(png)
-                tmp.close()
-                elements.append(
-                    cl.Image(
-                        path=tmp.name, name=v.title, display="inline", mime="image/png", size="large"
+                try:
+                    page = int(v.path.split(":", 1)[1])
+                    pdf = _resolve_source_pdf(get_settings().source_pdf_path)
+                    if not pdf:
+                        continue
+                    png = render_page_png(pdf, page)
+                    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                    tmp.write(png)
+                    tmp.close()
+                    elements.append(
+                        cl.Image(
+                            path=tmp.name, name=v.title, display="inline", mime="image/png", size="large"
+                        )
                     )
-                )
+                except Exception:  # noqa: BLE001 - 원문 페이지 렌더 실패는 건너뜀
+                    continue
             else:
                 elements.append(cl.Image(path=v.path, name=v.title, display="inline", size="large"))
     return elements
+
+
+def _resolve_source_pdf(configured: str) -> str | None:
+    """원문 PDF 경로를 견고하게 해석. 정확 경로가 없으면 docs/에서 2025 보고서를 찾는다.
+
+    (대소문자·유니코드 정규화 차이로 정확 경로가 안 맞을 수 있어 목록 조회로 보완)
+    """
+    import os
+    import unicodedata
+
+    if os.path.exists(configured):
+        return configured
+    for d in ("docs", "Docs"):
+        if os.path.isdir(d):
+            for f in os.listdir(d):
+                nf = unicodedata.normalize("NFC", f)
+                if f.lower().endswith(".pdf") and "2025" in nf and "보고서" in nf:
+                    return os.path.join(d, f)
+    return None
 
 
 async def _run_round(question: str) -> tuple[str, object, object]:

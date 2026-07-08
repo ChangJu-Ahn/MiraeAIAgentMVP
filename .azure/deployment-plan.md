@@ -61,3 +61,12 @@ Status: Pending Approval (Phase 1 complete)
 - [ ] 사용자 승인
 - [ ] Phase 2: Dockerfile/.dockerignore, infra 모듈 6종, settings/UI 변경, 검증
 - [ ] status → Ready for Validation → azure-validate → azure-deploy
+
+## 11. Deployed (완료)
+- Status: **DEPLOYED** (2026-07-08)
+- 퍼블릭 URL: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
+- Container App: ca-mirae-v4xy5m5d3ltw6 (revision RunningAtMaxScale, 1 replica), HTTP 200.
+- 이미지: acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v1
+- Storage(비공개) stmiraev4xy5m5d3ltw6/source-docs: PDF 5개 업로드, 앱이 단기 user-delegation SAS로 열람.
+- UAMI b355b8a3: Search Data Reader / OpenAI User / Cognitive Services User / AcrPull / Storage Blob Data Reader+Delegator.
+- 공개 Blob은 구독 정책(PublicAccessNotPermitted)으로 불가 → 비공개 Blob + 런타임 SAS로 전환.
