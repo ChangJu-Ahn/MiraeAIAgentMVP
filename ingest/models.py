@@ -39,4 +39,8 @@ class Chunk(BaseModel):
     section_path: str
     page_printed: int | None = None
     page_physical: int
+    year: int | None = None
+    doc_type: str | None = None
+    fund_name: str | None = None
+    fund_scale: str | None = None
     content_vector: list[float] | None = None
