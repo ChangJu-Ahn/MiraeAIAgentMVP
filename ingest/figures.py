@@ -85,7 +85,12 @@ def heading_path_at(doc: ParsedDoc, offset: int) -> str:
     return " > ".join(stack)
 
 
-def build_figure_chunks(doc: ParsedDoc, pdf_path: str) -> list[Chunk]:
+def build_figure_chunks(
+    doc: ParsedDoc, pdf_path: str,
+    *, year: int | None = None, doc_type: str | None = None, fund_scale_default: str | None = None,
+) -> list[Chunk]:
+    from ingest.chunker import derive_fund_name, derive_fund_scale
+
     chunks: list[Chunk] = []
     for i, fig in enumerate(doc.figures):
         try:
@@ -94,15 +99,20 @@ def build_figure_chunks(doc: ParsedDoc, pdf_path: str) -> list[Chunk]:
         except Exception as exc:  # noqa: BLE001
             desc = f"(그림 설명 생성 실패: {exc})"
         prefix = f"[그림] {fig.caption}\n" if fig.caption else "[그림] "
+        section_path = heading_path_at(doc, fig.offset)
         chunks.append(
             Chunk(
                 id=f"{doc.doc_id}-fig-{i}",
                 doc_id=doc.doc_id,
                 content=prefix + desc,
                 chunk_type="figure",
-                section_path=heading_path_at(doc, fig.offset),
+                section_path=section_path,
                 page_physical=fig.page,
                 page_printed=None,
+                year=year,
+                doc_type=doc_type,
+                fund_name=derive_fund_name(section_path),
+                fund_scale=derive_fund_scale(section_path, fund_scale_default),
             )
         )
     return chunks

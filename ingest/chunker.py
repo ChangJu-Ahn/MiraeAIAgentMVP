@@ -106,7 +106,10 @@ def _heading_depth(text: str) -> int:
     return 1
 
 
-def chunk_document(doc: ParsedDoc, max_chars: int = 3600, overlap_chars: int = 540) -> list[Chunk]:
+def chunk_document(
+    doc: ParsedDoc, max_chars: int = 3600, overlap_chars: int = 540,
+    *, year: int | None = None, doc_type: str | None = None, fund_scale_default: str | None = None,
+) -> list[Chunk]:
     printed = _printed_pages(doc)
     chunks: list[Chunk] = []
     idx = 0
@@ -130,6 +133,10 @@ def chunk_document(doc: ParsedDoc, max_chars: int = 3600, overlap_chars: int = 5
                     section_path=section_path,
                     page_physical=start_page,
                     page_printed=printed.get(start_page),
+                    year=year,
+                    doc_type=doc_type,
+                    fund_name=derive_fund_name(section_path),
+                    fund_scale=derive_fund_scale(section_path, fund_scale_default),
                 )
             )
             idx += 1
@@ -162,15 +169,20 @@ def chunk_document(doc: ParsedDoc, max_chars: int = 3600, overlap_chars: int = 5
             flush()
             t = item
             content = (f"{t.caption}\n" if t.caption else "") + t.markdown
+            section_path = " > ".join(heading_stack)
             chunks.append(
                 Chunk(
                     id=f"{doc.doc_id}-{idx}",
                     doc_id=doc.doc_id,
                     content=content,
                     chunk_type="table",
-                    section_path=" > ".join(heading_stack),
+                    section_path=section_path,
                     page_physical=t.page,
                     page_printed=printed.get(t.page),
+                    year=year,
+                    doc_type=doc_type,
+                    fund_name=derive_fund_name(section_path),
+                    fund_scale=derive_fund_scale(section_path, fund_scale_default),
                 )
             )
             idx += 1

@@ -117,3 +117,13 @@ def test_derive_fund_scale():
     assert derive_fund_scale("Ⅱ > 2. 평가 결과(대형·중소형 기금)") == "대형중소형"
     assert derive_fund_scale("Ⅰ 개요", default="대형중소형") == "대형중소형"
     assert derive_fund_scale("Ⅰ 개요") is None
+
+
+def test_chunk_document_stamps_metadata():
+    from ingest.chunker import chunk_document
+    from tests.ingest.fixtures import make_doc
+    chunks = chunk_document(make_doc(), year=2022, doc_type="report")
+    assert chunks, "expected chunks"
+    assert all(c.year == 2022 and c.doc_type == "report" for c in chunks)
+    table = [c for c in chunks if c.chunk_type == "table"][0]
+    assert table.fund_scale is None  # 헤딩에 규모 키워드 없음, default 없음
