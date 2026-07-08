@@ -22,6 +22,7 @@ class TraceStep(BaseModel):
     tool: str
     query: str
     n_hits: int
+    odata_filter: str | None = None
 
 
 class TraceRecorder(BaseModel):
@@ -60,7 +61,9 @@ def _run_tool(
     odata_filter: str | None = None,
 ) -> str:
     hits = hybrid_search(index_name, query, top=top, odata_filter=odata_filter)
-    recorder.steps.append(TraceStep(tool=tool_name, query=query, n_hits=len(hits)))
+    recorder.steps.append(
+        TraceStep(tool=tool_name, query=query, n_hits=len(hits), odata_filter=odata_filter)
+    )
     if not hits:
         return "검색 결과 없음"
     lines: list[str] = []

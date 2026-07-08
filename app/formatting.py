@@ -53,7 +53,9 @@ def format_debug(
         lines.append(f"**질의:** {question}")
         lines.append("\n**도구 호출:**")
         if steps:
-            lines += [f'- `{st.tool}("{st.query}")` → {st.n_hits}건' for st in steps]
+            for st in steps:
+                flt = f" · 필터: `{st.odata_filter}`" if getattr(st, "odata_filter", None) else " · 필터: 없음"
+                lines.append(f'- `{st.tool}("{st.query}")` → {st.n_hits}건{flt}')
         else:
             lines.append("- (없음)")
         lines.append("\n**AI Search 결과 (하이브리드 + 리랭킹, 관련도순):**")

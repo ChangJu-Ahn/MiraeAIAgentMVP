@@ -2,6 +2,16 @@ from agent.tools import RetrievedSource, TraceStep
 from app.formatting import format_citations, format_debug
 
 
+def test_format_debug_shows_odata_filter():
+    steps = [
+        TraceStep(tool="search_tables", query="등급", n_hits=3, odata_filter="year eq 2022 and doc_type eq 'report'"),
+        TraceStep(tool="search_narrative", query="개요", n_hits=1),
+    ]
+    out = format_debug([("q", steps, [])], cited=[])
+    assert "필터: `year eq 2022 and doc_type eq 'report'`" in out  # 적용된 필터 노출
+    assert "필터: 없음" in out  # 필터 미적용도 명시
+
+
 def test_format_debug_includes_trace_scores_and_citations():
     steps = [TraceStep(tool="search_narrative", query="탁월 등급", n_hits=2)]
     sources = [

@@ -195,13 +195,26 @@ async def _run_round(question: str) -> tuple[str, object, object]:
             for info in tool_calls.values():
                 if info["step"] is not None or not info["name"]:
                     continue
-                query = ""
+                display = info["args"] or "(입력 없음)"
                 try:
-                    query = json.loads(info["args"]).get("query", "")
+                    args = json.loads(info["args"])
+                    query = args.get("query", "")
+                    filters = {
+                        k: args[k]
+                        for k in ("year", "doc_type", "fund_name", "fund_scale")
+                        if args.get(k) not in (None, "")
+                    }
+                    parts = [f'질의: "{query}"'] if query else []
+                    parts.append(
+                        "필터: " + ", ".join(f"{k}={v}" for k, v in filters.items())
+                        if filters
+                        else "필터: 없음"
+                    )
+                    display = "\n".join(parts) or display
                 except (ValueError, TypeError):
                     pass
                 step = cl.Step(name=f"🔧 {info['name']}", type="tool", parent_id=think.id)
-                step.input = query or info["args"] or "(입력 없음)"
+                step.input = display
                 await step.send()
                 # send()가 자신을 스텝 스택에 push하므로 형제 오염을 막기 위해 제거
                 stack = local_steps.get() or []
