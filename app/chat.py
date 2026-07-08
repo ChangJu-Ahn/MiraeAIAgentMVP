@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+from time import perf_counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -65,12 +66,18 @@ except Exception:  # noqa: BLE001 - 라우트 등록 실패는 앱 기동을 막
 async def on_chat_start() -> None:
     cl.user_session.set("debug", False)
     cl.user_session.set("effort", "medium")
+    cl.user_session.set("reflection", False)
     # 헤더(우측 상단)에 디버그 토글 + 추론 강도 선택 표시 (config.toml chat_settings_location="sidebar")
     await cl.ChatSettings(
         [
             Switch(
                 id="debug",
                 label="🐞 디버그 모드 (전체 트레이스 · 검색 결과 · 스코어 · OTel raw)",
+                initial=False,
+            ),
+            Switch(
+                id="reflection",
+                label="🔍 자가 점검·보완 (답변이 부족하면 다시 조회, 느려짐)",
                 initial=False,
             ),
             Select(
@@ -84,7 +91,7 @@ async def on_chat_start() -> None:
     await cl.Message(
         content=(
             "안녕하세요! 기금운용평가보고서 기반 AI 어시스턴트입니다. 질문을 입력해 주세요.\n\n"
-            "우측 상단 **⚙️ 설정**에서 디버그 모드와 **추론 강도(low/medium/high)**, "
+            "우측 상단 **⚙️ 설정**에서 디버그 모드·**자가 점검**·**추론 강도(low/medium/high)**, "
             "우측 상단 **원본자료**에서 데이터소스 원본 PDF를 열람할 수 있습니다."
         )
     ).send()
@@ -95,6 +102,7 @@ async def on_settings_update(settings: dict) -> None:
     debug = bool(settings.get("debug", False))
     cl.user_session.set("debug", debug)
     cl.user_session.set("effort", settings.get("effort", "medium"))
+    cl.user_session.set("reflection", bool(settings.get("reflection", False)))
     if not debug:
         await cl.ElementSidebar.set_elements([])  # 디버그 끄면 우측 패널 비움
 
@@ -166,9 +174,10 @@ async def _run_round(question: str) -> tuple[str, object, object]:
     answer_msg = cl.Message(content="")
 
     target_lang = detect_lang(question)
-    tool_calls: dict[str, dict] = {}  # call_id -> {"name", "args", "step"}
+    tool_calls: dict[str, dict] = {}  # call_id -> {"name", "args", "step", "t0"}
     any_process = False
     answer_text = ""
+    round_t0 = perf_counter()
 
     async with cl.Step(name="생각 중", type="reasoning") as think:
         pending_reasoning = ""  # 완성 대기 중인 추론 세그먼트
@@ -216,6 +225,7 @@ async def _run_round(question: str) -> tuple[str, object, object]:
                 step = cl.Step(name=f"🔧 {info['name']}", type="tool", parent_id=think.id)
                 step.input = display
                 await step.send()
+                info["t0"] = perf_counter()  # 도구 소요시간 측정 시작
                 # send()가 자신을 스텝 스택에 push하므로 형제 오염을 막기 위해 제거
                 stack = local_steps.get() or []
                 if stack and stack[-1] is step:
@@ -256,8 +266,12 @@ async def _run_round(question: str) -> tuple[str, object, object]:
                     cid = getattr(content, "call_id", None) or "?"
                     info = tool_calls.get(cid)
                     result = str(getattr(content, "result", "") or "")
-                    if info and info["step"] is not None and result:
-                        info["step"].output = result
+                    if info and info["step"] is not None:
+                        if info.get("t0") is not None:
+                            elapsed = perf_counter() - info["t0"]
+                            info["step"].name = f"🔧 {info['name']} ({elapsed:.1f}s)"
+                        if result:
+                            info["step"].output = result
                         await info["step"].update()
 
                 elif ctype == "text":
@@ -269,6 +283,9 @@ async def _run_round(question: str) -> tuple[str, object, object]:
 
         await flush_reasoning()
         await flush_tool_steps()
+        elapsed_total = perf_counter() - round_t0
+        think.name = f"생각 중 (총 {elapsed_total:.1f}s)"
+        await think.update()
         if not any_process:
             think.output = "(이 라운드에서는 별도 사고 과정이 관측되지 않았습니다.)"
 
@@ -296,7 +313,8 @@ async def answer_and_render(question_input: str) -> None:
 
     on_message와 후속 질문 버튼(ask_followup) 양쪽에서 재사용한다.
     """
-    max_rounds = 2
+    reflection_on = bool(cl.user_session.get("reflection"))
+    max_rounds = 2 if reflection_on else 1
     original_question = question_input
     question = question_input
     answer_text, trace, visual = "", None, None
@@ -308,7 +326,7 @@ async def answer_and_render(question_input: str) -> None:
         rounds.append((question, trace.steps, trace.sources))
         if rnd == max_rounds:
             break
-        # 자가 점검: 답변이 충분한가? (점검 실패 시 안전하게 통과 처리)
+        # 자가 점검(설정 ON일 때만): 답변이 충분한가? (점검 실패 시 안전하게 통과 처리)
         try:
             verdict = await critique(original_question, answer_text, trace.sources)
         except Exception as exc:  # noqa: BLE001
@@ -335,15 +353,6 @@ async def answer_and_render(question_input: str) -> None:
     if citations:
         await cl.Message(content=citations).send()
 
-    # 디버그 모드: 우측 사이드바에 전체 트레이스 + AI Search 결과·스코어 + 최종 인용 표시
-    if cl.user_session.get("debug"):
-        raw_trace = collect_trace_json()  # OpenTelemetry 표준 raw 트레이스
-        debug_md = format_debug(rounds, used, raw_trace=raw_trace)
-        await cl.ElementSidebar.set_title("🐞 디버그 트레이스")
-        await cl.ElementSidebar.set_elements(
-            [cl.Text(content=debug_md, name="debug-trace")]
-        )
-
     # 관련 후속 질문 — 클릭하면 바로 이어서 질문할 수 있는 버튼 바
     followups = await suggest_followups(original_question, answer_text)
     if followups:
@@ -352,3 +361,13 @@ async def answer_and_render(question_input: str) -> None:
             for q in followups
         ]
         await cl.Message(content="💡 **이어서 물어보기**", actions=actions).send()
+
+    # 디버그 모드: 우측 사이드바에 전체 트레이스 + AI Search 결과·스코어 + 최종 인용 표시.
+    # 다른 메시지 렌더에 밀리지 않도록 이 턴의 '마지막'에 열어 최종 상태로 남긴다.
+    if cl.user_session.get("debug"):
+        raw_trace = collect_trace_json()  # OpenTelemetry 표준 raw 트레이스
+        debug_md = format_debug(rounds, used, raw_trace=raw_trace)
+        await cl.ElementSidebar.set_title("🐞 디버그 트레이스 (우측 패널 토글로 접기/펼치기)")
+        await cl.ElementSidebar.set_elements(
+            [cl.Text(content=debug_md, name="debug-trace")]
+        )
