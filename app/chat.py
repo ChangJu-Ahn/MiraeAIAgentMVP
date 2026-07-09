@@ -103,6 +103,8 @@ async def on_settings_update(settings: dict) -> None:
     cl.user_session.set("debug", debug)
     cl.user_session.set("effort", settings.get("effort", "medium"))
     cl.user_session.set("reflection", bool(settings.get("reflection", False)))
+    if not debug:
+        await cl.ElementSidebar.set_elements([])  # 디버그 끄면 우측 패널 비움
 
 
 def _visual_elements(visuals: list) -> list:
@@ -361,13 +363,12 @@ async def answer_and_render(question_input: str) -> None:
         ]
         await cl.Message(content="💡 **이어서 물어보기**", actions=actions).send()
 
-    # 디버그 모드: 전체 트레이스 + AI Search 결과·스코어 + 최종 인용 + OTel raw.
-    # side 엘리먼트로 답변에 첨부 → 대화에 영구히 남아 언제든 클릭해 우측 패널로 열고 닫을 수 있다.
-    # (ElementSidebar는 한 번 닫으면 다시 열 수 없어 사용하지 않는다.)
+    # 디버그 모드: 채팅창은 질문/답변만 유지하고, 전체 트레이스·검색 결과·스코어·OTel raw는
+    # 우측 패널(ElementSidebar)에만 표시한다. 매 답변마다 갱신하며 자동으로 다시 열린다.
     if cl.user_session.get("debug"):
         raw_trace = collect_trace_json()  # OpenTelemetry 표준 raw 트레이스
         debug_md = format_debug(rounds, used, raw_trace=raw_trace)
-        await cl.Message(
-            content="🐞 **디버그 트레이스** — 아래 항목을 클릭하면 우측 패널에서 열립니다 (다시 클릭하면 접힘).",
-            elements=[cl.Text(content=debug_md, name="🐞 디버그 트레이스", display="side")],
-        ).send()
+        await cl.ElementSidebar.set_title("🐞 디버그 트레이스")
+        await cl.ElementSidebar.set_elements(
+            [cl.Text(content=debug_md, name="debug-trace")]
+        )
