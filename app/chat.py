@@ -225,7 +225,6 @@ async def _run_round(question: str) -> tuple[str, object, object]:
                 step = cl.Step(name=f"🔧 {info['name']}", type="tool", parent_id=think.id)
                 step.input = display
                 await step.send()
-                info["t0"] = perf_counter()  # 도구 소요시간 측정 시작
                 # send()가 자신을 스텝 스택에 push하므로 형제 오염을 막기 위해 제거
                 stack = local_steps.get() or []
                 if stack and stack[-1] is step:
@@ -255,6 +254,8 @@ async def _run_round(question: str) -> tuple[str, object, object]:
                 if ctype == "function_call":
                     cid = getattr(content, "call_id", None) or "?"
                     info = tool_calls.setdefault(cid, {"name": None, "args": "", "step": None})
+                    if info.get("t0") is None:
+                        info["t0"] = perf_counter()  # 도구 실행 시작 근사치(첫 호출 델타 시점)
                     if getattr(content, "name", None):
                         info["name"] = content.name
                     args = getattr(content, "arguments", None)
