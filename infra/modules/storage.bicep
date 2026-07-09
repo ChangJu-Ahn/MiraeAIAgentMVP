@@ -16,6 +16,10 @@ resource sa 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     allowBlobPublicAccess: false // 정책 준수: 익명 공개 액세스 금지 → 앱이 단기 SAS 발급
     allowSharedKeyAccess: false // 키리스: Entra RBAC만
     publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      defaultAction: 'Allow' // ACA 아웃바운드에서 데이터 평면 접근 허용(키리스 RBAC로 보호)
+      bypass: 'AzureServices'
+    }
   }
 }
 
