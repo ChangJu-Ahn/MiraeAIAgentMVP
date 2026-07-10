@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import tempfile
+import uuid
 from pathlib import Path
 from time import perf_counter
 
@@ -299,6 +300,17 @@ async def on_message(message: cl.Message) -> None:
     await answer_and_render(message.content)
 
 
+@cl.action_callback("show_debug")
+async def show_debug(action: cl.Action) -> None:
+    """답변에 붙은 '🐞 디버그 보기' 버튼 → 저장해 둔 트레이스를 우측 패널에 다시 연다."""
+    store = cl.user_session.get("debug_store") or {}
+    debug_md = store.get(action.payload.get("id", ""))
+    if not debug_md:
+        return
+    await cl.ElementSidebar.set_title("🐞 디버그 트레이스")
+    await cl.ElementSidebar.set_elements([cl.Text(content=debug_md, name="debug-trace")])
+
+
 @cl.action_callback("ask_followup")
 async def ask_followup(action: cl.Action) -> None:
     q = action.payload.get("q", "")
@@ -363,12 +375,26 @@ async def answer_and_render(question_input: str) -> None:
         ]
         await cl.Message(content="💡 **이어서 물어보기**", actions=actions).send()
 
-    # 디버그 모드: 채팅창은 질문/답변만 유지하고, 전체 트레이스·검색 결과·스코어·OTel raw는
-    # 우측 패널(ElementSidebar)에만 표시한다. 매 답변마다 갱신하며 자동으로 다시 열린다.
+    # 디버그 모드: 채팅창은 질문/답변만 유지한다. 전체 트레이스·검색 결과·스코어·OTel raw는
+    # 세션에 저장하고, 답변에 붙인 "🐞 디버그 보기" 버튼으로 우측 패널을 연다.
+    # (ElementSidebar는 사용자가 닫으면 재열기 UI가 없어, 버튼 콜백으로 다시 열 수 있게 한다.)
     if cl.user_session.get("debug"):
         raw_trace = collect_trace_json()  # OpenTelemetry 표준 raw 트레이스
         debug_md = format_debug(rounds, used, raw_trace=raw_trace)
+        store = cl.user_session.get("debug_store") or {}
+        debug_id = uuid.uuid4().hex
+        store[debug_id] = debug_md
+        cl.user_session.set("debug_store", store)
         await cl.ElementSidebar.set_title("🐞 디버그 트레이스")
-        await cl.ElementSidebar.set_elements(
-            [cl.Text(content=debug_md, name="debug-trace")]
-        )
+        await cl.ElementSidebar.set_elements([cl.Text(content=debug_md, name="debug-trace")])
+        await cl.Message(
+            content="",
+            actions=[
+                cl.Action(
+                    name="show_debug",
+                    payload={"id": debug_id},
+                    label="🐞 디버그 보기",
+                    tooltip="이 답변의 트레이스를 우측 패널에서 다시 엽니다",
+                )
+            ],
+        ).send()
