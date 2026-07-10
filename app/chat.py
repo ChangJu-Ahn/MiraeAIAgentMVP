@@ -15,7 +15,7 @@ from chainlit.input_widget import Select, Switch
 
 from agent.followups import suggest_followups
 from agent.observability import collect_trace_json, reset_trace, setup_observability
-from agent.orchestrator import start_stream
+from agent.orchestrator import new_session, start_stream
 from agent.reflection import augmented_question, critique
 from agent.translate import detect_lang, needs_translation, translate
 from agent.visuals import ChartVisual, ImageVisual, TableVisual
@@ -68,6 +68,9 @@ async def on_chat_start() -> None:
     cl.user_session.set("debug", False)
     cl.user_session.set("effort", "medium")
     cl.user_session.set("reflection", False)
+    # 이 채팅창(대화) 전용 세션 — 매 턴 재사용해 멀티턴 대화 이력을 이어간다.
+    # 새 채팅을 시작하면 on_chat_start가 다시 돌며 새 세션이 만들어져 초기화된다.
+    cl.user_session.set("agent_session", new_session())
     # 헤더(우측 상단)에 디버그 토글 + 추론 강도 선택 표시 (config.toml chat_settings_location="sidebar")
     await cl.ChatSettings(
         [
@@ -171,7 +174,10 @@ async def _run_round(question: str) -> tuple[str, object, object]:
     모델의 추론 요약은 영어로 생성되는 경우가 많으므로, 질문 언어와 다르면 세그먼트
     단위로 번역하여 표시한다(도구 입력/결과는 이미 질문 언어이므로 그대로 표시).
     """
-    stream, trace, visual = start_stream(question, cl.user_session.get("effort") or "medium")
+    session = cl.user_session.get("agent_session")
+    stream, trace, visual = start_stream(
+        question, cl.user_session.get("effort") or "medium", session
+    )
     answer_msg = cl.Message(content="")
 
     target_lang = detect_lang(question)

@@ -4,6 +4,7 @@ import asyncio
 from datetime import date
 
 from azure.identity import DefaultAzureCredential
+from agent_framework import AgentSession
 from agent_framework.foundry import FoundryChatClient
 from pydantic import BaseModel
 
@@ -79,15 +80,25 @@ def ask_sync(question: str) -> AnswerResult:
     return asyncio.run(ask(question))
 
 
-def start_stream(question: str, effort: str = "medium"):
+def new_session() -> AgentSession:
+    """새 대화 세션을 만든다. 채팅창(대화)당 1개를 만들어 매 턴 재사용한다.
+
+    Foundry가 대화 이력을 서버측에 저장(STORES_BY_DEFAULT)하므로, 이 세션 객체를
+    매 run에 넘기면 첫 응답 후 service_session_id가 채워지고 이후 턴이 이어진다.
+    """
+    return AgentSession()
+
+
+def start_stream(question: str, effort: str = "medium", session: AgentSession | None = None):
     """Return (response_stream, trace_recorder, visual_recorder) for live UIs.
 
     Caller iterates the stream (async) for text/reasoning/tool deltas; recorders
     fill with tool-call steps, retrieved sources, and visuals during iteration.
     effort는 추론 강도(low/medium/high).
+    session을 넘기면 이전 턴들의 대화 이력을 이어받아 멀티턴으로 동작한다(None이면 단발).
     """
     recorder = TraceRecorder()
     visual_recorder = VisualRecorder()
     agent = build_agent(recorder, visual_recorder, effort)
-    stream = agent.run(question, stream=True)
+    stream = agent.run(question, session=session, stream=True)
     return stream, recorder, visual_recorder
