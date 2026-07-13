@@ -1,8 +1,8 @@
 # Microsoft Agent Framework(MAF) — 통제·오케스트레이션·툴콜링 상세 분석 리포트
 
-> 대상: 수익자 홈페이지 AI 챗봇 PoC (MiraeAIAgentMVP)
-> 작성 목적: 오픈소스 **Microsoft Agent Framework(MAF)** 로 에이전트를 **어떻게 구성·통제**하고, **어떻게 오케스트레이션**하며, **어떻게 툴콜링**하는지를 코드 근거와 함께 상세히 기록.
-> 코드 기준: `agent/orchestrator.py`, `agent/tools.py`, `agent/visuals.py`, `agent/translate.py`, `agent/reflection.py`, `agent/observability.py`, `app/chat.py` (main 브랜치, P1~P12 + 추론 요약 스트리밍/2단계 접이식 UI 반영)
+> 대상: 수익자 홈페이지 AI 챗봇 PoC (MiraeAIAgentMVP)<br>
+> 작성 목적: 오픈소스 **Microsoft Agent Framework(MAF)** 로 에이전트를 **어떻게 구성·통제**하고, **어떻게 오케스트레이션**하며, **어떻게 툴콜링**하는지를 코드 근거와 함께 상세히 기록.<br>
+> 코드 기준: `agent/orchestrator.py`, `agent/tools.py`, `agent/visuals.py`, `agent/translate.py`, `agent/reflection.py`, `agent/observability.py`, `app/chat.py` (main 브랜치, P1~P12 + 추론 요약 스트리밍/2단계 접이식 UI 반영)<br>
 > 라이브러리: `agent_framework`(코어), `agent_framework_foundry`(Foundry 채팅 클라이언트), `agent_framework_openai`(OpenAI/Responses 어댑터) — `.venv` 실측 기준.
 
 ---

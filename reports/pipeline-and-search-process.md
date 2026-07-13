@@ -1,7 +1,7 @@
 # 파이프라인 & 검색 프로세스 상세 리뷰 리포트
 
-> 대상: 수익자 홈페이지 AI 챗봇 PoC (MiraeAIAgentMVP)
-> 작성 목적: 문서 인식→적재→검색→에이전트 응답 전 과정의 동작 방식, 특히 **Azure Document Intelligence(DI)의 역할**과 **표 형태 값 추출** 방식을 상세히 조사·기록.
+> 대상: 수익자 홈페이지 AI 챗봇 PoC (MiraeAIAgentMVP)<br>
+> 작성 목적: 문서 인식→적재→검색→에이전트 응답 전 과정의 동작 방식, 특히 **Azure Document Intelligence(DI)의 역할**과 **표 형태 값 추출** 방식을 상세히 조사·기록.<br>
 > 코드 기준: `ingest/`, `search/`, `agent/`, `app/` (main 브랜치, P1~P12 + 추론 요약 스트리밍/2단계 접이식 UI 반영)
 
 ---
