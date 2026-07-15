@@ -1,6 +1,6 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Deployed 2026-07-15
+Status: Deployed 2026-07-15 (v13)
 
 Recipe: Bicep infrastructure with Azure CLI container deployment
 
@@ -58,11 +58,22 @@ uv run python scripts/smoke_test.py
 - Region: `koreacentral`
 - Container App: `ca-mirae-v4xy5m5d3ltw6`
 - Public URL: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
-- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v12`
+- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v13`
 
 The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
 
 ## Validation Proof
+
+Revalidated on 2026-07-15 for `main` merge `12a00ea` and image `mirae-chat:v13`.
+
+- Target confirmed: default subscription `ME-MngEnvMCAP094463-changjuahn-1` (`347e0df7-94e9-4feb-b42d-57d7e49566f2`), existing resource group `rg-mirae-ai-agent-poc`, region `koreacentral`, and existing Container Apps environment `cae-mirae-v4xy5m5d3ltw6` (`Succeeded`). Subscription and location prompts returned user unavailable, so the validated existing v12 target was retained.
+- Git and tests: merge commit `12a00ea` is pushed to `origin/main`; `uv run pytest -q` passed 405 tests; `uv lock --check` and `git diff --check` passed.
+- Bicep MCP compilation: `infra/main.bicep` and `infra/main.bicepparam` compiled successfully with zero diagnostics using Bicep 0.45.15.
+- ARM preflight for `mirae-chat:v13`: group validation `Succeeded`; what-if reported 17 Deploy, 2 Ignore, 5 expected dynamic role assignments as Unsupported, and zero Delete changes. The ignored resources are the existing Storage account and Event Grid system topic and will not be modified.
+- Container contract: Dockerfile and Chainlit listen on port 8000, Container Apps ingress targets port 8000, ACR admin access is disabled, and five non-empty source PDFs are present. The local Docker daemon is unavailable, so ACR remote build is the image build and validation path.
+- Live RBAC: UAMI principal `e2a20198-9516-43e0-b54a-fc1a5d088cb6` has Search Index Data Reader, Cognitive Services OpenAI User, Cognitive Services User, and AcrPull on the required scopes.
+- Azure Policy assignments at management-group and subscription scope were reviewed; the same policy set permits the existing compliant v12 deployment and ARM validation for v13 succeeded.
+- Image gate: `mirae-chat:v13` did not exist before deployment. The current Container App was `Succeeded`, used `mirae-chat:v12`, and routed 100% of traffic to the latest revision.
 
 Revalidated on 2026-07-15 for the v12 diagnostics and reasoning UI restoration.
 
@@ -90,6 +101,19 @@ Validated on 2026-07-15 against subscription `347e0df7-94e9-4feb-b42d-57d7e49566
 - Azure AI Search inventory: `narrative-index`, `table-index`, `fund-catalog-index`, and `evaluation-facts-index`; all four are referenced by production code, so no index is eligible for deletion.
 
 ## Deployment Verification
+
+### v13 Reasoning and Debug Streaming Restoration
+
+- Git merge `12a00ea` is pushed to `origin/main`. ACR remote build run `deg` pushed `mirae-chat:v13` and `mirae-chat:12a00ea` with digest `sha256:49d18cd4af63bc1f5cde0aedcc081f6e57d882a30cd22f9f761a17232d61307f`.
+- ARM deployment `mirae-v13-deploy-20260715` succeeded with correlation ID `5d3da93e-fa82-4e42-a125-1aa731c8920c`.
+- Container App revision `ca-mirae-v4xy5m5d3ltw6--0000014` is `Healthy` and `Provisioned`, runs one replica of `mirae-chat:v13`, and receives 100% of latest-revision traffic.
+- Public `/` and `/health` requests returned HTTP 200; `/health` returned `{"status":"ok"}`. Post-deployment smoke tests passed for AI Search, Document Intelligence, and Foundry.
+- Browser settings verification enabled debug and reflection, changed reasoning effort from `medium` to `high`, and confirmed the settings. The grounded Korean query completed round 1 in 13.6s, reflection requested supplementation, and round 2 completed in 38.5s without `E_STREAM`.
+- Browser tool steps rendered names and timings. Round 1 showed `resolve_fund` at 0.9s and `get_fund_evaluations` at 0.4s. Round 2 showed two `search_narrative` calls, `search_tables`, and `get_fund_evaluations` at 0.6s each.
+- The final answer was Korean, identified the grade as `우수`, and displayed seven cited sources. The debug sidebar displayed both rounds, tool and ranked Search details, final citations, and Raw OpenTelemetry spans. Closing it and selecting `디버그 보기` reopened the stored trace.
+- Automatic `reasoning.summary` text in round 2 was English even though the system prompt explicitly requires the user's language. A production reproduction and a separate prompt-only probe with a closing language reminder produced the same result. The Responses API exposes `auto`, `concise`, and `detailed` summary modes but no language or locale control, so prompt-only enforcement cannot guarantee the summary language. No language detector, translation SDK, or additional translation model call was reintroduced.
+- Active-revision workload logs contained zero traceback, exception, unhandled-error, `E_STREAM`, or error-level patterns. Application Insights reported zero exceptions, zero error-level traces, and zero failed requests after rollout.
+- System logs recorded transient KEDA and startup-probe events while the revision was starting; the last startup probe failure was at 13:17:48 UTC, none recurred from 13:18 UTC onward, and the revision remained healthy throughout browser verification.
 
 ### v12 Diagnostics and Reasoning UI Restoration
 
