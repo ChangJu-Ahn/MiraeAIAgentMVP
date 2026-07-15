@@ -124,7 +124,7 @@ cot = "full"
 
 # Specify a CSS file that can be used to customize the user interface.
 # The CSS file can be served from the public directory or via an external link.
-# custom_css = "/public/test.css"
+custom_css = "/public/custom.css"
 
 # Specify additional attributes for a custom CSS file
 # custom_css_attributes = "media=\"print\""
@@ -171,6 +171,13 @@ name = "Evaluation"
 display_name = "Evaluation"
 icon_url = "/public/evaluation-icon.png"
 url = "/public/evaluation.html"
+target = "_blank"
+
+[[UI.header_links]]
+name = "원본자료"
+display_name = "원본자료"
+icon_url = "https://unpkg.com/lucide-static@latest/icons/file-text.svg"
+url = "/source-docs"
 target = "_blank"
 
 [meta]

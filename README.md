@@ -6,9 +6,9 @@
 
 1. Azure Document Intelligence가 PDF의 본문, 표, 그림, 페이지 구조를 추출합니다.
 2. 인제스트 파이프라인이 추출 결과를 검증하고 Azure AI Search의 4개 인덱스에 적재합니다.
-3. Microsoft Agent Framework가 질문에 필요한 검색 도구를 선택해 한 번의 agent run으로 답변합니다.
+3. Microsoft Agent Framework가 질문에 필요한 검색 도구를 선택해 답변하고, 자가 점검을 켠 경우 근거가 부족하면 보완 질의로 두 번째 agent run을 수행합니다.
 4. Chainlit이 답변을 스트리밍하고 인용 출처와 요청된 표, 차트, 원문 페이지를 표시합니다.
-5. 평가 파이프라인이 답변과 실제 검색 근거를 5개 Foundry judge로 검증합니다.
+5. 평가 파이프라인이 동일한 Foundry judge deployment로 답변과 실제 검색 근거의 다섯 품질 기준을 검증합니다.
 
 ## 기술 스택
 
@@ -21,7 +21,7 @@
 | 에이전트 | Microsoft Agent Framework 1.10+, Pydantic Settings | Foundry 모델 연결, 세션, function-call 툴, 환경 설정 |
 | 웹 UI | Chainlit 2.11+ | WebSocket 채팅, 토큰·추론 스트리밍, 설정, 툴 단계와 디버그 화면 |
 | Azure SDK | Azure Identity, Azure AI Search SDK, Azure Document Intelligence SDK, OpenAI Python SDK | 관리 ID 인증, 검색·인덱싱, PDF 분석, 임베딩과 모델 호출 |
-| 평가 | Azure AI Evaluation 1.17, OpenPyXL | Excel 질문지 실행과 5개 품질 judge 평가 |
+| 평가 | Azure AI Evaluation 1.17, OpenPyXL | Excel 질문지 실행과 다섯 품질 기준 평가 |
 | 관측성 | OpenTelemetry, Azure Monitor OpenTelemetry Exporter | 인메모리 디버그 span과 Application Insights trace 전송 |
 | 시각화 | Plotly, Pillow, Poppler (`pdftoppm`) | 표·차트 생성과 인용 PDF 페이지 이미지 렌더링 |
 | 테스트 | pytest 8.3+ | 단위, 스트리밍, 검색, 인제스트, 평가 계약 테스트 |
@@ -388,7 +388,9 @@ uv run python -m agent.ask "2022년 종합등급 분포를 알려줘"
 uv run chainlit run app/chat.py -w
 ```
 
-채팅마다 하나의 Agent Framework 세션을 재사용하므로 후속 질문의 대화 문맥은 유지됩니다. 각 메시지는 한 번 실행되며, 자료에 근거가 없으면 없다고 답합니다.
+채팅마다 하나의 Agent Framework 세션을 재사용하므로 후속 질문의 대화 문맥은 유지됩니다. 각 메시지는 기본적으로 한 번 실행되며, 자가 점검을 활성화하고 근거가 부족할 때만 보완 질의로 두 번째 run을 수행합니다. 자료에 근거가 없으면 없다고 답합니다.
+
+Chainlit 헤더의 `원본자료` 링크는 RAG에 등록된 5개 실제 PDF 목록을 표시합니다. 각 항목은 컨테이너 이미지에 포함된 manifest 문서만 안정적인 문서 ID로 열며, 요청 경로를 파일 경로로 직접 해석하지 않습니다.
 
 ## 평가
 

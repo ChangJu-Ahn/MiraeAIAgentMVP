@@ -35,7 +35,7 @@ THEME_VARIABLES = {
 }
 
 
-def test_chainlit_registers_official_evaluation_header_link():
+def test_chainlit_registers_evaluation_and_source_document_header_links():
     config = tomllib.loads(
         (ROOT / ".chainlit" / "config.toml").read_text(encoding="utf-8")
     )
@@ -47,8 +47,50 @@ def test_chainlit_registers_official_evaluation_header_link():
             "icon_url": "/public/evaluation-icon.png",
             "url": "/public/evaluation.html",
             "target": "_blank",
-        }
+        },
+        {
+            "name": "원본자료",
+            "display_name": "원본자료",
+            "icon_url": "https://unpkg.com/lucide-static@latest/icons/file-text.svg",
+            "url": "/source-docs",
+            "target": "_blank",
+        },
     ]
+
+
+def test_chainlit_readme_documents_the_verified_user_experience():
+    readme = (ROOT / "chainlit.md").read_text(encoding="utf-8")
+
+    for required_text in (
+        "Microsoft Foundry",
+        "Azure AI Search",
+        "5개 원본 PDF",
+        "근거 기반 답변",
+        "결정적 계산",
+        "원본자료",
+        "Evaluation",
+        "답변 평가",
+        "자료에서 확인되지 않는 내용은 추측하지 않습니다",
+    ):
+        assert required_text in readme
+
+    assert "uv run" not in readme
+    assert "DefaultAzureCredential" not in readme
+
+
+def test_chainlit_mobile_header_compacts_custom_links_without_hiding_icons():
+    config = tomllib.loads(
+        (ROOT / ".chainlit" / "config.toml").read_text(encoding="utf-8")
+    )
+
+    assert config["UI"]["custom_css"] == "/public/custom.css"
+    css = (ROOT / "public" / "custom.css").read_text(encoding="utf-8")
+    assert "@media (max-width: 480px)" in css
+    assert 'a[href="/public/evaluation.html"] > span' in css
+    assert 'a[href="/source-docs"] > span' in css
+    assert "display: none" in css
+    assert 'a[href="/public/evaluation.html"] > img' not in css
+    assert 'a[href="/source-docs"] > img' not in css
 
 
 def test_evaluation_dashboard_has_theme_methodology_and_safe_dom_contract():
@@ -93,5 +135,11 @@ def test_container_includes_dashboard_and_runtime_evaluator_without_raw_reports(
 
     assert "COPY eval/ eval/" in dockerfile
     assert "COPY public/ public/" in dockerfile
+    assert "COPY [Dd]ocs/ Docs/" in dockerfile
     assert "eval" not in ignored
+    assert "docs" not in ignored
+    assert "docs/" not in ignored
+    assert "docs/*.pdf" not in ignored
+    assert "*.pdf" not in ignored
     assert "reports" in ignored
+    assert len(list((ROOT / "docs").glob("*.pdf"))) == 5

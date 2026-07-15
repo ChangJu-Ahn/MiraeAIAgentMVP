@@ -1,0 +1,11 @@
+@media (max-width: 480px) {
+  a[href="/public/evaluation.html"] > span,
+  a[href="/source-docs"] > span {
+    display: none;
+  }
+
+  a[href="/public/evaluation.html"],
+  a[href="/source-docs"] {
+    gap: 0;
+  }
+}

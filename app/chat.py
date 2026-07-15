@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import chainlit as cl
 from chainlit.context import local_steps
 from chainlit.input_widget import Select, Switch
+from chainlit.server import app as chainlit_app
 
 from agent.observability import collect_trace_json, reset_trace, setup_observability
 from agent.orchestrator import new_session, start_stream
@@ -20,6 +21,7 @@ from agent.reflection import augmented_question, critique
 from agent.tools import TraceRecorder
 from agent.visuals import ChartVisual, ImageVisual, TableVisual, VisualRecorder
 from app.formatting import cited_sources, dedup_sources, format_citations, format_debug
+from app.source_docs import source_document_response, source_docs_page
 from app.visual_bind import chart_to_figure, table_to_dataframe
 from config.settings import get_settings
 from eval.live import (
@@ -34,6 +36,27 @@ setup_observability()
 _DEBUG_HISTORY_LIMIT = 10
 _EVALUATION_HISTORY_LIMIT = 10
 _EVALUATION_TASKS: set[asyncio.Task[None]] = set()
+
+
+def _register_source_document_routes() -> None:
+    route_specs = (
+        ("/source-docs/{doc_id}", source_document_response, "source-document"),
+        ("/source-docs", source_docs_page, "source-documents"),
+    )
+    for path, endpoint, name in route_specs:
+        if any(getattr(route, "path", None) == path for route in chainlit_app.router.routes):
+            continue
+        chainlit_app.add_api_route(
+            path,
+            endpoint,
+            methods=["GET"],
+            name=name,
+            include_in_schema=False,
+        )
+        chainlit_app.router.routes.insert(0, chainlit_app.router.routes.pop())
+
+
+_register_source_document_routes()
 
 
 @cl.on_chat_start
