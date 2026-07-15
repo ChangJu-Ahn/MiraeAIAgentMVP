@@ -58,11 +58,22 @@ uv run python scripts/smoke_test.py
 - Region: `koreacentral`
 - Container App: `ca-mirae-v4xy5m5d3ltw6`
 - Public URL: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
-- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v11`
+- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v12`
 
 The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
 
 ## Validation Proof
+
+Revalidated on 2026-07-15 for the v12 diagnostics and reasoning UI restoration.
+
+- Target confirmed: default subscription `ME-MngEnvMCAP094463-changjuahn-1` (`347e0df7-94e9-4feb-b42d-57d7e49566f2`), existing resource group `rg-mirae-ai-agent-poc`, region `koreacentral`, and existing Container Apps environment `cae-mirae-v4xy5m5d3ltw6` (`Succeeded`).
+- Tests: 395 non-live tests passed; all 10 Foundry, AI Search, Document Intelligence, streaming, and evaluation integration tests passed against Azure.
+- VS Code diagnostics: zero errors across `agent/`, `app/`, and `tests/`; `git diff --check` and `uv lock --check` passed.
+- Bicep MCP compilation: `infra/main.bicep` and `infra/main.bicepparam` both produced templates with zero diagnostics.
+- ARM preflight for `mirae-chat:v12`: group validation `Succeeded`; what-if reported 17 deploy, 5 expected unresolved role assignments, 2 ignored legacy resources, and zero deletes.
+- Container contract: Dockerfile listens on port 8000 and Container Apps ingress targets port 8000; five non-empty source PDFs remain in the image context. A local Docker engine is unavailable, so the image build will be validated by ACR remote build.
+- Live RBAC: UAMI principal `e2a20198-9516-43e0-b54a-fc1a5d088cb6` has Search Index Data Reader, Cognitive Services OpenAI User, Cognitive Services User, and AcrPull on the required scopes.
+- Azure Policy assignments were reviewed; the existing deployment is already compliant with the active subscription and management-group policies.
 
 Validated on 2026-07-15 against subscription `347e0df7-94e9-4feb-b42d-57d7e49566f2`, resource group `rg-mirae-ai-agent-poc`, and region `koreacentral`.
 
@@ -79,6 +90,23 @@ Validated on 2026-07-15 against subscription `347e0df7-94e9-4feb-b42d-57d7e49566
 - Azure AI Search inventory: `narrative-index`, `table-index`, `fund-catalog-index`, and `evaluation-facts-index`; all four are referenced by production code, so no index is eligible for deletion.
 
 ## Deployment Verification
+
+### v12 Diagnostics and Reasoning UI Restoration
+
+- ACR remote build run `def` succeeded and pushed `mirae-chat:v12` with digest `sha256:0ba7766338246ade61b10dff18b375e23a02ae6fcb2c773cadee4ddc4090d436`.
+- ARM deployment `mirae-v12-deploy-20260715` succeeded; every deployment operation succeeded.
+- Container App revision `ca-mirae-v4xy5m5d3ltw6--0000012` is `Healthy` and `Provisioned`, runs one replica of `mirae-chat:v12`, and receives 100% of latest-revision traffic.
+- Public `/` and `/health` requests returned HTTP 200; `/health` returned `{"status":"ok"}`.
+- Post-deployment `scripts/smoke_test.py`: AI Search, Document Intelligence, and Foundry passed with keyless authentication.
+- Browser settings test enabled debug and reflection, changed reasoning effort from `medium` to `high`, and confirmed the settings.
+- Browser answer test rendered Korean reasoning summaries and total round timings. The grounded query completed round 1 in 57.0s, reflection reported `보완 필요`, and the second round completed in 90.5s with cited report evidence.
+- Browser tool steps rendered names and timings: `resolve_fund` 0.5s, `search_narrative` 1.0-1.2s, and `get_fund_evaluations` 0.3s. Expanded steps displayed the query filters, retrieved source text, structured score `23.12/30`, and citations.
+- The debug sidebar displayed both rounds, ranked Search results, final citations, and Raw OpenTelemetry spans. Closing it and using the latest `디버그 보기` action reopened the same trace successfully.
+- Live RBAC recheck confirmed Search Index Data Reader, Cognitive Services OpenAI User, Cognitive Services User, and AcrPull for UAMI principal `e2a20198-9516-43e0-b54a-fc1a5d088cb6` on the required runtime scopes.
+- Active-revision workload logs contained no error, traceback, exception, or unhandled-error patterns. Application Insights reported zero exceptions and zero error-level traces during the rollout and browser tests.
+- System logs contained only transient KEDA/startup-probe warnings while revision `0000012` was starting; none recurred after 10:30:47 UTC, and the revision remained healthy throughout post-deployment tests.
+
+### v11 Core Simplification
 
 - Git: feature commit `96fd6b0`; merge commit `8402253` pushed to `origin/main`.
 - ACR build: run `dee`; tags `mirae-chat:v11` and `mirae-chat:8402253`.
