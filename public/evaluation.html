@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="고객 제공 질문지에 대한 Azure AI Evaluation 결과"
+    />
+    <title>Evaluation | 기금운용평가 챗봇</title>
+    <script>
+      (() => {
+        const param = new URLSearchParams(window.location.search).get("scoutTheme");
+        const theme =
+          param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
+    <style>
+      :root {
+        color-scheme: light;
+        --cp-bg: #f7f4ef;
+        --cp-bg-elevated: #fcfbf8;
+        --cp-surface: #ffffff;
+        --cp-surface-soft: #f5f5f5;
+        --cp-border: #dedede;
+        --cp-border-strong: #919191;
+        --cp-text: #242424;
+        --cp-text-muted: #5c5c5c;
+        --cp-text-soft: #6f6f6f;
+        --cp-accent: #b11f4b;
+        --cp-accent-hover: #9a1a41;
+        --cp-accent-soft: rgba(177, 31, 75, 0.08);
+        --cp-accent-fg: #ffffff;
+        --cp-success: #16a34a;
+        --cp-danger: #dc2626;
+        --cp-warning: #f59e0b;
+        --cp-link: #0078d4;
+        --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+        --cp-overlay: rgba(255, 255, 255, 0.8);
+        --cp-panel: rgba(255, 255, 255, 0.86);
+        --cp-panel-strong: rgba(255, 255, 255, 0.96);
+        --cp-sheen: rgba(255, 255, 255, 0.55);
+        --cp-highlight: rgba(177, 31, 75, 0.12);
+      }
+      html[data-theme="dark"] {
+        color-scheme: dark;
+        --cp-bg: #3d3b3a;
+        --cp-bg-elevated: #343231;
+        --cp-surface: #292929;
+        --cp-surface-soft: #2e2e2e;
+        --cp-border: #474747;
+        --cp-border-strong: #5f5f5f;
+        --cp-text: #dedede;
+        --cp-text-muted: #919191;
+        --cp-text-soft: #b0b0b0;
+        --cp-accent: #fd8ea1;
+        --cp-accent-hover: #fb7b91;
+        --cp-accent-soft: rgba(253, 142, 161, 0.14);
+        --cp-accent-fg: #1a1a1a;
+        --cp-success: #4ade80;
+        --cp-danger: #f87171;
+        --cp-warning: #fbbf24;
+        --cp-link: #4da6ff;
+        --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+        --cp-overlay: rgba(41, 41, 41, 0.88);
+        --cp-panel: rgba(41, 41, 41, 0.72);
+        --cp-panel-strong: rgba(41, 41, 41, 0.96);
+        --cp-sheen: rgba(255, 255, 255, 0.04);
+        --cp-highlight: rgba(253, 142, 161, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+        letter-spacing: 0;
+      }
+
+      html {
+        min-width: 320px;
+        background: var(--cp-bg);
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--cp-bg);
+        color: var(--cp-text);
+        font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        color: inherit;
+      }
+
+      .page-header {
+        border-bottom: 1px solid var(--cp-border);
+        background: var(--cp-bg-elevated);
+      }
+
+      .page-header-inner,
+      main,
+      .page-footer {
+        width: min(1180px, calc(100% - 48px));
+        margin: 0 auto;
+      }
+
+      .page-header-inner {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 36px;
+        align-items: end;
+        padding: 44px 0 36px;
+      }
+
+      .identity {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        color: var(--cp-accent);
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .identity img {
+        width: 24px;
+        height: 24px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin-bottom: 12px;
+        font-size: 38px;
+        line-height: 1.18;
+        font-weight: 700;
+      }
+
+      .lead {
+        max-width: 760px;
+        margin-bottom: 0;
+        color: var(--cp-text-muted);
+        font-size: 17px;
+      }
+
+      .snapshot-meta {
+        min-width: 230px;
+        border-left: 3px solid var(--cp-accent);
+        padding-left: 18px;
+      }
+
+      .snapshot-meta-label {
+        margin-bottom: 4px;
+        color: var(--cp-text-muted);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .snapshot-meta-value {
+        margin: 0 0 14px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .snapshot-meta-value:last-child {
+        margin-bottom: 0;
+      }
+
+      main {
+        padding: 36px 0 56px;
+      }
+
+      .section-heading {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 18px;
+      }
+
+      .section-heading h2 {
+        margin-bottom: 4px;
+        font-size: 22px;
+        line-height: 1.3;
+      }
+
+      .section-heading p {
+        max-width: 760px;
+        margin-bottom: 0;
+        color: var(--cp-text-muted);
+      }
+
+      .method-note {
+        margin: 0 0 24px;
+        border-left: 3px solid var(--cp-warning);
+        padding: 10px 0 10px 16px;
+        color: var(--cp-text-muted);
+        font-size: 14px;
+      }
+
+      .method-note strong {
+        color: var(--cp-text);
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        border: 1px solid var(--cp-border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--cp-surface);
+      }
+
+      .metric-card {
+        min-width: 0;
+        min-height: 164px;
+        padding: 20px;
+        border-right: 1px solid var(--cp-border);
+      }
+
+      .metric-card:last-child {
+        border-right: 0;
+      }
+
+      .metric-name {
+        margin-bottom: 18px;
+        color: var(--cp-text-muted);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .metric-score {
+        display: flex;
+        align-items: baseline;
+        gap: 5px;
+        margin-bottom: 3px;
+      }
+
+      .metric-score strong {
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .metric-score span,
+      .metric-rate {
+        color: var(--cp-text-muted);
+        font-size: 13px;
+      }
+
+      .metric-description {
+        min-height: 40px;
+        margin: 12px 0;
+        color: var(--cp-text-soft);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .metric-progress {
+        width: 100%;
+        height: 5px;
+        overflow: hidden;
+        border-radius: 0.625rem;
+        background: var(--cp-surface-soft);
+      }
+
+      .metric-progress-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: var(--cp-accent);
+      }
+
+      .dataset-section {
+        margin-top: 44px;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) auto auto;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .search-field {
+        position: relative;
+      }
+
+      .search-field label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+      }
+
+      .search-field input {
+        width: 100%;
+        height: 42px;
+        border: 1px solid var(--cp-border-strong);
+        border-radius: 0.625rem;
+        padding: 0 14px;
+        outline: none;
+        background: var(--cp-surface);
+        color: var(--cp-text);
+      }
+
+      .search-field input:focus {
+        border-color: var(--cp-accent);
+        box-shadow: 0 0 0 3px var(--cp-accent-soft);
+      }
+
+      .status-filter {
+        display: flex;
+        height: 42px;
+        padding: 3px;
+        border: 1px solid var(--cp-border);
+        border-radius: 0.625rem;
+        background: var(--cp-surface-soft);
+      }
+
+      .status-filter button {
+        min-width: 72px;
+        border: 0;
+        border-radius: 7px;
+        padding: 0 12px;
+        background: transparent;
+        cursor: pointer;
+        color: var(--cp-text-muted);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .status-filter button:hover {
+        color: var(--cp-text);
+      }
+
+      .status-filter button[aria-pressed="true"] {
+        background: var(--cp-surface);
+        color: var(--cp-accent);
+      }
+
+      .result-count {
+        min-width: 76px;
+        color: var(--cp-text-muted);
+        font-size: 13px;
+        text-align: right;
+      }
+
+      .question-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .question-item {
+        border: 1px solid var(--cp-border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--cp-surface);
+      }
+
+      .question-item[open] {
+        border-color: var(--cp-border-strong);
+      }
+
+      .question-summary {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+        min-height: 72px;
+        padding: 14px 18px;
+        cursor: pointer;
+      }
+
+      .question-summary::marker {
+        color: var(--cp-accent);
+      }
+
+      .question-id {
+        color: var(--cp-text-muted);
+        font-family: Consolas, "Courier New", Courier, monospace;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .question-copy {
+        min-width: 0;
+      }
+
+      .question-text {
+        margin: 0;
+        overflow-wrap: anywhere;
+        font-size: 15px;
+        font-weight: 650;
+      }
+
+      .question-type {
+        margin-top: 3px;
+        color: var(--cp-text-muted);
+        font-size: 12px;
+      }
+
+      .status-badge {
+        min-width: 68px;
+        border: 1px solid currentColor;
+        border-radius: 0.625rem;
+        padding: 3px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .status-badge.pass {
+        color: var(--cp-success);
+      }
+
+      .status-badge.review {
+        color: var(--cp-danger);
+      }
+
+      .question-detail {
+        border-top: 1px solid var(--cp-border);
+        padding: 20px 22px 24px;
+      }
+
+      .answer-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        gap: 28px;
+      }
+
+      .answer-block h3,
+      .reason-section h3 {
+        margin-bottom: 8px;
+        color: var(--cp-text-muted);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .answer-copy,
+      .reason-copy {
+        margin: 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .metric-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 22px;
+        padding-top: 18px;
+        border-top: 1px solid var(--cp-border);
+      }
+
+      .metric-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        border: 1px solid var(--cp-border);
+        border-radius: 0.625rem;
+        padding: 4px 9px;
+        background: var(--cp-surface-soft);
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .metric-chip.pass strong {
+        color: var(--cp-success);
+      }
+
+      .metric-chip.fail strong {
+        color: var(--cp-danger);
+      }
+
+      .reason-section {
+        margin-top: 22px;
+        padding-top: 18px;
+        border-top: 1px solid var(--cp-border);
+      }
+
+      .reason-item {
+        display: grid;
+        grid-template-columns: 130px minmax(0, 1fr);
+        gap: 18px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--cp-border);
+      }
+
+      .reason-item:last-child {
+        border-bottom: 0;
+      }
+
+      .reason-label {
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .reason-copy {
+        color: var(--cp-text-muted);
+        font-size: 13px;
+      }
+
+      .state-message {
+        border: 1px dashed var(--cp-border-strong);
+        border-radius: 8px;
+        padding: 36px 20px;
+        color: var(--cp-text-muted);
+        text-align: center;
+      }
+
+      .state-message.error {
+        border-color: var(--cp-danger);
+        color: var(--cp-danger);
+      }
+
+      .page-footer {
+        border-top: 1px solid var(--cp-border);
+        padding: 22px 0 32px;
+        color: var(--cp-text-muted);
+        font-size: 12px;
+      }
+
+      .page-footer a {
+        color: var(--cp-link);
+      }
+
+      @media (max-width: 980px) {
+        .metric-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .metric-card {
+          border-bottom: 1px solid var(--cp-border);
+        }
+
+        .metric-card:nth-child(2n) {
+          border-right: 0;
+        }
+
+        .metric-card:last-child {
+          grid-column: 1 / -1;
+          border-bottom: 0;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .page-header-inner,
+        main,
+        .page-footer {
+          width: min(100% - 32px, 1180px);
+        }
+
+        .page-header-inner {
+          grid-template-columns: 1fr;
+          gap: 24px;
+          padding: 32px 0 28px;
+        }
+
+        h1 {
+          font-size: 30px;
+        }
+
+        .snapshot-meta {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 5px 14px;
+          align-items: baseline;
+          min-width: 0;
+        }
+
+        .snapshot-meta-value {
+          margin-bottom: 3px;
+        }
+
+        .controls {
+          grid-template-columns: 1fr;
+        }
+
+        .status-filter {
+          width: 100%;
+        }
+
+        .status-filter button {
+          flex: 1;
+        }
+
+        .result-count {
+          min-width: 0;
+          text-align: left;
+        }
+
+        .answer-grid {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+
+        .reason-item {
+          grid-template-columns: 1fr;
+          gap: 5px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .page-header-inner,
+        main,
+        .page-footer {
+          width: min(100% - 24px, 1180px);
+        }
+
+        h1 {
+          font-size: 27px;
+        }
+
+        .lead {
+          font-size: 15px;
+        }
+
+        .metric-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .metric-card,
+        .metric-card:nth-child(2n),
+        .metric-card:last-child {
+          grid-column: auto;
+          border-right: 0;
+          border-bottom: 1px solid var(--cp-border);
+        }
+
+        .metric-card:last-child {
+          border-bottom: 0;
+        }
+
+        .question-summary {
+          grid-template-columns: 38px minmax(0, 1fr);
+          gap: 10px;
+          padding: 13px 14px;
+        }
+
+        .status-badge {
+          grid-column: 2;
+          justify-self: start;
+        }
+
+        .question-detail {
+          padding: 18px 16px 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="page-header-inner">
+        <div>
+          <div class="identity">
+            <img src="./evaluation-icon.png" alt="" width="24" height="24" />
+            <span>Evaluation snapshot</span>
+          </div>
+          <h1>고객 평가셋 검증 결과</h1>
+          <p class="lead">
+            고객이 제공한 질문과 검토 정답을 기준으로, 실제 챗봇 답변을 Azure AI Evaluation의
+            다섯 가지 품질 기준으로 평가한 배포 스냅샷입니다.
+          </p>
+        </div>
+        <div class="snapshot-meta" aria-label="평가 메타데이터">
+          <p class="snapshot-meta-label">평가 문항</p>
+          <p class="snapshot-meta-value" id="meta-item-count">불러오는 중</p>
+          <p class="snapshot-meta-label">평가 시각</p>
+          <p class="snapshot-meta-value" id="meta-evaluated-at">불러오는 중</p>
+          <p class="snapshot-meta-label">Judge deployment</p>
+          <p class="snapshot-meta-value" id="meta-deployment">불러오는 중</p>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section aria-labelledby="metric-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="metric-heading">Evaluator별 결과</h2>
+            <p>점수는 1~5점이며 3점 이상을 통과로 판정합니다.</p>
+          </div>
+        </div>
+        <p class="method-note">
+          <strong>평가 해석:</strong> Groundedness, Relevance, Similarity, Coherence, Fluency는
+          서로 다른 다섯 평가 기준입니다. 서로 다른 5개 모델을 의미하지 않습니다. 모든 결과는
+          아래에 기록된 동일 judge deployment에서 생성되었습니다.
+        </p>
+        <div class="metric-grid" id="metric-grid" aria-live="polite">
+          <div class="state-message">평가 요약을 불러오는 중입니다.</div>
+        </div>
+      </section>
+
+      <section class="dataset-section" aria-labelledby="dataset-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="dataset-heading">평가셋과 문항별 판정</h2>
+            <p>질문, 고객 검토 정답, 실제 답변과 evaluator 판정 근거를 함께 제공합니다.</p>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="search-field">
+            <label for="evaluation-search">평가셋 검색</label>
+            <input
+              id="evaluation-search"
+              type="search"
+              autocomplete="off"
+              placeholder="질문, 검토 정답, 실제 답변 검색"
+            />
+          </div>
+          <div class="status-filter" role="group" aria-label="평가 상태 필터">
+            <button type="button" data-status="all" aria-pressed="true">전체</button>
+            <button type="button" data-status="pass" aria-pressed="false">전체 통과</button>
+            <button type="button" data-status="review" aria-pressed="false">검토 필요</button>
+          </div>
+          <div class="result-count" id="result-count" aria-live="polite">0개 문항</div>
+        </div>
+        <div class="question-list" id="question-list" aria-live="polite">
+          <div class="state-message">평가 문항을 불러오는 중입니다.</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="page-footer">
+      이 화면은 승인된 batch artifact에서 공개 필드만 추출한 읽기 전용 결과입니다.
+      검색 context, 내부 trace, 필터와 source payload는 포함하지 않습니다.
+    </footer>
+
+    <script>
+      const METRIC_LABELS = {
+        groundedness: "Groundedness",
+        relevance: "Relevance",
+        similarity: "Similarity",
+        coherence: "Coherence",
+        fluency: "Fluency",
+      };
+
+      const METRIC_DESCRIPTIONS = {
+        groundedness: "답변이 검색 근거에 기반하는지",
+        relevance: "질문의 의도에 직접 답하는지",
+        similarity: "고객 검토 정답과 의미가 일치하는지",
+        coherence: "답변의 구조와 논리가 자연스러운지",
+        fluency: "표현과 문장이 유창한지",
+      };
+
+      const state = {
+        rows: [],
+        query: "",
+        status: "all",
+      };
+
+      function createElement(tag, className, text) {
+        const element = document.createElement(tag);
+        if (className) element.className = className;
+        if (text !== undefined && text !== null) element.textContent = String(text);
+        return element;
+      }
+
+      function formatDate(value) {
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return value;
+        return new Intl.DateTimeFormat("ko-KR", {
+          dateStyle: "medium",
+          timeStyle: "short",
+          timeZone: "UTC",
+        }).format(parsed) + " UTC";
+      }
+
+      function allMetricsPassed(row) {
+        return Object.values(row.passed).every(Boolean);
+      }
+
+      function renderMetrics(metrics) {
+        const grid = document.getElementById("metric-grid");
+        grid.replaceChildren();
+
+        metrics.forEach((metric) => {
+          const card = createElement("article", "metric-card");
+          card.append(createElement("p", "metric-name", METRIC_LABELS[metric.name]));
+
+          const score = createElement("div", "metric-score");
+          score.append(createElement("strong", "", metric.average.toFixed(2)));
+          score.append(createElement("span", "", "/ 5"));
+          card.append(score);
+          card.append(
+            createElement(
+              "div",
+              "metric-rate",
+              `${metric.pass_rate.toFixed(1)}% 통과 · ${metric.passed}/${metric.total}`,
+            ),
+          );
+          card.append(
+            createElement("p", "metric-description", METRIC_DESCRIPTIONS[metric.name]),
+          );
+
+          const progress = createElement("div", "metric-progress");
+          progress.setAttribute("role", "progressbar");
+          progress.setAttribute("aria-label", `${METRIC_LABELS[metric.name]} 통과율`);
+          progress.setAttribute("aria-valuemin", "0");
+          progress.setAttribute("aria-valuemax", "100");
+          progress.setAttribute("aria-valuenow", String(metric.pass_rate));
+          const fill = createElement("div", "metric-progress-fill");
+          fill.style.width = `${Math.max(0, Math.min(100, metric.pass_rate))}%`;
+          progress.append(fill);
+          card.append(progress);
+          grid.append(card);
+        });
+      }
+
+      function appendAnswerBlock(parent, title, content) {
+        const block = createElement("section", "answer-block");
+        block.append(createElement("h3", "", title));
+        block.append(createElement("p", "answer-copy", content || "기록 없음"));
+        parent.append(block);
+      }
+
+      function renderQuestion(row) {
+        const passed = allMetricsPassed(row);
+        const item = createElement("details", "question-item");
+        const summary = createElement("summary", "question-summary");
+        summary.append(createElement("span", "question-id", `#${row.id}`));
+
+        const questionCopy = createElement("div", "question-copy");
+        questionCopy.append(createElement("p", "question-text", row.question));
+        questionCopy.append(createElement("div", "question-type", row.qtype));
+        summary.append(questionCopy);
+        summary.append(
+          createElement(
+            "span",
+            `status-badge ${passed ? "pass" : "review"}`,
+            passed ? "전체 통과" : "검토 필요",
+          ),
+        );
+        item.append(summary);
+
+        const detail = createElement("div", "question-detail");
+        const answerGrid = createElement("div", "answer-grid");
+        appendAnswerBlock(answerGrid, "고객 검토 정답", row.ground_truth);
+        appendAnswerBlock(answerGrid, "실제 챗봇 답변", row.answer);
+        detail.append(answerGrid);
+
+        const chips = createElement("div", "metric-chips");
+        Object.keys(METRIC_LABELS).forEach((metric) => {
+          const ok = row.passed[metric];
+          const chip = createElement("span", `metric-chip ${ok ? "pass" : "fail"}`);
+          chip.append(createElement("span", "", METRIC_LABELS[metric]));
+          chip.append(
+            createElement(
+              "strong",
+              "",
+              `${Number(row.metrics[metric]).toFixed(2)} · ${ok ? "PASS" : "FAIL"}`,
+            ),
+          );
+          chips.append(chip);
+        });
+        detail.append(chips);
+
+        const reasons = createElement("section", "reason-section");
+        reasons.append(createElement("h3", "", "Evaluator 판정 근거"));
+        Object.keys(METRIC_LABELS).forEach((metric) => {
+          const reason = createElement("div", "reason-item");
+          reason.append(createElement("div", "reason-label", METRIC_LABELS[metric]));
+          reason.append(createElement("p", "reason-copy", row.reasons[metric]));
+          reasons.append(reason);
+        });
+        detail.append(reasons);
+        item.append(detail);
+        return item;
+      }
+
+      function filteredRows() {
+        const query = state.query.trim().toLocaleLowerCase("ko-KR");
+        return state.rows.filter((row) => {
+          const passed = allMetricsPassed(row);
+          const matchesStatus =
+            state.status === "all" ||
+            (state.status === "pass" && passed) ||
+            (state.status === "review" && !passed);
+          if (!matchesStatus) return false;
+          if (!query) return true;
+          const searchable = [row.question, row.ground_truth, row.answer, row.qtype]
+            .filter(Boolean)
+            .join(" ")
+            .toLocaleLowerCase("ko-KR");
+          return searchable.includes(query);
+        });
+      }
+
+      function renderRows() {
+        const list = document.getElementById("question-list");
+        const rows = filteredRows();
+        list.replaceChildren();
+        document.getElementById("result-count").textContent = `${rows.length}개 문항`;
+
+        if (!rows.length) {
+          list.append(createElement("div", "state-message", "조건에 맞는 평가 문항이 없습니다."));
+          return;
+        }
+        rows.forEach((row) => list.append(renderQuestion(row)));
+      }
+
+      function bindControls() {
+        document.getElementById("evaluation-search").addEventListener("input", (event) => {
+          state.query = event.target.value;
+          renderRows();
+        });
+        document.querySelectorAll("[data-status]").forEach((button) => {
+          button.addEventListener("click", () => {
+            state.status = button.dataset.status;
+            document.querySelectorAll("[data-status]").forEach((candidate) => {
+              candidate.setAttribute("aria-pressed", String(candidate === button));
+            });
+            renderRows();
+          });
+        });
+      }
+
+      function renderFailure(error) {
+        const message = `평가 결과를 불러오지 못했습니다: ${error.message}`;
+        const metricGrid = document.getElementById("metric-grid");
+        const questionList = document.getElementById("question-list");
+        metricGrid.replaceChildren(createElement("div", "state-message error", message));
+        questionList.replaceChildren(createElement("div", "state-message error", message));
+      }
+
+      async function loadEvaluation() {
+        try {
+          const response = await fetch("./evaluation-data.json");
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const snapshot = await response.json();
+          if (snapshot.schema_version !== 1 || !Array.isArray(snapshot.rows)) {
+            throw new Error("지원하지 않는 평가 데이터 형식");
+          }
+
+          document.getElementById("meta-item-count").textContent =
+            `${snapshot.metadata.item_count}개`;
+          document.getElementById("meta-evaluated-at").textContent =
+            formatDate(snapshot.metadata.evaluated_at);
+          document.getElementById("meta-deployment").textContent =
+            snapshot.metadata.judge_deployment;
+          state.rows = snapshot.rows;
+          renderMetrics(snapshot.metrics);
+          renderRows();
+        } catch (error) {
+          renderFailure(error);
+        }
+      }
+
+      bindControls();
+      loadEvaluation();
+    </script>
+  </body>
+</html>

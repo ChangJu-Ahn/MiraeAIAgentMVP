@@ -1,0 +1,513 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "dataset_title": "Chatbot_질문지리스트_20260713",
+    "item_count": 16,
+    "evaluated_at": "2026-07-15T07:27:15.277010+00:00",
+    "judge_deployment": "chat",
+    "pass_threshold": 3.0
+  },
+  "metrics": [
+    {
+      "name": "groundedness",
+      "average": 4.88,
+      "pass_rate": 100.0,
+      "passed": 16,
+      "total": 16
+    },
+    {
+      "name": "relevance",
+      "average": 4.75,
+      "pass_rate": 100.0,
+      "passed": 16,
+      "total": 16
+    },
+    {
+      "name": "similarity",
+      "average": 3.88,
+      "pass_rate": 81.2,
+      "passed": 13,
+      "total": 16
+    },
+    {
+      "name": "coherence",
+      "average": 4.69,
+      "pass_rate": 100.0,
+      "passed": 16,
+      "total": 16
+    },
+    {
+      "name": "fluency",
+      "average": 5.0,
+      "pass_rate": 100.0,
+      "passed": 16,
+      "total": 16
+    }
+  ],
+  "rows": [
+    {
+      "id": "1",
+      "qtype": "미분류",
+      "question": "2025회계연도 공무원연금기금의 최종등급은?",
+      "ground_truth": "우수",
+      "answer": "2025회계연도 **공무원연금기금의 최종등급은 _우수_**입니다. [출처 1]",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "similarity": 5.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The CONTEXT provides detailed information about the 공무원연금기금, including its evaluation result for 2025, which is 최종등급 우수. The QUERY asks specifically for the 최종등급 of the 공무원연금기금 for the 2025 fiscal year. The RESPONSE accurately states that the 최종등급 is 우수 and cites the provided source [출처 1], which is consistent with the CONTEXT. The answer is fully correct, complete, and directly grounded in the CONTEXT without introducing any extraneous or incorrect information.",
+        "relevance": "The response directly answers the user's query by providing the final grade of the 2025 공무원연금기금 as '우수,' which is accurate and sufficient for the question asked.",
+        "similarity": "The predicted answer is completely similar to the correct answer, with no significant differences in content or meaning.",
+        "coherence": "Let's think step by step: The QUERY asks for the final grade of the 공무원연금기금 (Civil Servant Pension Fund) for the fiscal year 2025. The RESPONSE directly answers this question by stating that the final grade is '우수' (excellent) and provides a source reference. The response is concise, logically structured, and directly addresses the question without any ambiguity. While it is brief, it is clear and coherent, with no need for additional context or clarification. Therefore, it meets the criteria for a highly coherent response.",
+        "fluency": "The RESPONSE is written in Korean and demonstrates clear and professional language use. Grammar and syntax are correct, vocabulary is appropriate, and sentence construction is concise and natural. The use of emphasis with '**우수**' is effective and idiomatic. There are no noticeable errors or awkward phrasing, and the text is easily readable and polished."
+      },
+      "cited": true
+    },
+    {
+      "id": "2",
+      "qtype": "미분류",
+      "question": "2025회계연도 자산운용 성과점수(계량점수, 50점 만점) 상위 3개 기금은?",
+      "ground_truth": "1위 중소벤처기업창업및진흥기금 46.47 · 2위 장애인고용촉진및직업재활기금 46.22 · 3위 사립학교교직원연금기금 45.53",
+      "answer": "2025회계연도 자산운용 성과점수(계량점수, 50점 만점) 상위 3개 기금은 다음과 같습니다.  \n기준 모집단은 평가 대상 TOC 25개 중 **평가점수 집계 24개 기금**입니다. 목록상 순위 집계에 포함되지 않은 기금은 **국민연금기금**입니다. [출처 1][출처 4]\n\n1. **중소벤처기업창업및진흥기금** — **46.47점/50** [출처 1]  \n2. **장애인고용촉진및직업재활기금** — **46.22점/50** [출처 2]  \n3. **사립학교교직원연금기금** — **45.53점/50** [출처 3]\n\n원하시면 제가 이어서 **상위 10개 전체 순위**도 정리해드릴게요.",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "similarity": 4.0,
+        "coherence": 4.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the top 3 funds based on asset management performance scores for the 2025 fiscal year. The CONTEXT provides detailed rankings and scores for 24 funds out of a total of 25 evaluated funds. The RESPONSE correctly identifies the top 3 funds as '중소벤처기업창업및진흥기금', '장애인고용촉진및직업재활기금', and '사립학교교직원연금기금' with their respective scores, which are consistent with the CONTEXT. Additionally, the RESPONSE clarifies that the rankings are based on the 24 funds with available scores and mentions that '국민연금기금' is excluded from the rankings due to the absence of a score, which aligns with the CONTEXT. The RESPONSE is accurate, complete, and directly addresses the QUERY without introducing extraneous information.",
+        "relevance": "The response directly answers the user's query by listing the top 3 funds with their respective scores and provides additional context about the evaluation criteria and excluded funds. It is complete and informative.",
+        "similarity": "The predicted answer is mostly similar to the correct answer, providing the same key information about the top 3 funds and their scores, but includes additional context and formatting.",
+        "coherence": "Let's think step by step: The RESPONSE directly addresses the QUERY by identifying the top 3 funds with the highest performance scores for the 2025 fiscal year. It provides a clear and logical structure, listing the funds in descending order of their scores and including specific details such as the scores and sources for each fund. The RESPONSE also clarifies the evaluation population and mentions an excluded fund, which adds context and transparency. The flow is smooth, and the information is easy to follow. While the RESPONSE does not delve into additional analysis or explanation, it fully meets the requirements of the QUERY in a coherent and organized manner.",
+        "fluency": "The RESPONSE is written in Korean and demonstrates a high level of fluency. Grammar and syntax are correct throughout, with no noticeable errors. Vocabulary is precise and appropriate for the context, which appears to be a formal or professional report on financial performance. Sentence construction is clear and well-organized, with effective use of formatting (e.g., bold text and bullet points) to enhance readability. The tone is professional and natural, and the text adheres to conventions of Korean written communication. There are no language defects that impede understanding or reduce the quality of the text."
+      },
+      "cited": true
+    },
+    {
+      "id": "3",
+      "qtype": "미분류",
+      "question": "2025회계연도 공무원연금기금 '중장기자산 3년 운용수익률' 지표의 평가점수와 등급은?",
+      "ground_truth": "점수 9.6, 등급 탁월 (지표값 12.21%)",
+      "answer": "2025회계연도 **공무원연금기금**의 **‘중장기자산 3년 운용수익률’** 지표는 **평가점수 9.6점**, **등급 탁월**입니다.  \n(지표값: 12.21%) [출처 1]",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "similarity": 5.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the evaluation score and grade of the '중장기자산 3년 운용수익률' indicator for the 2025 fiscal year of the 공무원연금기금. The CONTEXT provides the relevant information, stating that the evaluation score is 9.6 and the grade is '탁월', along with the indicator value of 12.21%. The RESPONSE accurately restates this information, including the evaluation score, grade, and indicator value, and cites the source. The RESPONSE is fully grounded in the CONTEXT, directly addressing the QUERY without introducing any extraneous or incorrect information.",
+        "relevance": "The response directly answers the user's query by providing the evaluation score (9.6 points), the grade ('탁월'), and the specific indicator value (12.21%). It is complete and fully relevant.",
+        "similarity": "The predicted answer is completely similar to the correct answer, with no significant differences in content or meaning.",
+        "coherence": "Let's think step by step: The QUERY asks for the evaluation score and grade of the '3-year performance of mid-to-long-term assets' indicator for the 2025 fiscal year public officials' pension fund. The RESPONSE directly addresses the QUERY by providing the requested evaluation score (9.6 points) and grade (excellent), along with the indicator value (12.21%) and a source reference. The information is presented in a clear and logical manner, with no ambiguity or need for inference. The RESPONSE is concise and well-structured, making it easy to follow and understand. Therefore, it meets the criteria for a highly coherent response.",
+        "fluency": "The response is written in fluent Korean with proper grammar, syntax, and vocabulary. The sentence construction is clear and professional, using formal language appropriate for reporting financial data. The use of quotation marks and parentheses is correct, and the numerical data is presented in a structured and readable manner. There are no noticeable errors or awkward phrasing, and the text is idiomatic and polished."
+      },
+      "cited": true
+    },
+    {
+      "id": "4",
+      "qtype": "미분류",
+      "question": "2025회계연도 공무원연금기금 비계량 항목 '자산운용 위험관리의 효율성'의 최종등급은?",
+      "ground_truth": "우수 (사전등급 양호→최종 우수)",
+      "answer": "2025회계연도 공무원연금기금의 비계량 항목 **‘자산운용 위험관리의 효율성’ 최종등급은 ‘우수’**입니다. [출처 1] [출처 2]  \n- 근거: 2025년 평가결과 총괄표의 비계량지표 **(3) 자산운용 집행 > 2 자산운용 위험관리의 효율성**에서 **최종등급 ‘우수’**로 제시되어 있습니다. [출처 2, p.498]",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "similarity": 5.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the 2025 fiscal year '자산운용 위험관리의 효율성' (Asset Management Risk Management Efficiency) final grade for the 공무원연금기금 (Public Officials Pension Fund). The CONTEXT provides detailed evaluation results, including the specific mention of '자산운용 위험관리의 효율성' under 비계량지표 (non-quantitative indicators) with a final grade of '우수' (Excellent). The RESPONSE correctly identifies the final grade as '우수' and provides supporting evidence from the CONTEXT, referencing the relevant section. The RESPONSE is accurate, complete, and directly grounded in the CONTEXT without introducing extraneous information. Therefore, it fully meets the criteria for a score of 5.",
+        "relevance": "The response directly and accurately answers the user's query by providing the final grade ('우수') for the specified item in the 2025 fiscal year. It also includes a clear reference to the source of the information, making it complete and reliable.",
+        "similarity": "The predicted answer is completely similar to the correct answer, with equivalent content and information presented in a detailed manner.",
+        "coherence": "Let's think step by step: The RESPONSE directly addresses the QUERY by providing the final grade for the specified item ('자산운용 위험관리의 효율성') in the 2025 fiscal year public officials' pension fund evaluation. The information is presented in a clear and logical manner, with the grade ('우수') explicitly stated and supported by a reference to the evaluation summary table. The RESPONSE also includes specific details about the source of the information, enhancing its clarity and coherence. The ideas are well-organized, and the flow is smooth, making it easy to follow. Therefore, the RESPONSE meets the criteria for a highly coherent response.",
+        "fluency": "The RESPONSE is written in Korean and demonstrates a high level of fluency. Grammar and syntax are correct, and the vocabulary is appropriate for the formal and professional context. Sentence construction is clear and concise, with no awkward phrasing or errors. The use of emphasis (e.g., bold text) and references to sources adds to the readability and professionalism. The RESPONSE is natural and well-structured, with no meaningful language defects."
+      },
+      "cited": true
+    },
+    {
+      "id": "5",
+      "qtype": "미분류",
+      "question": "2025회계연도 고용보험기금의 가감점 항목과 점수는?",
+      "ground_truth": "혁신성장 투자 +1.0 (총 +1.0)",
+      "answer": "2025회계연도 **고용보험기금**의 가감점 항목과 점수는 다음과 같습니다.\n\n- **혁신성장 투자**: **+1점**\n- **총 가감점**: **+1점** [출처 1]\n\n원하시면 이어서 **가점/감점의 세부 근거**까지 찾아드릴게요.",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "similarity": 4.0,
+        "coherence": 4.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the '가감점 항목과 점수' (adjustment items and scores) for the 2025 fiscal year 고용보험기금 (Employment Insurance Fund). The CONTEXT provides the relevant information, stating '혁신성장 투자: +1' and '총 가감점: +1'. The RESPONSE accurately lists these items and scores, including the source '[출처 1]' mentioned in the CONTEXT. Additionally, the RESPONSE offers to provide further details if needed, which does not detract from its groundedness. Therefore, the RESPONSE is fully correct and complete, directly addressing the QUERY with precise information from the CONTEXT.",
+        "relevance": "The response directly addresses the user's query by listing the specific adjustment items and scores for the 2025 고용보험기금. It also offers to provide further details, making it relevant and sufficient.",
+        "similarity": "The predicted answer is mostly similar to the correct answer, with minor differences in formatting and additional details.",
+        "coherence": "Let's think step by step: The response directly addresses the query by providing information about the adjustment items and scores for the 2025 Employment Insurance Fund. The response is logically organized, starting with a clear introduction and then listing the relevant information in a structured format. The use of bullet points enhances readability, and the response flows smoothly. However, the response is brief and does not elaborate on the details or provide additional context about the scoring system or the significance of the adjustment items. While it is coherent and easy to follow, it lacks depth and completeness, which prevents it from achieving the highest score.",
+        "fluency": "The response is written in Korean and demonstrates clear and professional language use. Grammar and syntax are correct, and the vocabulary is appropriate for the context. Sentence construction is concise and natural, with no noticeable errors or awkward phrasing. The use of formatting (e.g., bold text) enhances readability and clarity. Overall, the text is polished and idiomatic, suitable for professional communication."
+      },
+      "cited": true
+    },
+    {
+      "id": "6",
+      "qtype": "미분류",
+      "question": "공무원연금기금의 2023~2025회계연도 최종등급 추이는?",
+      "ground_truth": "2023 우수 · 2024 우수 · 2025 우수 (3년 연속 우수 유지)",
+      "answer": "공무원연금기금의 **2023~2025회계연도 최종등급 추이**는, 제공된 자료 기준으로는 **2025년만 확인 가능**합니다.\n\n- **2023회계연도:** 제공된 자료에서 확인할 수 없음 [출처 1]\n- **2024회계연도:** 제공된 자료에서 확인할 수 없음 [출처 2]\n- **2025회계연도:** **우수** [출처 3]\n\n따라서 **2023~2025의 연속 추이**는 현재 제공된 자료만으로는 완전히 제시할 수 없고, **확인 가능한 범위에서는 2025년에 최종등급 ‘우수’**입니다. [출처 1][출처 2][출처 3]",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "similarity": 2.0,
+        "coherence": 4.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": false,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the final grade trends of the Public Officials Pension Fund for the fiscal years 2023 to 2025. The CONTEXT explicitly states that the reports for 2023 and 2024 are not available in the corpus, and only the 2025 report is provided, which indicates a grade of 'Excellent'. The RESPONSE correctly states that the grades for 2023 and 2024 cannot be confirmed due to the lack of data and accurately provides the grade for 2025 as 'Excellent'. It also clarifies that a continuous trend cannot be established due to the missing data. The RESPONSE is fully grounded in the CONTEXT, directly addressing the QUERY without introducing any extraneous or incorrect information.",
+        "relevance": "The response directly addresses the user's query about the 2023-2025 fiscal year ratings for the 공무원연금기금. It provides specific information for 2025 and clarifies the lack of data for 2023 and 2024, making it a complete and relevant answer.",
+        "similarity": "The predicted answer provides partial information and does not fully align with the correct answer, as it only confirms the 2025 rating and lacks details for 2023 and 2024.",
+        "coherence": "Let's think step by step: The response directly addresses the query about the final ratings of the 공무원연금기금 for the 2023–2025 fiscal years. It provides a clear and logical explanation, stating that data for 2023 and 2024 is unavailable while the 2025 rating is '우수.' The response is well-structured, with each fiscal year addressed separately and supported by references to sources. The conclusion summarizes the findings effectively, noting the limitation of the data and emphasizing the available information. The ideas are presented in a logical sequence, and the response is easy to follow. Therefore, the response is coherent and effectively addresses the query.",
+        "fluency": "The response is written in fluent Korean with clear grammar, syntax, and vocabulary. Sentence construction is logical and professional, and the text is easy to read and understand. The use of bold formatting for emphasis is appropriate and enhances readability. There are no noticeable language errors, and the expression is precise and idiomatic. The text adheres to conventions of formal Korean writing, making it polished and well-structured."
+      },
+      "cited": true
+    },
+    {
+      "id": "7",
+      "qtype": "미분류",
+      "question": "2025회계연도 고용보험기금 종합의견의 핵심 3~4가지는?",
+      "ground_truth": "기금 개요 정리 후 평가에서 긍정적 요소, 부정적 요소를 요약",
+      "answer": "2025회계연도 **고용보험기금 종합의견**의 핵심은 아래 4가지로 정리할 수 있습니다.\n\n1. **전체 자산운용 성과는 ‘양호’**\n   - 전체 자산운용 성과는 **30.69점(50점 만점)**으로 **‘양호’** 등급이었습니다.  \n   - 비계량 지표도 전반적으로 양호했고, 계량 성과도 무난하게 받쳐줬습니다. [출처 6][출처 10]\n\n2. **강점은 단기자산 운용 성과**\n   - 단기자산 수익률 및 적정유동성 지표가 **‘탁월’**이었고, 특히 **3개월 미만 랩어카운트 운용 성과**가 좋았던 점이 크게 작용했습니다. [출처 6][출처 10]\n\n3. **중장기자산은 ‘양호’지만, 더 끌어올릴 필요가 있음**\n   - 중장기자산 수익률은 **‘양호’**였지만, **3년 운용수익률은 ‘보통’** 수준이었습니다.  \n   - 전체 자산의 대부분을 차지하는 중장기자산에서 추가 성과 개선 노력이 필요하다고 평가했습니다. [출처 6][출처 10]\n\n4. **운용체계는 대체로 적정하나, 몇 가지 개선점이 있음**\n   - 현금흐름 분석, ALM 기반 목표수익률 설정, 위험관리 체계 등은 대체로 적정하게 운영되고 있습니다.  \n   - 다만 **위원회 구성·운영의 동일성 문제**, **일부 위원회 출석률 저조**, 그리고 **해외 대체투자 벤치마크의 적정성·대표성 개선 필요**가 지적되었습니다. [출처 7][출처 1]\n\n원하시면 제가 이걸 바탕으로 **“한 줄 요약”** 또는 **“좋은 점 / 아쉬운 점” 2분류**로 더 압축해드릴게요.",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "similarity": 2.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": false,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the core 3-4 points of the 2025 fiscal year comprehensive opinion on the Employment Insurance Fund. The CONTEXT provides detailed information about the fund's performance, asset management, and evaluation metrics. The RESPONSE identifies four key points, including overall asset performance ('양호'), strengths in short-term asset management ('탁월'), areas for improvement in mid-to-long-term asset management, and operational system adequacy with noted improvement areas. These points align well with the CONTEXT, accurately summarizing the key aspects provided. The RESPONSE does not introduce unrelated or incorrect information and is complete and precise in addressing the QUERY.",
+        "relevance": "The response directly addresses the user's query by providing a detailed summary of the 2025 고용보험기금 종합의견's key points, covering all essential aspects comprehensively and clearly.",
+        "similarity": "The predicted answer provides detailed information but diverges significantly from the correct answer's focus on summarizing positive and negative aspects of the fund evaluation.",
+        "coherence": "Let's think step by step: The RESPONSE directly addresses the QUERY by providing a clear and structured list of the key points related to the 2025 fiscal year employment insurance fund's comprehensive opinion. Each point is logically organized, with supporting details and examples provided for clarity. The use of headings and bullet points enhances readability and ensures a logical flow of ideas. The RESPONSE also offers additional options for further summarization or categorization, demonstrating a thorough understanding of the QUERY. There are no abrupt transitions or unclear connections between ideas, making the RESPONSE easy to follow.",
+        "fluency": "The response is written in Korean and demonstrates a high level of fluency and professionalism. Grammar and syntax are accurate, and the vocabulary is appropriate for the formal and analytical tone of the content. Sentence construction is clear and well-organized, with effective use of bullet points and subheadings to enhance readability. The text employs idiomatic expressions and technical terms correctly, such as '양호,' '탁월,' and 'ALM 기반 목표수익률 설정,' which are relevant to the context of financial performance evaluation. There are no noticeable errors or awkward phrasing, and the overall structure is logical and easy to follow. The use of references (e.g., '[출처 6][출처 10]') adds credibility and professionalism to the writing."
+      },
+      "cited": true
+    },
+    {
+      "id": "8",
+      "qtype": "미분류",
+      "question": "2026회계연도 기금운용평가지침에서 계량(자산운용 성과) 평가는 어떤 지표 범주로 구성되는가?",
+      "ground_truth": "(2026 평가지침 근거) ① 단기자산의 수익률 ② 중장기자산의 수익률 ③ 위험 대비 성과 ④ 운용상품 집중도 ⑤ 공공성 확보 노력도",
+      "answer": "제공된 자료에서는 **2026회계연도 기금운용평가지침**이 corpus에 없어, 계량(자산운용 성과) 평가가 어떤 지표 범주로 구성되는지 **확인할 수 없습니다**. 다른 연도 지침으로 대체해 추정할 수는 없습니다. [출처 1]",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "similarity": 1.0,
+        "coherence": 4.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": false,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The CONTEXT explicitly states that the corpus does not contain the 2026 fiscal year fund management evaluation guidelines, and only guidelines for 2021 and 2022 are provided. The QUERY asks about the metrics used in the 2026 guidelines for quantitative (asset management performance) evaluation. The RESPONSE correctly states that the 2026 guidelines are not available in the corpus and that it cannot confirm the metrics used for evaluation. It also appropriately avoids making assumptions based on other years' guidelines. This aligns fully with the CONTEXT and directly addresses the QUERY without introducing unrelated or incorrect information.",
+        "relevance": "The response directly addresses the user's query by acknowledging the lack of information about the 2026 guidelines and clarifies that no assumptions can be made based on other years. However, it does not provide any additional insights or alternative suggestions.",
+        "similarity": "The predicted answer does not provide any equivalent information to the correct answer and explicitly states that the information cannot be confirmed.",
+        "coherence": "Let's think step by step: The response directly addresses the query by stating that the specific information about the 2026 fiscal year's fund management evaluation guidelines is not available in the provided data. It also clarifies that it cannot make assumptions based on other years' guidelines. The response is logically structured, clear, and easy to follow. However, it does not provide additional context or elaboration that could enhance the reader's understanding, such as explaining what might typically be included in such guidelines or why the information is unavailable. Therefore, while the response is coherent and addresses the question, it does not reach the level of sophistication and thoroughness required for a score of 5.",
+        "fluency": "The RESPONSE is written in fluent Korean with precise grammar, appropriate vocabulary, and clear sentence construction. The use of technical terms such as '2026회계연도 기금운용평가지침' and '계량(자산운용 성과) 평가' demonstrates domain-specific knowledge. The phrasing is natural and professional, with no noticeable errors or awkwardness. The readability is high, and the text is idiomatic and polished."
+      },
+      "cited": true
+    },
+    {
+      "id": "9",
+      "qtype": "미분류",
+      "question": "미래에셋자산운용의 2025회계연도 기금운용평가 최종등급은?",
+      "ground_truth": "미래에셋자산운용은 평가대상 기금이 아님(조회 결과 없음)",
+      "answer": "미래에셋자산운용은 **2025회계연도 기금운용평가 대상 기금 목록에 포함되지 않습니다**. 따라서 해당 명칭으로는 **최종등급을 확인할 수 없습니다**.  \n2025년 평가 대상 기금은 25개이며, 목록에 미래에셋자산운용은 없습니다. [출처 1]\n\n원하시면 **실제 평가 대상 기금명**으로 다시 조회해드릴게요.",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "similarity": 4.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks about the final grade for '미래에셋자산운용' in the 2025 fiscal year fund management evaluation. The CONTEXT explicitly states that '미래에셋자산운용' is not found among the 25 funds listed for evaluation in 2025. The RESPONSE correctly states that '미래에셋자산운용' is not included in the evaluation list and therefore its final grade cannot be confirmed. It also provides additional clarification that the evaluation list contains 25 funds and offers to assist further if needed. The RESPONSE is fully grounded in the CONTEXT, accurately addressing the QUERY without introducing any extraneous or incorrect information.",
+        "relevance": "The response directly addresses the user's query by explaining that 미래에셋자산운용 is not included in the 2025 evaluation and provides additional context about the number of funds evaluated. It also offers to assist further if needed.",
+        "similarity": "The predicted answer is mostly similar to the correct answer, providing equivalent information with slight differences in phrasing and additional details.",
+        "coherence": "Let's think step by step: The response directly addresses the query by stating that 미래에셋자산운용 is not included in the list of funds evaluated for the 2025 fiscal year and therefore does not have a final grade. It provides a clear and logical explanation, including the number of funds evaluated and offering to assist further if the actual fund name is provided. The ideas are well-organized, and the response flows smoothly, making it easy to follow and understand. The use of bold text for emphasis also helps highlight key points. Overall, the response is coherent and effectively answers the query.",
+        "fluency": "The response is written in Korean and demonstrates a high level of fluency. Grammar and syntax are correct, and the vocabulary is appropriate for the context. Sentence construction is clear and professional, with no awkward phrasing or errors. The use of emphasis through bold text (e.g., '**2025회계연도 기금운용평가 대상 기금 목록에 포함되지 않습니다**') is effective and natural. The tone is formal and suitable for the context, and the readability is excellent. There are no meaningful language defects."
+      },
+      "cited": true
+    },
+    {
+      "id": "10",
+      "qtype": "미분류",
+      "question": "2021회계연도 기금운용평가 결과를 총평하면?",
+      "ground_truth": "총 32개 기금. 탁월5·우수9·양호16·보통1·아주미흡1(양호 최다). 최상위 탁월5=공무원연금·사학연금·산재·장애인고용·중소벤처. 최하위 농어가목돈마련저축장려기금(아주미흡, 계량 9.11). 계량 1·2위 사학연금 48.09·중소벤처 47.24",
+      "answer": "2021회계연도 기금운용평가를 총평하면, **종합등급이 확인되는 모집단은 32개**였고, **평가대상 TOC는 33개**였습니다. 그중 **국민연금기금은 2021년 평가 결과에서 연간 종합등급(overall_grade)이 확인되지 않아** 이번 종합등급 분포·순위 집계에서는 제외됐습니다. [출처 34][출처 35][출처 1][출처 2]\n\n- **종합등급 분포**: 탁월 5개, 우수 9개, 양호 16개, 보통 1개, 아주미흡 1개로, **양호가 최다**였습니다. [출처 1]\n- **탁월 기금 5개**: 공무원연금기금, 사립학교교직원연금기금, 산업재해보상보험및예방기금, 장애인고용촉진및직업재활기금, 중소벤처기업창업및진흥기금. [출처 1]\n- **최하위 종합등급**: 농어가목돈마련저축장려기금(아주미흡), 그다음이 국제질병퇴치기금(보통)입니다. [출처 1]\n- **자산운용 성과점수 상위 3개**:  \n  1위 사립학교교직원연금기금 48.09/50,  \n  2위 중소벤처기업창업및진흥기금 47.24/50,  \n  3위 공무원연금기금 46.71/50입니다. [출처 2]\n- **자산운용 성과점수 최하위**: 농어가목돈마련저축장려기금 9.11/50입니다. [출처 2]\n\n**한줄평**: 2021년은 **양호 등급 중심의 안정적 분포**였고, 상위권에는 연금·고용·산재 관련 기금이 많이 포진했으며, 하위권은 농어가목돈마련저축장려기금과 국제질병퇴치기금이었습니다. [출처 1][출처 2]",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "similarity": 4.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for a summary of the 2021 fiscal year fund operation evaluation results. The RESPONSE provides a detailed summary, including the distribution of overall grades, the exclusion of the National Pension Fund from the overall grade distribution, the top-performing funds, and the lowest-performing funds. It also mentions the stability of the distribution and highlights key points about the rankings and grades. All the information provided in the RESPONSE is directly supported by the CONTEXT, and no extraneous or incorrect information is introduced. The RESPONSE is accurate, complete, and fully grounded in the CONTEXT.",
+        "relevance": "The response directly addresses the user's query by summarizing the 2021 fiscal year fund management evaluation results, including key metrics, rankings, and a concise overall assessment. It provides detailed and relevant information, fully satisfying the user's request.",
+        "similarity": "The predicted answer is mostly similar to the correct answer, with detailed overlap in key points such as the distribution of grades, top-performing funds, and the lowest-performing fund. However, there are minor differences in phrasing and additional details in the predicted answer.",
+        "coherence": "Let's think step by step: The RESPONSE directly addresses the QUERY by summarizing the results of the 2021 fiscal year fund operation evaluation. It provides a clear and logical structure, starting with an overview of the evaluation scope and results, followed by specific details such as the distribution of grades, the top-performing funds, and the lowest-performing funds. The RESPONSE uses appropriate transitions and organizes the information in a way that is easy to follow. Additionally, it concludes with a concise summary ('한줄평') that encapsulates the key findings. The ideas are presented in a logical sequence, and the RESPONSE is coherent and easy to understand. Therefore, it meets the criteria for a score of 5.",
+        "fluency": "The response is written in Korean and demonstrates a high level of fluency. Grammar and syntax are correct throughout, with no noticeable errors. Vocabulary is precise and appropriate for the formal and analytical tone of the content. Sentence construction is clear and well-organized, with effective use of bullet points and formatting to enhance readability. The text flows naturally and is professionally structured, making it easy to follow. The use of parentheses and brackets for additional information and citations is consistent and appropriate. Overall, the response is polished and idiomatic, with no meaningful language defects."
+      },
+      "cited": true
+    },
+    {
+      "id": "11",
+      "qtype": "미분류",
+      "question": "2021과 2022 회계연도 평가결과의 공통점과 차이점은?",
+      "ground_truth": "[공통] 사학연금·중소벤처 두 해 탁월·계량 1·2위 고정, 양호 최다층, 공통 18개 중 15개 등급 유지. [차이] 대상 32→29 감소, 탁월 5→4, 하위등급 확대(2022 보통5·미흡1), 공무원연금·산재 탁월→우수 하락·정보통신 우수→탁월 상승",
+      "answer": "2021년과 2022년 **회계연도 기금운용 평가결과(연간 종합평가표, overall_grade)**를 비교하면, **공통점은 일부 등급 구조와 다수 기금의 등급 유지**이고, **차이점은 전체 분포의 약화와 일부 기금의 등급 변동**입니다.  \n(비교 대상은 **평가완료 기금** 기준이며, 2021년 32개, 2022년 30개입니다.) [출처 1][출처 2]\n\n### 공통점\n- 두 해 모두 **우수·양호 등급이 주된 분포**를 이뤘습니다.  \n  - 2021년: 탁월 5, 우수 9, 양호 16, 보통 1, 아주미흡 1 [출처 2]  \n  - 2022년: 탁월 4, 우수 9, 양호 11, 보통 5, 미흡 1 [출처 1]\n- **우수 등급은 두 해 모두 9개**로 동일했습니다. [출처 1][출처 2]\n- 공통 비교 가능한 19개 기금 중 **16개는 등급이 유지**되었습니다. [출처 1]\n\n### 차이점\n- **평가 대상 기금 수가 감소**했습니다.  \n  - 2021년: 32개(TOC 33개) [출처 2]  \n  - 2022년: 30개(TOC 31개) [출처 1]\n- **탁월 등급은 5개 → 4개로 감소**했습니다. [출처 1][출처 2]\n- **양호 등급은 16개 → 11개로 감소**했습니다. [출처 1][출처 2]\n- **보통 등급은 1개 → 5개로 증가**했습니다. [출처 1][출처 2]\n- 최하위 등급도 달랐습니다.  \n  - 2021년: **아주미흡 1개** [출처 2]  \n  - 2022년: **미흡 1개** [출처 1]\n- 등급 변동 사례도 있었습니다.  \n  - **공무원연금기금**: 탁월 → 우수 [출처 2][출처 1]  \n  - **산업재해보상보험및예방기금**: 탁월 → 우수 [출처 2][출처 1]  \n  - **정보통신진흥기금**: 우수 → 탁월 [출처 2][출처 1]\n\n### 한줄 요약\n- **2021년이 2022년보다 전반적으로 더 우수한 분포**였고, 2022년은 **탁월·양호가 줄고 보통이 늘어** 평가가 다소 약화된 모습입니다. [출처 1][출처 2]\n\n원하시면 다음 단계로  \n1) **등급별 기금 목록 차이**, 또는  \n2) **각 기금의 2021→2022 변동표**  \n형태로 더 정리해드릴게요.",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "similarity": 4.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the commonalities and differences between the 2021 and 2022 fiscal year evaluation results. The RESPONSE provides a detailed comparison, including the distribution of grades, the number of funds evaluated, and specific changes in fund grades. It accurately references the CONTEXT data, such as the decrease in '탁월' and '양호' grades, the increase in '보통' grades, and the specific examples of grade changes for certain funds. The RESPONSE is fully grounded in the CONTEXT, addressing the QUERY comprehensively and without introducing unrelated or incorrect information.",
+        "relevance": "The response thoroughly compares the 2021 and 2022 fiscal year evaluation results, addressing both similarities and differences with detailed data and insights. It also offers a concise summary and additional options for further analysis, enhancing the user's understanding.",
+        "similarity": "The predicted answer is mostly similar to the correct answer, capturing the key points of commonalities and differences in the evaluation results, though with some additional details and slight differences in phrasing.",
+        "coherence": "Let's think step by step: The RESPONSE directly addresses the QUERY by comparing the commonalities and differences between the 2021 and 2022 fiscal year evaluation results. It is well-organized, with clear sections for '공통점' (commonalities) and '차이점' (differences), and provides specific details supported by data and sources. The ideas are logically sequenced, and transitions between points are smooth. The RESPONSE also includes a concise summary and offers additional options for further elaboration, enhancing its clarity and coherence. Overall, the RESPONSE is highly coherent and easy to follow.",
+        "fluency": "The response is written in Korean and demonstrates a high level of fluency and professionalism. Grammar and syntax are accurate throughout, with no noticeable errors. Vocabulary is precise and appropriate for the context, employing technical and formal terms such as '회계연도,' '기금운용,' and '등급 변동' effectively. Sentence construction is varied and well-structured, with clear use of bullet points, subheadings, and parenthetical notes to enhance readability. The text flows naturally, and the information is presented in a logical and organized manner. The use of sources ('출처') and numerical data further supports the clarity and professionalism of the writing. There are no significant issues that detract from the readability or naturalness of the text."
+      },
+      "cited": true
+    },
+    {
+      "id": "12",
+      "qtype": "미분류",
+      "question": "고용보험기금의 2021·2022 평가에서 긍정적 평가와 부정적 평가는?",
+      "ground_truth": "[긍정] 전담운용체계·거버넌스 적정, BCP 명문화·COVID 유동성 통제, 주간운용사 전문성 수익률 상회, 계량성과 상승(우수→탁월). [부정] 위원 겸직·참석률 저조, 단기자금 비중 증가 지속, 법정 적립배율 미달 지속, (2021) 산재와 차별화·규정 미비",
+      "answer": "고용보험기금의 **2021년 평가**와 **2022년 평가**를 나눠서 보면 다음과 같습니다.\n\n### 2021년 평가\n**긍정적 평가**\n- 재난상황 대응을 위한 **업무연속성계획(BCP)을 리스크관리규정에 명문화**했고, 위기상황 대응 측면에서 모범사례로 평가되었습니다.\n- **주간운용사의 전문성 있는 자산운용**으로 운용수익률이 목표수익률 및 기준수익률을 크게 상회했고, **계량평가에서 ‘우수’**를 받았습니다.\n- **중장기자산 3년 운용수익률은 ‘탁월’**, **중장기자산 1년 상대수익률은 ‘양호’**, **운용상품 집중도는 ‘우수’**로 평가되었습니다. [출처 2 p.409, 출처 12 p.423, 출처 13 p.421, 출처 15 p.419]\n\n**부정적 평가**\n- **산재보험기금과 리스크관리규정·성과평가규정이 동일**하고, 주요 위원회 위원이 **산재보험기금 위원과 겸직**하는 점이 문제로 지적되었습니다.\n- **고용보험운영전문위원회의 역할이 불필요**하다고 보아 자산운용 의사결정체계에서 제외 권고가 나왔습니다.\n- **현금성자금 보유도는 ‘보통’**으로, 개선이 필요하다고 평가되었습니다.\n- **목표수익률 대비 요인분해 결과와 위험대비 성과평가 결과를 자산배분정책에 충분히 반영하지 못했다**는 점도 지적되었습니다. [출처 2 p.409, 출처 4 p.419, 출처 1 p.423]\n\n---\n\n### 2022년 평가\n**긍정적 평가**\n- 2022년에는 **계량평가에서 ‘탁월’** 등급을 획득했습니다.\n- **중장기자산 수익률**과 **위험대비 성과**가 모두 **‘탁월’**했고, **중장기자산 3년 운용수익률·1년 상대수익률도 모두 ‘탁월’**로 평가되었습니다.\n- **단기자산 수익률과 적정 유동성도 ‘탁월’**했고, **운용상품 집중도는 ‘양호’**로 평가되었습니다.\n- 투자환경 변화 검토와 현금성자금 계획 조정 등 **투자집행의 적절성**은 전반적으로 긍정적으로 평가되었습니다. [출처 17 p.371, 출처 18 p.370, 출처 19 p.365, 출처 20 p.368]\n\n**부정적 평가**\n- **자산운용위원회·리스크관리위원회·성과평가위원회 위원 겸직** 문제가 계속 지적되었습니다.\n- **고용보험기금과 산재보험기금의 규정 차별화 미흡**, **위원 수의 최소 기준 부재**도 문제로 제시되었습니다.\n- **위원회 참석률 하락**, 그리고 **심의안건이 모두 원안 의결**된 점 때문에 실질적 토론이 충분했는지 확인이 필요하다고 보았습니다.\n- **단기자금 비중이 2020~2022년에 크게 증가**한 점과, **현금성자금 보유도 ‘미흡’**은 개선 과제로 지적되었습니다. [출처 9 p.357, 출처 19 p.365, 출처 17 p.371]\n\n원하시면 다음 답변에서 제가 이를 **“2021 vs 2022 비교표”** 형태로 깔끔하게 정리해드릴게요.",
+      "metrics": {
+        "groundedness": 4.0,
+        "relevance": 5.0,
+        "similarity": 4.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the positive and negative evaluations of the 고용보험기금 (Employment Insurance Fund) for the years 2021 and 2022. The CONTEXT provides detailed information about the fund's performance, evaluations, and criticisms for both years. The RESPONSE attempts to summarize the positive and negative evaluations for each year. Upon review, the RESPONSE captures many key points from the CONTEXT, such as the '우수' and '탁월' ratings, the issues with 산재보험기금 (Industrial Accident Insurance Fund) regulations, and the criticisms regarding committee roles and cash management. However, the RESPONSE introduces some details that are not explicitly stated in the CONTEXT, such as '업무연속성계획(BCP)' being a positive factor in 2021, which is not mentioned in the CONTEXT. Additionally, some points in the RESPONSE are overly generalized or lack direct grounding in the CONTEXT, such as the mention of '위원회 참석률 하락' in 2022, which is not explicitly stated. While the RESPONSE is mostly accurate and relevant, these discrepancies and ungrounded additions prevent it from being fully correct and complete.",
+        "relevance": "The response directly addresses the user's query by providing a detailed breakdown of both positive and negative evaluations for the Employment Insurance Fund in 2021 and 2022. It is comprehensive and well-structured, offering clear insights into the evaluations.",
+        "similarity": "The predicted answer is mostly similar to the correct answer, capturing the key points and details, though it is more verbose and includes additional formatting.",
+        "coherence": "Let's think step by step: The RESPONSE is highly detailed and logically structured, addressing the QUERY about the positive and negative evaluations of the Employment Insurance Fund in 2021 and 2022. The information is clearly divided into two sections, one for each year, and further subdivided into positive and negative evaluations. Each point is supported by specific details and references, and the ideas are presented in a logical sequence. The RESPONSE also offers to provide a comparison table for further clarity, demonstrating an effort to enhance understanding. The use of headings and bullet points ensures that the information is easy to follow. Overall, the RESPONSE is exceptionally coherent and thoroughly addresses the QUERY.",
+        "fluency": "The response is written in Korean and demonstrates a high level of fluency and professionalism. Grammar and syntax are accurate throughout, with no noticeable errors. Vocabulary is precise and appropriate for the formal and analytical tone of the content. Sentence construction is varied and well-structured, with clear delineation between positive and negative evaluations for each year. The use of formatting, such as bold text and bullet points, enhances readability and organization. The text flows naturally and is easy to follow, even for complex content. References to sources are properly integrated, further supporting the professional tone."
+      },
+      "cited": true
+    },
+    {
+      "id": "13",
+      "qtype": "미분류",
+      "question": "2021 대비 2022에 등급이 하락·상승한 기금은?",
+      "ground_truth": "하락: 공무원연금기금·산업재해보상보험및예방기금(탁월→우수). 상승: 정보통신진흥기금(우수→탁월)",
+      "answer": "2021년과 2022년을 **공통 비교 가능한 기금 19개** 기준으로 보면, 등급이 변동한 기금은 3개였습니다. 그중 **하락 2개, 상승 1개**입니다. [출처 1][출처 2]\n\n- **하락**\n  - 공무원연금기금: **탁월 → 우수** [출처 1][출처 2]\n  - 산업재해보상보험및예방기금: **탁월 → 우수** [출처 1][출처 2]\n\n- **상승**\n  - 정보통신진흥기금: **우수 → 탁월** [출처 1][출처 2]\n\n참고로, 이 비교에서 **16개 기금은 등급이 유지**되었습니다. [출처 2]",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "similarity": 4.0,
+        "coherence": 4.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the funds whose grades changed (either increased or decreased) between 2021 and 2022. The CONTEXT provides detailed information about the grade changes for 19 funds, including those that experienced a rise, a fall, or remained unchanged. The RESPONSE correctly identifies the funds with grade changes: two funds with a decrease (공무원연금기금 and 산업재해보상보험및예방기금) and one fund with an increase (정보통신진흥기금). It also mentions that 16 funds maintained their grades, which aligns with the CONTEXT. The RESPONSE is accurate, complete, and directly addresses the QUERY without introducing extraneous information. Therefore, it is fully grounded in the CONTEXT.",
+        "relevance": "The response directly and comprehensively answers the user's query by listing the funds with grade changes, specifying the direction of change, and providing additional context about unchanged funds. It is accurate, detailed, and fully relevant.",
+        "similarity": "The predicted answer is mostly similar to the correct answer, with detailed information matching the key points about the funds that experienced rating changes.",
+        "coherence": "Let's think step by step: The QUERY asks for information about funds whose ratings increased or decreased between 2021 and 2022. The RESPONSE directly addresses this by providing a clear and structured answer. It specifies the total number of funds compared, the number of funds with changed ratings, and breaks down the changes into two categories: funds with decreased ratings and funds with increased ratings. Each category is clearly labeled, and specific examples are provided with their respective rating changes. Additionally, the RESPONSE mentions that 16 funds maintained their ratings, which adds completeness to the answer. The logical flow and organization of ideas make the RESPONSE easy to follow, and the use of bullet points enhances clarity. Therefore, the RESPONSE is coherent and effectively addresses the QUERY.",
+        "fluency": "The response is written in Korean and demonstrates a high level of fluency. Grammar and syntax are correct, and the vocabulary is appropriate for the context. Sentence construction is clear and concise, with no noticeable errors. The use of formatting (e.g., bold text) enhances readability, and the inclusion of references adds professionalism. The text flows naturally and is idiomatic, making it easy to understand for a native or fluent reader."
+      },
+      "cited": true
+    },
+    {
+      "id": "14",
+      "qtype": "미분류",
+      "question": "2021·2022 두 해 모두 최고등급(탁월)을 유지한 기금은?",
+      "ground_truth": "사립학교교직원연금기금·중소벤처기업창업및진흥기금·장애인고용촉진및직업재활기금 (3개)",
+      "answer": "2021년과 2022년 **두 해 모두 최고등급(탁월)**을 유지한 기금은 **3개**입니다.\n\n- **사립학교교직원연금기금** [출처 2] → [출처 1]\n- **장애인고용촉진및직업재활기금** [출처 2] → [출처 1]\n- **중소벤처기업창업및진흥기금** [출처 2] → [출처 1]\n\n참고로, 비교 기준은 **연간 종합평가표(overall_grade)**이며, 2021년 모집단은 32개(TOC 33개), 2022년 모집단은 30개(TOC 31개)였습니다. 두 해 모두의 공통 비교 기금은 19개였습니다. [출처 1] [출처 2]\n\n원하시면 제가 이어서 **“두 해 모두 탁월은 아니지만, 한 해 이상 탁월이었던 기금”**도 정리해드릴게요.",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "similarity": 4.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the list of funds that maintained the highest grade (탁월) in both 2021 and 2022. The CONTEXT provides detailed information about the grades of various funds for both years, including those that maintained the 탁월 grade across both years. The RESPONSE correctly identifies the three funds that maintained the 탁월 grade in both years: 사립학교교직원연금기금, 장애인고용촉진및직업재활기금, and 중소벤처기업창업및진흥기금. It also references the relevant sources and provides additional context about the comparison criteria and dataset sizes. The RESPONSE is fully accurate, complete, and directly grounded in the CONTEXT.",
+        "relevance": "The response directly answers the user's query by listing the three funds that maintained the highest rating in both 2021 and 2022. It also provides additional context about the evaluation criteria and population, enhancing the user's understanding.",
+        "similarity": "The predicted answer is mostly similar to the correct answer, with minor differences in phrasing and additional context provided.",
+        "coherence": "Let's think step by step: The QUERY asks for the funds that maintained the highest grade (탁월) in both 2021 and 2022. The RESPONSE directly addresses this by listing three specific funds that meet the criteria, along with their sources. It also provides additional context about the evaluation criteria and population sizes for both years, which enhances the clarity and relevance of the response. The ideas are logically organized, and the information flows smoothly, making it easy to follow. The RESPONSE is coherent and effectively answers the QUERY with precision and clarity.",
+        "fluency": "The response is written in Korean and demonstrates a high level of fluency. Grammar, syntax, and vocabulary are all accurate and appropriate for the context. The sentence construction is clear and professional, with no noticeable errors or awkward phrasing. The use of formatting (e.g., bold text) enhances readability, and the inclusion of references and structured data adds to the professionalism. The tone and style are consistent with formal or technical writing, making it highly natural and polished."
+      },
+      "cited": true
+    },
+    {
+      "id": "15",
+      "qtype": "미분류",
+      "question": "고용보험기금이 2021 평가에서 지적받은 사항을 2022에 개선했는가?",
+      "ground_truth": "개선: 2021 '산재와 차별화·리스크/성과평가 규정 미비' 지적 → 2022 리스크관리·성과평가 규정 독립 제정(기금특성 반영). 미개선(지속): 위원 겸직·참석률, 단기자금 비중 증가",
+      "answer": "결론부터 말하면, **2022년에 일부는 개선됐지만, 핵심 쟁점은 여전히 남아 있어 “부분 개선”**으로 보는 것이 맞습니다.  \n\n### 개선된 부분\n- **리스크관리·성과평가 규정의 독립성**은 개선됐습니다.  \n  2021년에는 산재보험기금과 **리스크관리규정·성과평가규정이 동일**하다고 지적받았는데, 2022년에는 **고용보험기금 단독 규정**을 제정하고 **운영리스크(BCP) 조항과 체크리스트**도 추가했습니다. [출처 1] (2021 총평 p.409), [출처 32] (2022 1.1 p.359)\n\n- **성과평가 결과의 활용**도 개선됐습니다.  \n  2021년에는 목표수익률·위험대비 성과평가 결과가 자산배분정책 등에 충분히 반영되지 않는다는 점이 문제였는데, 2022년에는 **원인분석 결과를 자산배분, 운용기관평가, 하위운용사 자금배분에 활용**하고, **성과평가 결과를 자산운용위원회에 환류**하는 체계를 갖췄다고 적혀 있습니다. [출처 2] (2021 3.3 p.419), [출처 19] (2022 3.3 p.368)\n\n### 아직 남아 있는 부분\n- **산재보험기금과의 위원회 겸직 문제**는 2022에도 그대로 남아 있습니다.  \n  2022 자료에서도 **자산운용위원회·리스크관리위원회·성과평가위원회 위원이 산재보험기금 동일위원회를 겸직**하고 있고, **자산운용위원회 분리는 추후 검토**라고 되어 있습니다. 즉, 구조적 독립성 문제는 미해결입니다. [출처 5] (2021 1.1 p.411), [출처 32] (2022 1.1 p.359)\n\n- **위원회 참석률 저하**와 **최소 위원 수 미설정** 문제도 2022년에 해소되지 않았습니다.  \n  2022년에도 참석률이 크게 하락했고, 위원 수는 최대 인원만 있고 **최소 인원 규정이 없어 안정성이 미흡**하다고 지적됩니다. [출처 31] (2022 총평 p.357), [출처 32] (2022 1.1 p.359)\n\n- **단기자금 비중 과다**도 2022년에 개선됐다고 보기 어렵습니다.  \n  2022년 단기자금 비중은 **22.13%**로 오히려 더 높았고, 보고서도 **2023년부터 적용할 단기자금 관련 연구를 수행할 예정**이라고 적고 있습니다. 다만 단기자산 운용수익률과 상대수익률은 **탁월**했지만, **현금성자금 보유도는 여전히 미흡**입니다. [출처 7] (2022 4.1 p.369), [출처 50] (2022 2.1 p.362)\n\n- **전담인력 전문성 문제**도 2022년에 계속 지적됩니다.  \n  일부 전담인력의 **자산운용 경력 5년 미만**, **팀장 보직기간 1년 내외** 문제가 여전히 남아 있습니다. [출처 32] (2022 1.1 p.359), [출처 43] (2022 1.2 p.361)\n\n### 한 줄 요약\n**규정 정비와 성과관리 환류는 개선됐지만, 위원회 독립성·참석률·단기자금 과다·인력 전문성 문제는 2022에도 상당 부분 미해결이어서 “완전 개선”은 아니었습니다.**  \n\n원하시면 제가 이걸 **“2021 지적사항별로 2022 개선 여부” 표로 정리**해드릴게요.",
+      "metrics": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "similarity": 5.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks whether the issues identified in the 2021 evaluation of the 고용보험기금 were improved in 2022. The RESPONSE provides a detailed analysis of improvements and unresolved issues, referencing specific aspects such as regulation independence, utilization of performance evaluation results, committee independence, attendance rates, and short-term asset proportions. The RESPONSE aligns well with the CONTEXT, which contains extensive details about the fund's operations, evaluations, and recommendations for improvement. The RESPONSE accurately reflects the CONTEXT, citing specific data points and evaluations from 2021 and 2022, and does not introduce unrelated or incorrect information. It is thorough and complete, addressing the QUERY directly and comprehensively.",
+        "relevance": "The response thoroughly addresses the user's query by detailing improvements made in 2022 and unresolved issues from 2021, offering a clear and insightful evaluation of the situation.",
+        "similarity": "The predicted answer provides a detailed and structured explanation that aligns closely with the correct answer, addressing both improvements and unresolved issues from 2021 to 2022. While the phrasing and structure differ, the content is highly similar and comprehensive.",
+        "coherence": "Let's think step by step: The RESPONSE directly addresses the QUERY by providing a clear conclusion upfront ('2022년에 일부는 개선됐지만, 핵심 쟁점은 여전히 남아 있어 “부분 개선”으로 보는 것이 맞습니다'). It then logically organizes the information into two sections: '개선된 부분' (improvements made) and '아직 남아 있는 부분' (issues that remain unresolved). Each section is further divided into specific points, with detailed explanations and references to sources, which support the claims made. The RESPONSE uses appropriate transitions and maintains a logical flow throughout, making it easy to follow and understand. The one-line summary at the end effectively encapsulates the main points, reinforcing the coherence of the response. Overall, the RESPONSE is well-structured, clear, and directly addresses the QUERY.",
+        "fluency": "The response is written in Korean and demonstrates a high level of fluency and professionalism. Grammar and syntax are accurate throughout, with no noticeable errors. Vocabulary is precise and appropriate for the formal and analytical tone of the content. Sentence construction is varied and well-structured, with clear transitions and logical flow. The use of headings, bullet points, and citations enhances readability and organization. The language is natural and idiomatic, suitable for a professional or academic audience. There are no significant issues that detract from the clarity or quality of the writing."
+      },
+      "cited": true
+    },
+    {
+      "id": "16",
+      "qtype": "미분류",
+      "question": "2022회계연도에 가장 낮은 등급(미흡)을 받은 기금과 계량 성과는?",
+      "ground_truth": "국민체육진흥기금(사행산업중독예방치유계정), 미흡, 계량 19.42(30개 중 25위)",
+      "answer": "2022회계연도에 **미흡** 등급을 받은 기금은 **국민체육진흥기금(사행산업중독예방치유계정)** 1개뿐입니다. 이 기금의 **계량 성과점수는 19.42/50점**이며, 2022년 평가대상 30개 중 **25위**입니다.  \n- 미흡 등급 기금: 국민체육진흥기금(사행산업중독예방치유계정) [출처 1]  \n- 계량 성과점수: 19.42/50, 25위(30개 중) [출처 26]\n\n참고로 2022년 종합평가의 모집단은 **30개**이고, TOC 기준 기금은 **31개**였습니다. [출처 1]",
+      "metrics": {
+        "groundedness": 4.0,
+        "relevance": 5.0,
+        "similarity": 5.0,
+        "coherence": 5.0,
+        "fluency": 5.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "similarity": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The QUERY asks for the fund with the lowest grade (미흡) and its quantitative performance in 2022. The CONTEXT provides detailed information about the grades and performance scores of various funds. The RESPONSE correctly identifies 국민체육진흥기금(사행산업중독예방치유계정) as the only fund with a '미흡' grade and provides its quantitative performance score (19.42/50). However, the RESPONSE incorrectly states that this fund ranks 25th out of 30, whereas the CONTEXT shows it ranks 25th out of 31. This discrepancy makes the RESPONSE partially correct but not fully accurate. Therefore, the score is 4.",
+        "relevance": "The response directly answers the user's query by identifying the fund with the lowest rating ('미흡') and providing its quantitative performance score and ranking. It also includes relevant context about the evaluation population, enhancing the user's understanding.",
+        "similarity": "The predicted answer is completely similar to the correct answer, providing all the necessary details with equivalent content and information.",
+        "coherence": "Let's think step by step: The QUERY asks for the fund and quantitative performance that received the lowest grade (미흡) in the 2022 fiscal year. The RESPONSE directly addresses this by identifying the fund (국민체육진흥기금(사행산업중독예방치유계정)) and providing its quantitative performance score (19.42/50) and rank (25th out of 30). The information is logically organized, with clear connections between the sentences. The RESPONSE also provides additional context about the total number of funds evaluated (30) and the TOC standard (31), which enhances the reader's understanding. The use of bullet points and references to sources further improves clarity and coherence. Overall, the RESPONSE is well-structured, easy to follow, and thoroughly addresses the QUERY.",
+        "fluency": "The RESPONSE is written in Korean and demonstrates a high level of fluency and professionalism. Grammar and syntax are correct, and the vocabulary is precise and appropriate for the context. Sentence construction is clear and concise, with no awkward phrasing or errors. The use of formatting (e.g., bold text and parentheses) enhances readability and organization. The text is natural and idiomatic, suitable for professional or formal documentation. There are no meaningful language defects."
+      },
+      "cited": true
+    }
+  ]
+}

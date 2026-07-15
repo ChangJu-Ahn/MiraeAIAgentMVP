@@ -19,6 +19,8 @@ COPY app/ app/
 COPY search/ search/
 COPY ingest/ ingest/
 COPY config/ config/
+COPY eval/ eval/
+COPY public/ public/
 COPY docs/ docs/
 COPY .chainlit/ .chainlit/
 COPY chainlit.md ./

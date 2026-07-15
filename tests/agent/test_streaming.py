@@ -32,13 +32,21 @@ def test_chat_start_sends_debug_and_reasoning_settings(monkeypatch):
         "debug": False,
         "effort": "medium",
         "reflection": False,
+        "answer_evaluation": False,
         "agent_session": agent_session,
     }
     assert [widget.id for widget in settings_inputs] == [
         "debug",
         "reflection",
+        "answer_evaluation",
         "effort",
     ]
+    evaluation_setting = next(
+        widget for widget in settings_inputs if widget.id == "answer_evaluation"
+    )
+    assert evaluation_setting.label == (
+        "답변 평가 (답변 완료 후 백그라운드 품질 평가)"
+    )
 
 
 def test_settings_update_persists_values_and_closes_disabled_debug(monkeypatch):
@@ -55,11 +63,21 @@ def test_settings_update_persists_values_and_closes_disabled_debug(monkeypatch):
 
     asyncio.run(
         chat.on_settings_update(
-            {"debug": False, "effort": "high", "reflection": True}
+            {
+                "debug": False,
+                "effort": "high",
+                "reflection": True,
+                "answer_evaluation": True,
+            }
         )
     )
 
-    assert stored == {"debug": False, "effort": "high", "reflection": True}
+    assert stored == {
+        "debug": False,
+        "effort": "high",
+        "reflection": True,
+        "answer_evaluation": True,
+    }
     assert sidebar_updates == [[]]
 
 
@@ -535,6 +553,267 @@ def test_show_debug_action_reopens_stored_trace(monkeypatch):
 
     assert sidebar_titles == ["🐞 디버그 트레이스"]
     assert sidebar_elements[0][0].content == "# 저장된 트레이스"
+
+
+def test_answer_and_render_skips_answer_evaluation_when_disabled(monkeypatch):
+    from app import chat
+
+    trace = SimpleNamespace(steps=[], sources=[], evidence=[])
+    visual = SimpleNamespace(items=[])
+    scheduled = []
+
+    async def fake_stream_answer(question):
+        return "최종 답변", trace, visual
+
+    async def schedule(question, answer, recorder):
+        scheduled.append((question, answer, recorder))
+
+    monkeypatch.setattr(chat, "_stream_answer", fake_stream_answer)
+    monkeypatch.setattr(chat, "_schedule_answer_evaluation", schedule, raising=False)
+    monkeypatch.setattr(chat, "reset_trace", lambda: None)
+    monkeypatch.setattr(chat, "_visual_elements", lambda visuals: [])
+    monkeypatch.setattr(
+        chat.cl.user_session,
+        "get",
+        {
+            "reflection": False,
+            "debug": False,
+            "answer_evaluation": False,
+        }.get,
+    )
+
+    asyncio.run(chat.answer_and_render("원 질문"))
+
+    assert scheduled == []
+
+
+def test_answer_and_render_schedules_evaluation_after_final_answer(monkeypatch):
+    from app import chat
+
+    trace = SimpleNamespace(steps=[], sources=[], evidence=["구조화 근거"])
+    visual = SimpleNamespace(items=[])
+    events = []
+
+    async def fake_stream_answer(question):
+        events.append(("stream", question))
+        return "최종 답변", trace, visual
+
+    async def schedule(question, answer, recorder):
+        events.append(("evaluation", question, answer, recorder))
+
+    monkeypatch.setattr(chat, "_stream_answer", fake_stream_answer)
+    monkeypatch.setattr(chat, "_schedule_answer_evaluation", schedule, raising=False)
+    monkeypatch.setattr(chat, "reset_trace", lambda: None)
+    monkeypatch.setattr(chat, "_visual_elements", lambda visuals: [])
+    monkeypatch.setattr(
+        chat.cl.user_session,
+        "get",
+        {
+            "reflection": False,
+            "debug": False,
+            "answer_evaluation": True,
+        }.get,
+    )
+
+    asyncio.run(chat.answer_and_render("원 질문"))
+
+    assert events == [
+        ("stream", "원 질문"),
+        ("evaluation", "원 질문", "최종 답변", trace),
+    ]
+
+
+def test_schedule_answer_evaluation_retains_task_until_completion(monkeypatch):
+    from app import chat
+
+    trace = SimpleNamespace(sources=[], evidence=[])
+    sent_messages = []
+    completed = []
+
+    class FakeMessage:
+        def __init__(self, content="", actions=None):
+            self.content = content
+            self.actions = actions or []
+
+        async def send(self):
+            sent_messages.append(self)
+            return self
+
+    async def run_evaluation(question, answer, recorder, status_message):
+        completed.append((question, answer, recorder, status_message))
+
+    monkeypatch.setattr(chat.cl, "Message", FakeMessage)
+    monkeypatch.setattr(chat, "_run_answer_evaluation", run_evaluation, raising=False)
+
+    async def run():
+        await chat._schedule_answer_evaluation("질문", "답변", trace)
+        assert len(chat._EVALUATION_TASKS) == 1
+        await next(iter(chat._EVALUATION_TASKS))
+        await asyncio.sleep(0)
+
+    asyncio.run(run())
+
+    assert sent_messages[0].content == "답변 평가 중"
+    assert completed == [("질문", "답변", trace, sent_messages[0])]
+    assert chat._EVALUATION_TASKS == set()
+
+
+def test_run_answer_evaluation_stores_result_and_updates_action(monkeypatch):
+    from app import chat
+
+    trace = SimpleNamespace(sources=[object()], evidence=["구조화 근거"])
+    existing_store = {
+        f"evaluation-{index}": f"# 이전 평가 {index}" for index in range(10)
+    }
+    stored = {}
+    evaluate_calls = []
+
+    class FakeStatusMessage:
+        def __init__(self):
+            self.content = "답변 평가 중"
+            self.actions = []
+            self.updates = 0
+
+        async def update(self):
+            self.updates += 1
+
+    class FakeAction:
+        def __init__(self, name, payload, label, tooltip):
+            self.name = name
+            self.payload = payload
+            self.label = label
+            self.tooltip = tooltip
+
+    result = object()
+
+    def find_reference(question):
+        assert question == "질문"
+        return "검토 정답"
+
+    def evaluate_answer(**kwargs):
+        evaluate_calls.append(kwargs)
+        return result
+
+    def make_async(function):
+        async def call(**kwargs):
+            return function(**kwargs)
+
+        return call
+
+    status_message = FakeStatusMessage()
+    monkeypatch.setattr(
+        chat.cl.user_session,
+        "get",
+        lambda key: existing_store if key == "evaluation_store" else None,
+    )
+    monkeypatch.setattr(chat.cl.user_session, "set", stored.__setitem__)
+    monkeypatch.setattr(chat.cl, "Action", FakeAction)
+    monkeypatch.setattr(chat.cl, "make_async", make_async)
+    monkeypatch.setattr(chat, "find_reference_answer", find_reference, raising=False)
+    monkeypatch.setattr(chat, "evaluate_existing_answer", evaluate_answer, raising=False)
+    monkeypatch.setattr(
+        chat,
+        "format_live_evaluation",
+        lambda value: "# 새 답변 평가" if value is result else "unexpected",
+        raising=False,
+    )
+
+    asyncio.run(
+        chat._run_answer_evaluation("질문", "답변", trace, status_message)
+    )
+
+    assert evaluate_calls == [
+        {
+            "question": "질문",
+            "answer": "답변",
+            "sources": trace.sources,
+            "evidence": trace.evidence,
+            "ground_truth": "검토 정답",
+        }
+    ]
+    evaluation_store = stored["evaluation_store"]
+    assert len(evaluation_store) == 10
+    assert "evaluation-0" not in evaluation_store
+    assert status_message.content == "답변 평가 완료"
+    assert status_message.updates == 1
+    assert len(status_message.actions) == 1
+    action = status_message.actions[0]
+    assert action.name == "show_evaluation"
+    assert action.payload["id"] in evaluation_store
+    assert evaluation_store[action.payload["id"]] == "# 새 답변 평가"
+
+
+def test_run_answer_evaluation_isolates_failures_from_answer(monkeypatch):
+    from app import chat
+
+    trace = SimpleNamespace(sources=[], evidence=[])
+    logged = []
+
+    class FakeStatusMessage:
+        def __init__(self):
+            self.content = "답변 평가 중"
+            self.actions = []
+            self.updates = 0
+
+        async def update(self):
+            self.updates += 1
+
+    def make_async(function):
+        async def call(**kwargs):
+            raise RuntimeError("judge unavailable")
+
+        return call
+
+    status_message = FakeStatusMessage()
+    monkeypatch.setattr(chat.cl, "make_async", make_async)
+    monkeypatch.setattr(chat.cl.logger, "exception", logged.append)
+    monkeypatch.setattr(chat, "find_reference_answer", lambda question: None, raising=False)
+    monkeypatch.setattr(chat, "evaluate_existing_answer", lambda **kwargs: None, raising=False)
+
+    asyncio.run(
+        chat._run_answer_evaluation("질문", "답변", trace, status_message)
+    )
+
+    assert logged == ["live answer evaluation failed"]
+    assert status_message.content == "답변 평가 실패"
+    assert status_message.actions == []
+    assert status_message.updates == 1
+
+
+def test_show_evaluation_action_reopens_stored_result(monkeypatch):
+    from app import chat
+
+    sidebar_titles = []
+    sidebar_elements = []
+
+    async def set_title(title):
+        sidebar_titles.append(title)
+
+    async def set_elements(elements):
+        sidebar_elements.append(elements)
+
+    class FakeText:
+        def __init__(self, content, name):
+            self.content = content
+            self.name = name
+
+    monkeypatch.setattr(
+        chat.cl.user_session,
+        "get",
+        lambda key: {"result-1": "# 저장된 답변 평가"}
+        if key == "evaluation_store"
+        else None,
+    )
+    monkeypatch.setattr(chat.cl, "Text", FakeText)
+    monkeypatch.setattr(chat.cl.ElementSidebar, "set_title", set_title)
+    monkeypatch.setattr(chat.cl.ElementSidebar, "set_elements", set_elements)
+
+    asyncio.run(
+        chat.show_evaluation(SimpleNamespace(payload={"id": "result-1"}))
+    )
+
+    assert sidebar_titles == ["답변 평가"]
+    assert sidebar_elements[0][0].content == "# 저장된 답변 평가"
 
 
 def test_start_stream_streams_text_and_records_steps():
