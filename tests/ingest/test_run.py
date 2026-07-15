@@ -4,7 +4,6 @@ TDD RED: written before implementation.
 """
 from __future__ import annotations
 
-import argparse
 from unittest.mock import MagicMock, call, patch
 
 import pytest

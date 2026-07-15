@@ -90,14 +90,6 @@ module acr 'modules/acr.bicep' = {
   }
 }
 
-module storage 'modules/storage.bicep' = {
-  name: 'storage'
-  params: {
-    name: 'stmirae${suffix}'
-    location: location
-  }
-}
-
 module containerenv 'modules/containerenv.bicep' = {
   name: 'containerenv'
   params: {
@@ -128,8 +120,6 @@ module containerapp 'modules/containerapp.bicep' = if (deployApp) {
       { name: 'FOUNDRY_API_VERSION', value: '2024-10-21' }
       { name: 'APPINSIGHTS_CONNECTION_STRING', value: observability.outputs.appInsightsConnectionString }
       { name: 'AZURE_CLIENT_ID', value: identity.outputs.clientId }
-      { name: 'STORAGE_ACCOUNT_NAME', value: storage.outputs.accountName }
-      { name: 'SOURCE_DOCS_CONTAINER', value: storage.outputs.containerName }
     ]
   }
 }
@@ -138,19 +128,14 @@ module apprbac 'modules/apprbac.bicep' = {
   name: 'apprbac'
   params: {
     uamiPrincipalId: identity.outputs.principalId
-    developerObjectId: developerObjectId
     searchName: search.outputs.searchName
     foundryName: foundry.outputs.foundryName
     acrName: acr.outputs.name
-    storageAccountName: storage.outputs.accountName
   }
 }
 
 output acrLoginServer string = acr.outputs.loginServer
 output acrName string = acr.outputs.name
-output storageAccountName string = storage.outputs.accountName
-output sourceDocsContainer string = storage.outputs.containerName
-output blobEndpoint string = storage.outputs.blobEndpoint
-output containerAppName string = deployApp ? containerapp.outputs.name : ''
-output containerAppFqdn string = deployApp ? containerapp.outputs.fqdn : ''
+output containerAppName string = containerapp.?outputs.name ?? ''
+output containerAppFqdn string = containerapp.?outputs.fqdn ?? ''
 output uamiClientId string = identity.outputs.clientId

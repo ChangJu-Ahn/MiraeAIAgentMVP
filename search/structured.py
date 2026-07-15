@@ -638,8 +638,6 @@ def fund_analytics(
     common_fund_ids = set.intersection(
         *(set(facts_by_year[year]) for year in unique_years)
     )
-    first_year = unique_years[0]
-    last_year = unique_years[-1]
     comparison_rows: list[AnalyticsRow] = []
     unchanged_count = 0
 

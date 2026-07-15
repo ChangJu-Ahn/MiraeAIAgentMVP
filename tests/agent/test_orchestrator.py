@@ -1,3 +1,5 @@
+import inspect
+
 from agent import orchestrator
 from agent.orchestrator import ask_sync, SYSTEM_PROMPT
 
@@ -50,14 +52,14 @@ def test_hallucination_guard_refuses_unknown():
     assert any(m in r.answer for m in negation_markers), f"Expected refusal, got: {r.answer}"
 
 
-def test_reasoning_options_valid_and_fallback():
-    from agent.orchestrator import _reasoning_options
-    assert _reasoning_options("high") == {"reasoning": {"effort": "high", "summary": "auto"}}
-    assert _reasoning_options("low")["reasoning"]["effort"] == "low"
-    assert _reasoning_options("medium")["reasoning"]["effort"] == "medium"
-    # 잘못된 값 → medium 대체
-    assert _reasoning_options("bogus")["reasoning"]["effort"] == "medium"
-    assert _reasoning_options()["reasoning"]["effort"] == "medium"
+def test_reasoning_options_and_stream_api_are_static():
+    assert orchestrator.REASONING_OPTIONS == {
+        "reasoning": {"effort": "medium", "summary": "auto"}
+    }
+    assert list(inspect.signature(orchestrator.start_stream).parameters) == [
+        "question",
+        "session",
+    ]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

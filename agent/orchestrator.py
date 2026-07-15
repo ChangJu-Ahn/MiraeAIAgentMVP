@@ -78,19 +78,10 @@ class AnswerResult(BaseModel):
     visuals: list[Visual] = []
 
 
-VALID_EFFORTS = ("low", "medium", "high")
+REASONING_OPTIONS = {"reasoning": {"effort": "medium", "summary": "auto"}}
 
 
-def _reasoning_options(effort: str = "medium") -> dict:
-    """추론 강도(effort)로 Foundry reasoning 옵션을 만든다. 잘못된 값은 medium으로 대체."""
-    if effort not in VALID_EFFORTS:
-        effort = "medium"
-    return {"reasoning": {"effort": effort, "summary": "auto"}}
-
-
-def build_agent(
-    recorder: TraceRecorder, visual_recorder: VisualRecorder, effort: str = "medium"
-):
+def build_agent(recorder: TraceRecorder, visual_recorder: VisualRecorder):
     settings = get_settings()
     client = FoundryChatClient(
         project_endpoint=settings.foundry_project_endpoint,
@@ -103,7 +94,7 @@ def build_agent(
         name="mirae-fund-agent",
         instructions=instructions,
         tools=tools,
-        default_options=_reasoning_options(effort),
+        default_options=REASONING_OPTIONS,
     )
 
 
@@ -138,12 +129,11 @@ def new_session() -> AgentSession:
     return AgentSession()
 
 
-def start_stream(question: str, effort: str = "medium", session: AgentSession | None = None):
+def start_stream(question: str, session: AgentSession | None = None):
     """Return (response_stream, trace_recorder, visual_recorder) for live UIs.
 
     Caller iterates the stream (async) for text/reasoning/tool deltas; recorders
     fill with tool-call steps, retrieved sources, and visuals during iteration.
-    effort는 추론 강도(low/medium/high).
     session을 넘기면 이전 턴들의 대화 이력을 이어받아 멀티턴으로 동작한다(None이면 단발).
     """
     requested_years, requested_doc_type = _request_context(question)
@@ -152,6 +142,6 @@ def start_stream(question: str, effort: str = "medium", session: AgentSession | 
         requested_doc_type=requested_doc_type,
     )
     visual_recorder = VisualRecorder()
-    agent = build_agent(recorder, visual_recorder, effort)
+    agent = build_agent(recorder, visual_recorder)
     stream = agent.run(question, session=session, stream=True)
     return stream, recorder, visual_recorder

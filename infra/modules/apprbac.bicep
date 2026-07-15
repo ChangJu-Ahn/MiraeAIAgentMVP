@@ -1,19 +1,13 @@
 @description('ACA 앱 UAMI principalId')
 param uamiPrincipalId string
-@description('개발자 objectId (PDF 업로드용 Storage 권한)')
-param developerObjectId string
 param searchName string
 param foundryName string
 param acrName string
-param storageAccountName string
 
 var searchIndexDataReader = '1407120a-92aa-4202-b7e9-c0e197c71c8f'
 var openAIUser = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 var cognitiveServicesUser = 'a97b65f3-24c7-4388-baec-2e87135dc908'
 var acrPull = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
-var storageBlobDataContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-var storageBlobDataReader = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
-var storageBlobDelegator = 'db58b8e5-c6ad-4a2a-8342-4190687cbf4a'
 
 resource search 'Microsoft.Search/searchServices@2024-06-01-preview' existing = {
   name: searchName
@@ -23,9 +17,6 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' exist
 }
 resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' existing = {
   name: acrName
-}
-resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
-  name: storageAccountName
 }
 
 // UAMI → Search (인덱스 질의, 읽기)
@@ -65,37 +56,6 @@ resource uamiAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(acr.id, uamiPrincipalId, acrPull)
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPull)
-    principalId: uamiPrincipalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-// 개발자 → Storage (PDF 업로드, 키리스)
-resource devStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: storage
-  name: guid(storage.id, developerObjectId, storageBlobDataContributor)
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributor)
-    principalId: developerObjectId
-    principalType: 'User'
-  }
-}
-
-// UAMI → Storage (단기 SAS 발급: blob 읽기 + user delegation key 생성)
-resource uamiStorageRead 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: storage
-  name: guid(storage.id, uamiPrincipalId, storageBlobDataReader)
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataReader)
-    principalId: uamiPrincipalId
-    principalType: 'ServicePrincipal'
-  }
-}
-resource uamiStorageDelegator 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: storage
-  name: guid(storage.id, uamiPrincipalId, storageBlobDelegator)
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDelegator)
     principalId: uamiPrincipalId
     principalType: 'ServicePrincipal'
   }
