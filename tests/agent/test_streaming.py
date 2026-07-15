@@ -250,7 +250,7 @@ def test_stream_answer_renders_reasoning_tool_steps_and_timing(monkeypatch):
     assert tool_step.output == "검색 결과 2건"
 
 
-def test_stream_answer_streams_reasoning_without_translation(monkeypatch):
+def test_stream_answer_passes_reasoning_tokens_unmodified(monkeypatch):
     from app import chat
 
     reasoning_tokens = []
@@ -368,6 +368,9 @@ def test_on_message_stores_and_opens_debug_trace(monkeypatch):
 
     trace = SimpleNamespace(steps=[], sources=[])
     visual = SimpleNamespace(items=[])
+    existing_debug_store = {
+        f"trace-{index}": f"# 저장된 트레이스 {index}" for index in range(10)
+    }
     stored = {}
     sent_messages = []
     sidebar_titles = []
@@ -416,7 +419,7 @@ def test_on_message_stores_and_opens_debug_trace(monkeypatch):
     monkeypatch.setattr(
         chat.cl.user_session,
         "get",
-        {"debug": True, "debug_store": {}}.get,
+        {"debug": True, "debug_store": existing_debug_store}.get,
     )
     monkeypatch.setattr(chat.cl.user_session, "set", stored.__setitem__)
     monkeypatch.setattr(chat.cl, "Message", FakeMessage)
@@ -432,10 +435,13 @@ def test_on_message_stores_and_opens_debug_trace(monkeypatch):
     assert len(sidebar_elements) == 1
     assert "Raw OpenTelemetry Trace" in sidebar_elements[0][0].content
     debug_store = stored["debug_store"]
-    assert len(debug_store) == 1
-    assert next(iter(debug_store.values())) == sidebar_elements[0][0].content
+    assert len(debug_store) == 10
+    assert "trace-0" not in debug_store
     assert sent_messages[-1].actions[0].name == "show_debug"
     assert sent_messages[-1].actions[0].payload["id"] in debug_store
+    assert debug_store[sent_messages[-1].actions[0].payload["id"]] == (
+        sidebar_elements[0][0].content
+    )
 
 
 def test_show_debug_action_reopens_stored_trace(monkeypatch):

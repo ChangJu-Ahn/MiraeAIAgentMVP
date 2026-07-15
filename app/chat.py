@@ -25,6 +25,8 @@ from ingest.figures import render_page_png
 
 setup_observability()
 
+_DEBUG_HISTORY_LIMIT = 10
+
 
 @cl.on_chat_start
 async def on_chat_start() -> None:
@@ -325,9 +327,11 @@ async def answer_and_render(question_input: str) -> None:
             used,
             raw_trace=collect_trace_json(),
         )
-        debug_store = cl.user_session.get("debug_store") or {}
+        debug_store = dict(cl.user_session.get("debug_store") or {})
         debug_id = uuid.uuid4().hex
         debug_store[debug_id] = debug_markdown
+        while len(debug_store) > _DEBUG_HISTORY_LIMIT:
+            debug_store.pop(next(iter(debug_store)))
         cl.user_session.set("debug_store", debug_store)
         await cl.ElementSidebar.set_title("🐞 디버그 트레이스")
         await cl.ElementSidebar.set_elements(
