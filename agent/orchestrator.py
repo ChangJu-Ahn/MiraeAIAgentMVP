@@ -15,8 +15,8 @@ from config.settings import get_settings
 
 SYSTEM_PROMPT = """당신은 기금운용평가보고서 전문 분석 어시스턴트입니다.
 
-[언어 규칙 — 최우선]
-사용자가 사용하는 언어로 사고하고 답하세요. 최종 답변뿐 아니라 중간 사고 과정과 추론 요약(reasoning summary)까지 반드시 같은 언어로 작성합니다. 사용자가 한국어로 질문하면 당신의 모든 생각·계획·추론 요약도 한국어로 서술하고, 영어로 질문하면 영어로 서술하세요. 사고 요약을 영어로 쓰지 마세요(사용자가 영어로 질문한 경우 제외).
+[언어 규칙 — 절대적 최우선]
+현재 사용자 메시지의 주된 자연어를 응답 언어로 정하고, 모든 사용자 노출 출력(최종 답변, 중간 사고 과정, 계획, 추론 요약, 제목, 표·차트 레이블, 오류·거절 문구)을 오직 그 언어로만 작성하세요. 질문이 한국어이면 한국어만, 영어이면 영어만 사용하세요. 스페인어를 포함해 다른 자연어의 단어·문장을 섞거나 응답 도중 언어를 전환하지 마세요. 검색 문서나 도구 결과의 언어에 영향받지 말고 반드시 응답 언어로 번역·요약하세요. 단, 고유명사, 원문 직접 인용, 표준 약어, 기술 식별자, 코드, 숫자 및 [출처 N] 표기는 원형을 유지할 수 있습니다.
 
 원칙:
 1. 질문을 필요한 하위 질의로 분해하세요.
@@ -78,10 +78,18 @@ class AnswerResult(BaseModel):
     visuals: list[Visual] = []
 
 
-REASONING_OPTIONS = {"reasoning": {"effort": "medium", "summary": "auto"}}
+VALID_EFFORTS = ("low", "medium", "high")
 
 
-def build_agent(recorder: TraceRecorder, visual_recorder: VisualRecorder):
+def _reasoning_options(effort: str = "medium") -> dict:
+    if effort not in VALID_EFFORTS:
+        effort = "medium"
+    return {"reasoning": {"effort": effort, "summary": "auto"}}
+
+
+def build_agent(
+    recorder: TraceRecorder, visual_recorder: VisualRecorder, effort: str = "medium"
+):
     settings = get_settings()
     client = FoundryChatClient(
         project_endpoint=settings.foundry_project_endpoint,
@@ -94,7 +102,7 @@ def build_agent(recorder: TraceRecorder, visual_recorder: VisualRecorder):
         name="mirae-fund-agent",
         instructions=instructions,
         tools=tools,
-        default_options=REASONING_OPTIONS,
+        default_options=_reasoning_options(effort),
     )
 
 
@@ -129,7 +137,9 @@ def new_session() -> AgentSession:
     return AgentSession()
 
 
-def start_stream(question: str, session: AgentSession | None = None):
+def start_stream(
+    question: str, effort: str = "medium", session: AgentSession | None = None
+):
     """Return (response_stream, trace_recorder, visual_recorder) for live UIs.
 
     Caller iterates the stream (async) for text/reasoning/tool deltas; recorders
@@ -142,6 +152,6 @@ def start_stream(question: str, session: AgentSession | None = None):
         requested_doc_type=requested_doc_type,
     )
     visual_recorder = VisualRecorder()
-    agent = build_agent(recorder, visual_recorder)
+    agent = build_agent(recorder, visual_recorder, effort)
     stream = agent.run(question, session=session, stream=True)
     return stream, recorder, visual_recorder
