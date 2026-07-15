@@ -196,8 +196,20 @@ async def _stream_answer(
                 info["step"] = step
                 any_process = True
 
-        async for update in stream:
-            for content in update.contents:
+        stream_iterator = aiter(stream)
+        while True:
+            try:
+                update = await anext(stream_iterator)
+            except StopAsyncIteration:
+                break
+            except Exception:  # noqa: BLE001
+                cl.logger.exception("agent stream failed")
+                error_marker = "\n\n`E_STREAM`\n"
+                answer_text += error_marker
+                await answer_message.stream_token(error_marker)
+                break
+
+            for content in getattr(update, "contents", []):
                 content_type = getattr(content, "type", None)
 
                 if content_type == "text_reasoning":

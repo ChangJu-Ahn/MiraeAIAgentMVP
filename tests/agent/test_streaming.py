@@ -312,6 +312,67 @@ def test_stream_answer_passes_reasoning_tokens_unmodified(monkeypatch):
     assert reasoning_tokens == ["\nSearching for evidence.\n"]
 
 
+def test_stream_answer_preserves_partial_answer_on_stream_error(monkeypatch):
+    from app import chat
+
+    messages = []
+    logged = []
+
+    async def updates():
+        yield SimpleNamespace(
+            contents=[SimpleNamespace(type="text", text="부분 답변")]
+        )
+        raise RuntimeError("connection lost")
+
+    def fake_start_stream(question, effort="medium", *, session=None):
+        return updates(), object(), object()
+
+    class FakeMessage:
+        def __init__(self, content):
+            self.tokens = []
+            messages.append(self)
+
+        async def stream_token(self, token):
+            self.tokens.append(token)
+
+        async def update(self):
+            return None
+
+    class FakeStep:
+        def __init__(self, name, type, parent_id=None):
+            self.id = "reasoning-step"
+            self.name = name
+            self.output = None
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return None
+
+        async def stream_token(self, token):
+            return None
+
+        async def update(self):
+            return self
+
+    monkeypatch.setattr(chat, "start_stream", fake_start_stream)
+    monkeypatch.setattr(chat.cl, "Message", FakeMessage)
+    monkeypatch.setattr(chat.cl, "Step", FakeStep)
+    monkeypatch.setattr(chat.cl.logger, "exception", logged.append)
+    monkeypatch.setattr(
+        chat.cl.user_session,
+        "get",
+        {"agent_session": object(), "effort": "medium"}.get,
+    )
+
+    answer, _, _ = asyncio.run(chat._stream_answer("질문"))
+
+    assert answer == "부분 답변\n\n`E_STREAM`\n"
+    assert messages[0].tokens == ["부분 답변", "\n\n`E_STREAM`\n"]
+    assert logged == ["agent stream failed"]
+
+
 def test_answer_and_render_runs_one_reflection_round_when_needed(monkeypatch):
     from app import chat
 
