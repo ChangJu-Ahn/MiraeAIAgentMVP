@@ -1,5 +1,40 @@
-from agent.tools import RetrievedSource
+from agent.tools import RetrievedSource, TraceStep
 from app.formatting import format_citations
+
+
+def test_format_debug_includes_tools_filters_scores_citations_and_raw_trace():
+    from app import formatting
+
+    step = TraceStep(
+        tool="search_narrative",
+        query="탁월 등급",
+        n_hits=2,
+        odata_filter="year eq 2022 and doc_type eq 'report'",
+    )
+    source = RetrievedSource(
+        n=1,
+        index="narrative-index",
+        section_path="Ⅱ > 1 > 가",
+        page_physical=24,
+        chunk_type="narrative",
+        snippet="탁월 등급 설명 본문",
+        score=3.42,
+    )
+
+    out = formatting.format_debug(
+        [("원 질문", [step], [source])],
+        cited=[source],
+        raw_trace='[{"name": "chat"}]',
+    )
+
+    assert 'search_narrative("탁월 등급")' in out
+    assert "2건" in out
+    assert "필터: `year eq 2022 and doc_type eq 'report'`" in out
+    assert "관련도 3.42" in out
+    assert "탁월 등급 설명 본문" in out
+    assert "최종 인용" in out
+    assert "Raw OpenTelemetry Trace" in out
+    assert '"name": "chat"' in out
 
 
 def test_format_citations_lists_sources():

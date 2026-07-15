@@ -9,6 +9,13 @@ def test_system_prompt_has_today_placeholder_and_filter_rule():
     assert "필터" in SYSTEM_PROMPT and "최신" in SYSTEM_PROMPT
 
 
+def test_system_prompt_requires_output_only_in_the_users_input_language():
+    assert "현재 사용자 메시지의 주된 자연어" in SYSTEM_PROMPT
+    assert "오직 그 언어로만" in SYSTEM_PROMPT
+    assert "다른 자연어의 단어·문장" in SYSTEM_PROMPT
+    assert "도구 결과의 언어에 영향받지" in SYSTEM_PROMPT
+
+
 def test_request_context_expands_year_range_and_identifies_document_type():
     years, doc_type = orchestrator._request_context(
         "공무원연금기금의 2023~2025회계연도 최종등급 추이는?"
@@ -52,12 +59,16 @@ def test_hallucination_guard_refuses_unknown():
     assert any(m in r.answer for m in negation_markers), f"Expected refusal, got: {r.answer}"
 
 
-def test_reasoning_options_and_stream_api_are_static():
-    assert orchestrator.REASONING_OPTIONS == {
+def test_reasoning_options_and_stream_api_accept_user_effort():
+    assert orchestrator._reasoning_options("low") == {
+        "reasoning": {"effort": "low", "summary": "auto"}
+    }
+    assert orchestrator._reasoning_options("invalid") == {
         "reasoning": {"effort": "medium", "summary": "auto"}
     }
     assert list(inspect.signature(orchestrator.start_stream).parameters) == [
         "question",
+        "effort",
         "session",
     ]
 
