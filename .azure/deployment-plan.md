@@ -1,6 +1,6 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Validated
+Status: Deployed 2026-07-15
 
 Recipe: Bicep infrastructure with Azure CLI container deployment
 
@@ -58,7 +58,7 @@ uv run python scripts/smoke_test.py
 - Region: `koreacentral`
 - Container App: `ca-mirae-v4xy5m5d3ltw6`
 - Public URL: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
-- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v10`
+- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v11`
 
 The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
 
@@ -77,3 +77,18 @@ Validated on 2026-07-15 against subscription `347e0df7-94e9-4feb-b42d-57d7e49566
 - `uv run python scripts/smoke_test.py`: AI Search, Document Intelligence, and Foundry passed with keyless authentication.
 - Container image context: five non-empty source PDFs are copied by the Dockerfile and are not excluded by `.dockerignore`.
 - Azure AI Search inventory: `narrative-index`, `table-index`, `fund-catalog-index`, and `evaluation-facts-index`; all four are referenced by production code, so no index is eligible for deletion.
+
+## Deployment Verification
+
+- Git: feature commit `96fd6b0`; merge commit `8402253` pushed to `origin/main`.
+- ACR build: run `dee`; tags `mirae-chat:v11` and `mirae-chat:8402253`.
+- Image digest: `sha256:7765e3b777b054030110492ca3aa5cc1b6cf3ba21dce20a6b2c630a059798dc6`.
+- ARM deployment: `mirae-core-simplification-20260715` succeeded with correlation ID `1680136d-e3eb-4f41-975f-6b0f088c67cf`.
+- Container App: revision `ca-mirae-v4xy5m5d3ltw6--0000011` is healthy and running with one replica; latest-revision traffic weight is 100%.
+- Runtime configuration contains only the retained Search, Foundry, Application Insights, and managed-identity variables; removed Storage variables are absent.
+- Public HTTPS endpoint returned 200 and served the Chainlit application.
+- Browser test answered the 2025 국민연금기금 grade question with `table-index` citations to p.180 and p.237.
+- Multi-turn visual test rendered the original p.180 PDF page from the container image.
+- Revision logs contained zero traceback, unhandled-exception, critical, fatal, or error-level patterns; Application Insights transmission succeeded.
+- Post-deployment `scripts/smoke_test.py`: AI Search, Document Intelligence, and Foundry passed.
+- Post-deployment Search inventory remains the same four required indexes; no indexes were deleted.
