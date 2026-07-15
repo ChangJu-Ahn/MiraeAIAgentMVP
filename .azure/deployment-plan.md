@@ -1,6 +1,6 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Validated 2026-07-16 (v14)
+Status: Deployed 2026-07-16 (v14)
 
 Recipe: Bicep infrastructure with Azure CLI container deployment
 
@@ -58,7 +58,7 @@ uv run python scripts/smoke_test.py
 - Region: `koreacentral`
 - Container App: `ca-mirae-v4xy5m5d3ltw6`
 - Public URL: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
-- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v13`
+- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v14`
 
 The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
 
@@ -113,6 +113,18 @@ Validated on 2026-07-15 against subscription `347e0df7-94e9-4feb-b42d-57d7e49566
 - Azure AI Search inventory: `narrative-index`, `table-index`, `fund-catalog-index`, and `evaluation-facts-index`; all four are referenced by production code, so no index is eligible for deletion.
 
 ## Deployment Verification
+
+### v14 Evaluation Experience
+
+- Git feature commit `8e20f7c` and merge commit `7d2680d` are pushed to `origin/feature/evaluation-experience-v14` and `origin/main`; the remote main ref was verified as `7d2680d7695c1944e70ac309fb51f282a6548b1e` before the image build.
+- ACR remote build run `deh` pushed `mirae-chat:v14` and `mirae-chat:7d2680d` with digest `sha256:0571fbc8043ea949abd6fad9388f9f58576078776115855a7731d882b16f16cf`.
+- ARM deployment `mirae-v14-deploy-20260716` succeeded with correlation ID `106b4c83-1062-4d3d-9c66-4f145a127cbc`; all deployment operations succeeded.
+- Container App revision `ca-mirae-v4xy5m5d3ltw6--0000015` is active, `Healthy`, and `Provisioned`, runs one ready replica of `mirae-chat:v14` with zero restarts, and receives 100% of latest-revision traffic.
+- Public `/`, `/health`, `/public/evaluation.html`, `/public/evaluation-data.json`, and `/public/evaluation-icon.png` requests succeeded. The deployed snapshot reported schema version 1 and exactly 16 rows. Post-deployment Search, Document Intelligence, and Foundry smoke tests passed.
+- Browser verification confirmed the `Evaluation` header link, the 16-question dashboard, all five evaluator summaries, the privacy notice, and the `답변 평가 (답변 완료 후 백그라운드 품질 평가)` setting. Desktop and 390-pixel mobile layouts rendered without horizontal overflow.
+- With answer evaluation enabled, an exact golden question rendered the grounded answer and citation before evaluation completed. The later result action opened a five-metric panel with Groundedness 5, Relevance 4, Similarity 5, Coherence 4, and Fluency 5; Similarity was included because the question matched the published review set exactly.
+- Active-revision workload logs contained zero traceback, exception, unhandled-error, critical, fatal, or error-level patterns after the browser test. Application Insights reported zero exceptions, zero error-level traces, and zero failed requests in the preceding hour.
+- System logs recorded nine transient startup-probe warnings while revision `0000015` initialized; the last was at 15:33:04 UTC, none recurred afterward, and the revision remained healthy throughout verification.
 
 ### v13 Reasoning and Debug Streaming Restoration
 
