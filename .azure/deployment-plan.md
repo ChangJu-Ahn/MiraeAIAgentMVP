@@ -1,72 +1,79 @@
-# Azure Deployment Plan — MiraeAIAgentMVP (Chainlit → Azure Container Apps)
+# Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Pending Approval (Phase 1 complete)
+Status: Validated
 
-## 1. Goal
-- Chainlit 기금운용평가 AI 챗봇을 **Azure Container Apps(ACA)** 에 **퍼블릭(익명)** 으로 배포.
-- 데이터소스 원본 PDF **5개**를 **Blob Storage(공개 읽기)** 에 올리고, 화면에서 사용자가 원본을 열람.
+Recipe: Bicep infrastructure with Azure CLI container deployment
 
-## 2. Mode & Recipe
-- MODE: **MODIFY** — 기존 손수작성 Bicep(`infra/`) 확장.
-- RECIPE: **Bicep** (기존 IaC와 일관). 배포는 azure-validate → azure-deploy(`az deployment group create` + 컨테이너 빌드/푸시 + blob 업로드).
+## Goal
 
-## 3. Reuse (기존, 재프로비저닝 안 함)
-- `rg-mirae-ai-agent-poc` (koreacentral)의 AI Search / Document Intelligence / Foundry / App Insights.
-- AI Search 인덱스에는 이미 5개 문서가 적재됨(멀티-연도 메타 필터 포함). ACA 앱은 이를 **질의만** 함(인제스트는 로컬 수동 CLI 유지).
+Run the public Chainlit PoC on Azure Container Apps with managed identity access to AI Search and Microsoft Foundry.
 
-## 4. Decisions (승인됨)
-- 접근 제어: **완전 퍼블릭(익명, 인증 없음)** — 비용 감수.
-- PDF 열람: **공개 읽기 Blob 컨테이너 + 고정 링크**.
-- 리전: **koreacentral**.
+## Infrastructure
 
-## 5. Architecture — 추가 리소스 (Bicep 모듈 신규)
-| 리소스 | 모듈 | 용도 |
+| Resource | Bicep module | Purpose |
 |---|---|---|
-| User-Assigned Managed Identity | `identity.bicep` | ACA 앱 신원(키리스) |
-| Azure Container Registry (Basic) | `acr.bicep` | 컨테이너 이미지 저장, UAMI AcrPull |
-| Log Analytics + Container Apps Env | `containerenv.bicep` | ACA 실행 환경 |
-| Container App (external ingress, port 8000) | `containerapp.bicep` | Chainlit 앱, UAMI 연결, min/max replica=1 |
-| Storage Account + Blob container(public read) | `storage.bicep` | 원본 PDF 5개 |
-| RBAC (UAMI 대상) | `rbac.bicep` 확장 | Search Index Data Reader, Cognitive Services User(Foundry·DI), AcrPull |
+| Azure AI Search | `search.bicep` | Four retrieval indexes |
+| Document Intelligence | `docintelligence.bicep` | PDF layout extraction |
+| Microsoft Foundry | `foundry.bicep` | Chat, embedding, vision, and evaluation models |
+| Application Insights and Log Analytics | `observability.bicep` | Agent trace and platform logs |
+| User-assigned managed identity | `identity.bicep` | Keyless application identity |
+| Azure Container Registry | `acr.bicep` | Container images |
+| Container Apps environment | `containerenv.bicep` | Runtime environment |
+| Container App | `containerapp.bicep` | Public Chainlit endpoint, one replica |
+| Role assignments | `rbac.bicep`, `apprbac.bicep` | Search read, Foundry inference, ACR pull |
 
-- 앱 env(Container App): `DOC_INTELLIGENCE_ENDPOINT`, `SEARCH_ENDPOINT`, `FOUNDRY_PROJECT_ENDPOINT`, 각 deployment 이름, `APPINSIGHTS_CONNECTION_STRING`, `AZURE_CLIENT_ID`(UAMI), `SOURCE_DOCS_BASE_URL`(blob 컨테이너 URL).
-- 인증: 앱 코드 `DefaultAzureCredential` → ACA에서 UAMI 사용(`AZURE_CLIENT_ID` 주입).
+Blob Storage is not part of the current application. Source-page rendering uses PDFs copied into the container image.
 
-## 6. App 변경
-- **Dockerfile** (신규, 루트): python:3.12-slim + uv, 코드 + `Docs/`(show_source_page 원문 렌더용) 포함, `chainlit run app/chat.py --host 0.0.0.0 --port 8000`.
-- **.dockerignore**: `.venv`, `.ingest_cache`(67MB+), `.git`, tests, reports 등 제외.
-- **config/settings.py**: `source_docs_base_url: str = ""` 추가(공개 blob 베이스 URL).
-- **원본 열람 UI**: `app/chat.py` `on_chat_start`에서 환영 메시지 상단에 "📎 원본 자료(데이터소스) 5건" 링크 블록 렌더(`SOURCE_DOCS_BASE_URL` + 파일명). 5개 PDF를 새 탭에서 열람.
-  - (참고) Chainlit 헤더의 정적 `header_links`는 배포 시 결정되는 스토리지 URL을 못 담아, env 기반 링크 블록으로 대신함. 배치는 배포 후 조정 가능.
+## Runtime
 
-## 7. 배포 실행 단계 (azure-deploy 단계에서)
-1. `az deployment group create`로 infra 확장 프로비저닝(UAMI/ACR/Storage/ACA env/RBAC).
-2. `az storage blob upload-batch`로 `Docs/` 5개 PDF를 공개 컨테이너에 업로드.
-3. 컨테이너 이미지 빌드 → ACR 푸시(`az acr build`).
-4. Container App 이미지 갱신 → 퍼블릭 FQDN 확인.
-5. 기능 검증(챗봇 응답 + 원본 링크 열람).
+- Image command: `chainlit run app/chat.py --host 0.0.0.0 --port 8000`
+- Authentication: `DefaultAzureCredential` selects the user-assigned identity through `AZURE_CLIENT_ID`.
+- Required endpoints and deployment names are injected as Container App environment variables.
+- `APPINSIGHTS_CONNECTION_STRING` enables Agent Framework trace export.
+- Ingestion remains a local operator command; the Container App only queries existing indexes.
 
-## 8. Security Notes
-- 앱 익명 퍼블릭(사용자 요청). Foundry 호출 비용 노출 — 사용자 감수 확인됨.
-- Blob 컨테이너 익명 읽기(공개자료). 그 외 데이터 평면은 키리스 RBAC.
-- 시크릿 없음(연결문자열은 App Insights만, env로 주입).
+## Deployment
 
-## 9. Out of Scope
-- 인제스트 파이프라인의 컨테이너화(로컬 수동 CLI 유지).
-- 멀티 레플리카/세션 어피니티(MVP는 replica=1).
-- show_source_page의 멀티-문서 렌더 개선(현재 2025 기준, 별도 과제).
+1. Validate and deploy `infra/main.bicep`.
+2. Build and push the image to ACR.
+3. Set `deployApp=true` and the new image reference.
+4. Verify the public endpoint, a grounded answer, citations, and requested visuals.
 
-## 10. Steps / Status
-- [x] Phase 1 계획 확정
-- [ ] 사용자 승인
-- [ ] Phase 2: Dockerfile/.dockerignore, infra 모듈 6종, settings/UI 변경, 검증
-- [ ] status → Ready for Validation → azure-validate → azure-deploy
+```bash
+bash scripts/verify_availability.sh
+bash scripts/deploy.sh
+uv run python scripts/smoke_test.py
+```
 
-## 11. Deployed (완료)
-- Status: **DEPLOYED** (2026-07-08)
-- 퍼블릭 URL: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
-- Container App: ca-mirae-v4xy5m5d3ltw6 (revision RunningAtMaxScale, 1 replica), HTTP 200.
-- 이미지: acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v1
-- Storage(비공개) stmiraev4xy5m5d3ltw6/source-docs: PDF 5개 업로드, 앱이 단기 user-delegation SAS로 열람.
-- UAMI b355b8a3: Search Data Reader / OpenAI User / Cognitive Services User / AcrPull / Storage Blob Data Reader+Delegator.
-- 공개 Blob은 구독 정책(PublicAccessNotPermitted)으로 불가 → 비공개 Blob + 런타임 SAS로 전환.
+## Security
+
+- Azure service access is keyless and limited by RBAC.
+- The public Chainlit endpoint has no end-user authentication for this PoC.
+- The Application Insights connection string is the only runtime connection string.
+- The app is fixed at one replica because the current Chainlit conversation session is process-local.
+
+## Current Deployment
+
+- Resource group: `rg-mirae-ai-agent-poc`
+- Region: `koreacentral`
+- Container App: `ca-mirae-v4xy5m5d3ltw6`
+- Public URL: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
+- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v10`
+
+The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
+
+## Validation Proof
+
+Validated on 2026-07-15 against subscription `347e0df7-94e9-4feb-b42d-57d7e49566f2`, resource group `rg-mirae-ai-agent-poc`, and region `koreacentral`.
+
+- `uv run pytest -q`: 390 passed.
+- `uv lock --check` and `git diff --check`: passed.
+- Pylance workspace diagnostics: zero errors.
+- `az bicep build --file infra/main.bicep --stdout`: passed with Bicep 0.41.2.
+- `az deployment group validate ... deployApp=true containerImage=<current-image>`: `Succeeded`.
+- `az deployment group what-if ...`: `Succeeded`; 17 deploy, 2 ignore, 5 role-assignment resources unresolved until deployment, and zero deletes.
+- Live RBAC: UAMI has `Search Index Data Reader`, `Cognitive Services OpenAI User`, `Cognitive Services User`, and `AcrPull` on the required resources.
+- Azure Policy assignments at the target resource-group scope: none.
+- `uv run python scripts/smoke_test.py`: AI Search, Document Intelligence, and Foundry passed with keyless authentication.
+- Container image context: five non-empty source PDFs are copied by the Dockerfile and are not excluded by `.dockerignore`.
+- Azure AI Search inventory: `narrative-index`, `table-index`, `fund-catalog-index`, and `evaluation-facts-index`; all four are referenced by production code, so no index is eligible for deletion.

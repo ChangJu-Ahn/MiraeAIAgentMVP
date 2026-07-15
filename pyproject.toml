@@ -16,7 +16,6 @@ dependencies = [
     "pillow>=12.3.0",
     "plotly>=6.8.0",
     "azure-monitor-opentelemetry-exporter>=1.0.0b55",
-    "azure-storage-blob>=12.20",
 ]
 
 [dependency-groups]

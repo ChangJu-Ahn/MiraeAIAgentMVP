@@ -113,7 +113,6 @@ def _install_fakes(
         "MultilingualFluencyEvaluator",
         evaluator_class("fluency"),
     )
-    monkeypatch.setattr(runner, "RetrievalEvaluator", evaluator_class("retrieval"), raising=False)
     return state
 
 

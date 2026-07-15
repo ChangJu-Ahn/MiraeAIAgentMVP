@@ -1,78 +1,95 @@
-# Mirae AI Agent MVP (Agentic RAG 챗봇 PoC)
+# Mirae AI Agent MVP
 
-문서 기반 Agentic RAG 챗봇 데모. Azure Document Intelligence + AI Search(agentic retrieval) + Microsoft Foundry + Microsoft Agent Framework + Chainlit.
+기금운용평가 보고서와 지침을 근거로 답하는 Microsoft Foundry 기반 Agentic RAG PoC입니다.
 
-## 요구사항
-- Python 3.12 (uv), Azure CLI 2.83+, Bicep
-- Azure 구독 로그인: `az login`
+## 흐름
 
-## 셋업
+1. Azure Document Intelligence가 PDF의 본문, 표, 그림, 페이지 구조를 추출합니다.
+2. 인제스트 파이프라인이 추출 결과를 검증하고 Azure AI Search의 4개 인덱스에 적재합니다.
+3. Microsoft Agent Framework가 질문에 필요한 검색 도구를 선택해 한 번의 agent run으로 답변합니다.
+4. Chainlit이 답변을 스트리밍하고 인용 출처와 요청된 표, 차트, 원문 페이지를 표시합니다.
+5. 평가 파이프라인이 답변과 실제 검색 근거를 5개 Foundry judge로 검증합니다.
+
+| 인덱스 | 역할 |
+|---|---|
+| `narrative-index` | 서술형 본문 하이브리드 검색 |
+| `table-index` | 표와 수치 문맥 하이브리드 검색 |
+| `fund-catalog-index` | 연도별 평가 대상 기금 확인과 이름 해석 |
+| `evaluation-facts-index` | 점수, 등급, 조정 항목, 결정적 집계 |
+
+에이전트는 서술/표 검색과 `list_funds`, `resolve_fund`, `get_fund_evaluations`, `aggregate_evaluations`, `fund_analytics`를 사용합니다. 순위, 분포, 연도 비교, 등급 변화, 교집합은 LLM이 계산하지 않고 Python이 전체 모집단을 대상으로 계산합니다.
+
+## 준비
+
+- Python 3.12
+- [uv](https://docs.astral.sh/uv/)
+- Azure CLI 2.83 이상과 Bicep
+- `az login`으로 인증된 Azure 구독
+
 ```bash
 uv sync
 ```
 
-## 인프라 배포 (P1)
+## Azure 인프라
+
 ```bash
-bash scripts/verify_availability.sh   # 리전/모델 가용성 확인
-bash scripts/deploy.sh                # 배포 + .env 생성
-uv run python scripts/smoke_test.py   # 연결 스모크 테스트
+bash scripts/verify_availability.sh
+bash scripts/deploy.sh
+uv run python scripts/smoke_test.py
 ```
 
-## 문서 인제스트 (P2)
-```bash
-# PDF를 파싱·청킹·임베딩하여 AI Search 2개 인덱스에 적재
-uv run python -m ingest.run --pdf "Docs/<파일>.pdf" --doc-id "<고유ID>"
+Bicep은 AI Search, Document Intelligence, Foundry, Application Insights, managed identity, ACR, Container Apps를 배포합니다. 애플리케이션은 `DefaultAzureCredential`과 managed identity를 사용합니다.
 
-# 전체 코퍼스 인제스트 (report 3건 + guideline 2건)
+## 인제스트
+
+```bash
+# 전체 등록 코퍼스 검증: Azure Search 쓰기와 모델 호출 없음
+uv run python -m ingest.run --all --validate-only
+
+# 전체 등록 코퍼스 적재
 uv run python -m ingest.run --all
 
-# 검증만 수행 (임베딩·Azure Search 쓰기 없이 추출·카탈로그·팩트 완전성 확인)
-uv run python -m ingest.run --all --validate-only
+# 등록된 문서 하나만 적재
+uv run python -m ingest.run --doc-id <doc-id>
 ```
-추가 자료는 전달받는 대로 동일 명령을 새 --doc-id로 재실행하면 upsert 됩니다.
 
-> `--validate-only`는 PDF 파싱·청킹·기금 카탈로그 추출·청크 주석·평가 팩트 추출과 완전성 검증만 수행합니다. 임베딩, Vision 그림 설명(figure descriptions), Azure Search 인덱스 생성/쓰기는 일절 하지 않으므로 Azure 연결 없이 로컬에서 실행 가능합니다. 그림은 실제 인제스트에서만 생성됩니다.
+`--validate-only`는 파싱, 청킹, 카탈로그, 평가 팩트, 완전성 계약만 검사합니다. 실제 적재에서 그림 설명이 필요 없으면 `--no-figures`를 사용합니다. 문서 목록과 메타데이터는 `ingest/corpus.py`에서 관리합니다.
 
-> 그림(figures)은 Foundry gpt-4o 멀티모달로 설명을 생성해 함께 인덱싱합니다(`--no-figures`로 비활성).
+## 질의
 
-## 에이전트 질의 (P3)
 ```bash
-uv run python -m agent.ask "자산운용 평가의 목적은?"
-```
-에이전트가 질문을 분해해 narrative/table 인덱스를 조회하고(agentic retrieval), 근거를 인용해 답변합니다. 근거가 없으면 답변을 거부합니다.
+# CLI
+uv run python -m agent.ask "2022년 종합등급 분포를 알려줘"
 
-## 웹 UI 데모 (P4)
-```bash
+# 웹 UI
 uv run chainlit run app/chat.py -w
 ```
-브라우저에서 챗봇에 질문하면 추론 단계(도구 호출)·답변·근거 출처가 표시됩니다.
 
-> 답변은 토큰 단위로 스트리밍되며, 도구 호출(추론 단계)이 진행되는 대로 실시간 표시됩니다.
-> 에이전트의 도구 실행(🔧, 입력=근거 질의·결과)이 MAF 미들웨어로 캡처되어 단계로 표시되고 App Insights 트레이스에도 남습니다.
-> 답변 후 스스로 충분성을 점검(🔍)하고, 부족하면 부족한 부분을 보완 질의로 다시 조회해 답변을 개선합니다(최대 2라운드).
+채팅마다 하나의 Agent Framework 세션을 재사용하므로 후속 질문의 대화 문맥은 유지됩니다. 각 메시지는 한 번 실행되며, 자료에 근거가 없으면 없다고 답합니다.
 
-> 답변에 표(정형 데이터)·차트(추세/비교)·원문 페이지 이미지가 필요하면 에이전트가 자동으로 함께 표시합니다.
+## 평가
 
-## 평가 (P5)
 ```bash
-# Azure 호출 없이 Excel 구조와 문항 수 확인
+# Excel 계약만 확인
 uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713" --validate-only
 
-# 전체 질문·정답 평가
-uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713"
-
-# 처음 3문항만 평가
+# 일부 문항 실행
 uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713" --limit 3
+
+# 전체 실행 또는 checkpoint 재개
+uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713"
+uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713" --resume
 ```
-제목은 `Docs/<제목>.xlsx`의 확장자를 제외한 파일명입니다. 활성 시트의 첫 번째 비어 있지 않은 행에서 `질문`과 `정답` 열을 찾으며 두 값은 필수입니다. `순번`과 `유형`은 선택값이고, 없으면 각각 Excel 행 기반 ID와 `미분류`를 사용합니다. 영문 헤더 `question`/`query`, `ground_truth`/`reference_answer`, `id`, `qtype`/`category`도 지원합니다.
 
-Foundry judge(`azure-ai-evaluation==1.17.0`)로 Groundedness·Relevance·Similarity·Coherence·Fluency를 각각 1~5점, 통과 기준 3점으로 평가합니다. Similarity는 Excel의 검토 정답을 사용하고, Fluency는 답변을 번역하지 않고 답변이 작성된 언어의 문법·자연스러움·가독성을 평가합니다. 결과는 기본적으로 `reports/eval-<제목>.md`와 같은 이름의 `.json`에 저장되며, 점수·판정 이유·실제 judge context·검색 trace·출처·실패 군집·개선 제안을 포함합니다.
+Excel의 `질문`과 `정답` 열은 필수입니다. Groundedness, Relevance, Similarity, Coherence, Fluency를 1~5점으로 평가하며 3점 이상을 통과로 기록합니다. 결과는 `reports/`의 Markdown과 JSON에 저장됩니다.
 
-전체 실행은 문항마다 에이전트 호출 1회와 judge 호출 5회를 수행하므로 Azure 사용 비용과 실행 시간이 발생합니다. 먼저 `--validate-only` 또는 작은 `--limit`으로 입력과 연결을 확인하세요.
+## 관측성과 검증
 
-## 관측성 (P8)
-`.env`에 `APPINSIGHTS_CONNECTION_STRING`이 있으면 에이전트 실행·툴 콜(입력=근거, 출력=답변)이 OpenTelemetry로 Azure Application Insights에 자동 기록됩니다(민감 데이터 포함). 각 진입점(챗봇/CLI)이 시작 시 `setup_observability()`를 호출합니다. 미설정 시 안전하게 no-op.
+`APPINSIGHTS_CONNECTION_STRING`이 설정되면 Agent Framework trace를 Application Insights로 전송합니다. 미설정이면 계측을 구성하지 않습니다.
 
-**트레이스 확인**: Azure Portal → Application Insights → Transaction search 또는 Logs(KQL): `dependencies | where timestamp > ago(30m)` (에이전트 실행·툴 콜 gen_ai 스팬).
+```bash
+uv run pytest -q
+uv lock --check
+```
 
-설계: `specs/2026-07-06-agentic-rag-chatbot-design.md`
+현재 단순화 설계는 `docs/superpowers/specs/2026-07-15-core-demo-simplification.md`에 있습니다.

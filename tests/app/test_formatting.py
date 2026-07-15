@@ -1,52 +1,5 @@
-from agent.tools import RetrievedSource, TraceStep
-from app.formatting import format_citations, format_debug
-
-
-def test_format_debug_shows_odata_filter():
-    steps = [
-        TraceStep(tool="search_tables", query="등급", n_hits=3, odata_filter="year eq 2022 and doc_type eq 'report'"),
-        TraceStep(tool="search_narrative", query="개요", n_hits=1),
-    ]
-    out = format_debug([("q", steps, [])], cited=[])
-    assert "필터: `year eq 2022 and doc_type eq 'report'`" in out  # 적용된 필터 노출
-    assert "필터: 없음" in out  # 필터 미적용도 명시
-
-
-def test_format_debug_includes_trace_scores_and_citations():
-    steps = [TraceStep(tool="search_narrative", query="탁월 등급", n_hits=2)]
-    sources = [
-        RetrievedSource(
-            n=1, index="narrative-index", section_path="Ⅱ > 1 > 가",
-            page_physical=24, chunk_type="narrative", snippet="탁월 등급 설명 본문", score=3.42,
-        ),
-        RetrievedSource(
-            n=2, index="narrative-index", section_path="Ⅱ > 2",
-            page_physical=25, chunk_type="narrative", snippet="추가 근거", score=2.10,
-        ),
-    ]
-    out = format_debug([("원 질문", steps, sources)], cited=[sources[0]])
-    assert "디버그 트레이스" in out
-    assert "라운드 1" in out
-    assert 'search_narrative("탁월 등급")' in out and "2건" in out
-    assert "관련도 3.42" in out and "관련도 2.10" in out  # 전체 검색 결과 스코어
-    assert "최종 인용" in out
-    assert "탁월 등급 설명 본문" in out  # 스니펫 노출
-
-
-def test_format_debug_handles_empty_results():
-    out = format_debug([("q", [], [])], cited=[])
-    assert "검색 결과 없음" in out
-    assert "인용하지 않음" in out
-
-
-def test_format_debug_appends_collapsed_raw_trace():
-    raw = '[\n  {"name": "chat gpt-4o"}\n]'
-    out = format_debug([("q", [], [])], cited=[], raw_trace=raw)
-    assert "<details>" in out and "</details>" in out
-    assert "Raw OpenTelemetry Trace" in out
-    assert '"name": "chat gpt-4o"' in out
-    # raw_trace 미지정 시 details 블록 없음
-    assert "<details>" not in format_debug([("q", [], [])], cited=[])
+from agent.tools import RetrievedSource
+from app.formatting import format_citations
 
 
 def test_format_citations_lists_sources():
@@ -92,11 +45,3 @@ def test_cited_sources_empty_when_no_refs():
 
     srcs = [RetrievedSource(n=1, index="x", section_path="A", page_physical=1, chunk_type="narrative", snippet="s")]
     assert cited_sources("인용 없음", srcs) == []
-
-
-def test_format_source_docs():
-    from app.formatting import format_source_docs
-    out = format_source_docs([("2025 보고서", "https://x/source-docs/a.pdf?sas")])
-    assert "원본 자료" in out
-    assert "[2025 보고서](https://x/source-docs/a.pdf?sas)" in out
-    assert format_source_docs([]) == ""
