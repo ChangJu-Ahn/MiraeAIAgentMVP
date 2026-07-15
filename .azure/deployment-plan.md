@@ -1,6 +1,6 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Deployed 2026-07-15 (v13)
+Status: Validated 2026-07-16 (v14)
 
 Recipe: Bicep infrastructure with Azure CLI container deployment
 
@@ -63,6 +63,18 @@ uv run python scripts/smoke_test.py
 The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
 
 ## Validation Proof
+
+Revalidated on 2026-07-16 for the evaluation experience and image `mirae-chat:v14`.
+
+- Target confirmed: subscription `ME-MngEnvMCAP094463-changjuahn-1` (`347e0df7-94e9-4feb-b42d-57d7e49566f2`), resource group `rg-mirae-ai-agent-poc`, region `koreacentral`, and Container App `ca-mirae-v4xy5m5d3ltw6` (`Succeeded`). The current healthy baseline is revision `0000014` on `mirae-chat:v13` with 100% latest-revision traffic.
+- Git and tests: `uv run pytest -q` passed 427 tests; `uv lock --check`, `git diff --check`, and VS Code diagnostics for all changed Python files passed.
+- Evaluation publication: regenerating `public/evaluation-data.json` from the approved 16-row batch artifact produced a byte-for-byte identical snapshot. Publication tests enforce the public field allowlist, and `reports/` remains excluded from the image.
+- Bicep MCP compilation: `infra/main.bicep` and `infra/main.bicepparam` compiled successfully with zero diagnostics using Bicep 0.45.15.
+- ARM preflight for `mirae-chat:v14`: group validation returned `Succeeded`; what-if reported 11 Modify, 6 NoChange, 2 Ignore, 5 expected Unsupported role assignments, and zero Delete changes.
+- Container contract: Dockerfile and Chainlit listen on port 8000, Container Apps ingress targets port 8000, and the image includes only the allowlisted public evaluation snapshot rather than raw reports. The local Docker engine is unavailable, so ACR remote build is the image build and validation path.
+- Live dependencies and RBAC: Search, Document Intelligence, and Foundry smoke tests passed with keyless authentication. UAMI principal `e2a20198-9516-43e0-b54a-fc1a5d088cb6` retains Search Index Data Reader, Cognitive Services OpenAI User, Cognitive Services User, and AcrPull on the required scopes.
+- Azure Policy assignments at management-group and subscription scope were reviewed. The active policy set is unchanged from v13, and ARM validation succeeded for v14.
+- Image gate: `mirae-chat:v14` did not exist before deployment.
 
 Revalidated on 2026-07-15 for `main` merge `12a00ea` and image `mirae-chat:v13`.
 

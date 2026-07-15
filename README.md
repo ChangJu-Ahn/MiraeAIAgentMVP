@@ -402,9 +402,18 @@ uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713" --limit 3
 # 전체 실행 또는 checkpoint 재개
 uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713"
 uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713" --resume
+
+# 검토 완료한 batch artifact를 고객 공개용 스냅샷으로 발행
+uv run python -m eval.publication \
+	reports/eval-Chatbot_질문지리스트_20260713-deployed-v11-20260715.json \
+	public/evaluation-data.json
 ```
 
 Excel의 `질문`과 `정답` 열은 필수입니다. Groundedness, Relevance, Similarity, Coherence, Fluency를 1~5점으로 평가하며 3점 이상을 통과로 기록합니다. 결과는 `reports/`의 Markdown과 JSON에 저장됩니다.
+
+Chainlit 헤더의 `Evaluation` 링크는 배포 이미지에 고정된 고객 공개용 스냅샷을 표시합니다. 질문, 검토 정답, 실제 답변, evaluator별 점수·통과 여부·판정 근거는 공개하지만, exact judge context, 검색 trace, OData filter, source payload는 포함하지 않습니다. 다섯 evaluator는 다섯 품질 기준을 뜻하며 서로 다른 judge 모델 다섯 개를 뜻하지 않습니다. 모두 스냅샷에 기록된 동일 judge deployment를 사용합니다.
+
+우측 상단 설정의 `답변 평가`는 기본적으로 꺼져 있습니다. 활성화하면 답변 스트리밍과 출처 표시가 끝난 뒤 Groundedness, Relevance, Coherence, Fluency를 백그라운드에서 평가합니다. 질문이 공개 고객 평가셋과 정확히 일치해 검토 정답이 있을 때만 Similarity를 추가하며, 임의 질문에 합성 정답을 만들지 않습니다. 완료된 결과는 `답변 평가 보기` 버튼으로 우측 패널에서 다시 열 수 있습니다.
 
 ## 관측성과 검증
 

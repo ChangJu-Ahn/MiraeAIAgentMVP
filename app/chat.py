@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 import tempfile
@@ -21,11 +22,18 @@ from agent.visuals import ChartVisual, ImageVisual, TableVisual, VisualRecorder
 from app.formatting import cited_sources, dedup_sources, format_citations, format_debug
 from app.visual_bind import chart_to_figure, table_to_dataframe
 from config.settings import get_settings
+from eval.live import (
+    evaluate_existing_answer,
+    find_reference_answer,
+    format_live_evaluation,
+)
 from ingest.figures import render_page_png
 
 setup_observability()
 
 _DEBUG_HISTORY_LIMIT = 10
+_EVALUATION_HISTORY_LIMIT = 10
+_EVALUATION_TASKS: set[asyncio.Task[None]] = set()
 
 
 @cl.on_chat_start
@@ -33,6 +41,7 @@ async def on_chat_start() -> None:
     cl.user_session.set("debug", False)
     cl.user_session.set("effort", "medium")
     cl.user_session.set("reflection", False)
+    cl.user_session.set("answer_evaluation", False)
     cl.user_session.set("agent_session", new_session())
     await cl.ChatSettings(
         [
@@ -46,6 +55,11 @@ async def on_chat_start() -> None:
                 label="🔍 자가 점검·보완 (답변이 부족하면 다시 조회, 느려짐)",
                 initial=False,
             ),
+            Switch(
+                id="answer_evaluation",
+                label="답변 평가 (답변 완료 후 백그라운드 품질 평가)",
+                initial=False,
+            ),
             Select(
                 id="effort",
                 label="🧠 추론 강도 (낮을수록 빠르고, 높을수록 깊게 사고)",
@@ -57,8 +71,8 @@ async def on_chat_start() -> None:
     await cl.Message(
         content=(
             "안녕하세요. 기금운용평가보고서에 대해 질문해 주세요.\n\n"
-            "우측 상단 **⚙️ 설정**에서 디버그 모드·자가 점검·추론 강도를 "
-            "조정할 수 있습니다."
+            "우측 상단 **⚙️ 설정**에서 디버그 모드·자가 점검·답변 평가·"
+            "추론 강도를 조정할 수 있습니다."
         )
     ).send()
 
@@ -69,6 +83,9 @@ async def on_settings_update(settings: dict) -> None:
     cl.user_session.set("debug", debug)
     cl.user_session.set("effort", settings.get("effort", "medium"))
     cl.user_session.set("reflection", bool(settings.get("reflection", False)))
+    cl.user_session.set(
+        "answer_evaluation", bool(settings.get("answer_evaluation", False))
+    )
     if not debug:
         await cl.ElementSidebar.set_elements([])
 
@@ -361,6 +378,62 @@ async def answer_and_render(question_input: str) -> None:
             ],
         ).send()
 
+    if cl.user_session.get("answer_evaluation"):
+        await _schedule_answer_evaluation(original_question, answer_text, trace)
+
+
+async def _run_answer_evaluation(
+    question: str,
+    answer: str,
+    trace: TraceRecorder,
+    status_message: cl.Message,
+) -> None:
+    try:
+        ground_truth = find_reference_answer(question)
+        result = await cl.make_async(evaluate_existing_answer)(
+            question=question,
+            answer=answer,
+            sources=trace.sources,
+            evidence=trace.evidence,
+            ground_truth=ground_truth,
+        )
+        evaluation_markdown = format_live_evaluation(result)
+        evaluation_store = dict(cl.user_session.get("evaluation_store") or {})
+        evaluation_id = uuid.uuid4().hex
+        evaluation_store[evaluation_id] = evaluation_markdown
+        while len(evaluation_store) > _EVALUATION_HISTORY_LIMIT:
+            evaluation_store.pop(next(iter(evaluation_store)))
+        cl.user_session.set("evaluation_store", evaluation_store)
+
+        status_message.content = "답변 평가 완료"
+        status_message.actions = [
+            cl.Action(
+                name="show_evaluation",
+                payload={"id": evaluation_id},
+                label="답변 평가 보기",
+                tooltip="이 답변의 품질 평가 결과를 우측 패널에서 엽니다",
+            )
+        ]
+    except Exception:  # noqa: BLE001 - 평가 실패는 기존 답변과 격리
+        cl.logger.exception("live answer evaluation failed")
+        status_message.content = "답변 평가 실패"
+        status_message.actions = []
+    await status_message.update()
+
+
+async def _schedule_answer_evaluation(
+    question: str,
+    answer: str,
+    trace: TraceRecorder,
+) -> None:
+    status_message = cl.Message(content="답변 평가 중")
+    await status_message.send()
+    task = asyncio.create_task(
+        _run_answer_evaluation(question, answer, trace, status_message)
+    )
+    _EVALUATION_TASKS.add(task)
+    task.add_done_callback(_EVALUATION_TASKS.discard)
+
 
 @cl.action_callback("show_debug")
 async def show_debug(action: cl.Action) -> None:
@@ -371,4 +444,16 @@ async def show_debug(action: cl.Action) -> None:
     await cl.ElementSidebar.set_title("🐞 디버그 트레이스")
     await cl.ElementSidebar.set_elements(
         [cl.Text(content=debug_markdown, name="debug-trace")]
+    )
+
+
+@cl.action_callback("show_evaluation")
+async def show_evaluation(action: cl.Action) -> None:
+    evaluation_store = cl.user_session.get("evaluation_store") or {}
+    evaluation_markdown = evaluation_store.get(action.payload.get("id", ""))
+    if not evaluation_markdown:
+        return
+    await cl.ElementSidebar.set_title("답변 평가")
+    await cl.ElementSidebar.set_elements(
+        [cl.Text(content=evaluation_markdown, name="answer-evaluation")]
     )

@@ -166,5 +166,12 @@ default_avatar_file_url = ""
 # Be careful: If this is a relative path, it should not start with a slash.
 # custom_build = "./public/build"
 
+[[UI.header_links]]
+name = "Evaluation"
+display_name = "Evaluation"
+icon_url = "/public/evaluation-icon.png"
+url = "/public/evaluation.html"
+target = "_blank"
+
 [meta]
 generated_by = "2.11.1"

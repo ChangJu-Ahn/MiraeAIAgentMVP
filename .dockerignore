@@ -16,7 +16,6 @@ tests
 reports
 plans
 specs
-eval
 scripts
 *.log
 infra
