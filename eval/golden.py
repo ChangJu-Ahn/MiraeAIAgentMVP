@@ -7,6 +7,9 @@ class GoldenItem(BaseModel):
     id: str
     question: str
     qtype: str
+    ground_truth: str | None = None
+    sheet: str | None = None
+    row_number: int | None = None
 
 
 GOLDEN_QA: list[GoldenItem] = [

@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     search_endpoint: str = ""
     search_index_narrative: str = "narrative-index"
     search_index_table: str = "table-index"
+    search_index_catalog: str = "fund-catalog-index"
+    search_index_facts: str = "evaluation-facts-index"
     foundry_project_endpoint: str = ""
     foundry_chat_deployment: str = "chat"
     foundry_vision_deployment: str = "chat"

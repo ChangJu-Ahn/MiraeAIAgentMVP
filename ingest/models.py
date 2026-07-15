@@ -43,4 +43,6 @@ class Chunk(BaseModel):
     doc_type: str | None = None
     fund_name: str | None = None
     fund_scale: str | None = None
+    fund_id: str | None = None
+    ministry: str | None = None
     content_vector: list[float] | None = None

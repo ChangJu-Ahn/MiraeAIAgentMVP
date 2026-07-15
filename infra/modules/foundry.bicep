@@ -6,7 +6,7 @@ param projectName string = 'proj-mirae-poc'
 param chatModelName string = 'gpt-4o'
 param chatModelVersion string = '2024-11-20'
 param chatDeploymentName string = 'chat'
-param chatCapacity int = 100
+param chatCapacity int = 450
 
 param embeddingModelName string = 'text-embedding-3-large'
 param embeddingModelVersion string = '1'
@@ -16,7 +16,7 @@ param embeddingCapacity int = 50
 param reasoningModelName string = 'gpt-5.4-mini'
 param reasoningModelVersion string = '2026-03-17'
 param reasoningDeploymentName string = 'reasoning'
-param reasoningCapacity int = 100
+param reasoningCapacity int = 2000
 
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: name

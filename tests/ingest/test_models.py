@@ -29,3 +29,19 @@ def test_chunk_metadata_set():
         year=2022, doc_type="report", fund_name="국민연금기금", fund_scale="대규모",
     )
     assert (c.year, c.doc_type, c.fund_name, c.fund_scale) == (2022, "report", "국민연금기금", "대규모")
+
+
+def test_chunk_supports_fund_id_and_ministry():
+    c = Chunk(
+        id="d1-0", doc_id="d1", content="body", chunk_type="narrative",
+        section_path="A", page_physical=40,
+    )
+    assert c.fund_id is None
+    assert c.ministry is None
+    c2 = Chunk(
+        id="d1-1", doc_id="d1", content="body", chunk_type="narrative",
+        section_path="A", page_physical=40,
+        fund_id="국민연금기금", ministry="보건복지부",
+    )
+    assert c2.fund_id == "국민연금기금"
+    assert c2.ministry == "보건복지부"

@@ -1,9 +1,24 @@
+from agent import orchestrator
 from agent.orchestrator import ask_sync, SYSTEM_PROMPT
 
 
 def test_system_prompt_has_today_placeholder_and_filter_rule():
     assert "{today}" in SYSTEM_PROMPT
     assert "필터" in SYSTEM_PROMPT and "최신" in SYSTEM_PROMPT
+
+
+def test_request_context_expands_year_range_and_identifies_document_type():
+    years, doc_type = orchestrator._request_context(
+        "공무원연금기금의 2023~2025회계연도 최종등급 추이는?"
+    )
+    assert years == [2023, 2024, 2025]
+    assert doc_type == "report"
+
+    years, doc_type = orchestrator._request_context(
+        "2026회계연도 기금운용평가지침의 계량 지표는?"
+    )
+    assert years == [2026]
+    assert doc_type == "guideline"
 
 
 def test_grounded_answer_cites_and_uses_tools():
@@ -43,3 +58,82 @@ def test_reasoning_options_valid_and_fallback():
     # 잘못된 값 → medium 대체
     assert _reasoning_options("bogus")["reasoning"]["effort"] == "medium"
     assert _reasoning_options()["reasoning"]["effort"] == "medium"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Task 6 — Prompt routing rules
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestPromptRoutingRules:
+    """System prompt must route structured intents to catalog/aggregation tools."""
+
+    def test_global_intent_keywords_in_prompt(self):
+        for kw in ["전체", "각 기금", "상위", "하위", "순위", "가장"]:
+            assert kw in SYSTEM_PROMPT, f"Missing routing keyword: {kw}"
+
+    def test_structured_tools_mentioned(self):
+        assert "list_funds" in SYSTEM_PROMPT
+        assert "aggregate_evaluations" in SYSTEM_PROMPT
+        assert "fund_analytics" in SYSTEM_PROMPT
+
+    def test_llm_arithmetic_is_forbidden(self):
+        assert "LLM" in SYSTEM_PROMPT
+        assert "계산" in SYSTEM_PROMPT or "집합" in SYSTEM_PROMPT
+
+    def test_forbids_repeated_topk_for_ranking(self):
+        # Must say not to use repeated semantic top-k for numeric sorting
+        assert "top-k" in SYSTEM_PROMPT or "반복" in SYSTEM_PROMPT
+
+    def test_incomplete_coverage_disclosure(self):
+        # Must instruct disclosure of incomplete coverage
+        assert "불완전" in SYSTEM_PROMPT or "누락" in SYSTEM_PROMPT or "공개" in SYSTEM_PROMPT or "부족" in SYSTEM_PROMPT or "미포함" in SYSTEM_PROMPT
+
+    def test_quantitative_rank_with_final_grade_uses_evaluated_population(self):
+        assert "population='evaluated'" in SYSTEM_PROMPT
+        assert "overall_grade" in SYSTEM_PROMPT
+        assert "asset_management_performance" in SYSTEM_PROMPT
+        assert "교집합" in SYSTEM_PROMPT
+        assert "order='desc'" in SYSTEM_PROMPT
+        assert "점수와 순위" in SYSTEM_PROMPT
+
+    def test_unknown_fund_uses_catalog_absence_evidence(self):
+        assert "resolve_fund가 0건" in SYSTEM_PROMPT
+        assert "list_funds" in SYSTEM_PROMPT
+        assert "평가 대상 기금이 아니다" in SYSTEM_PROMPT
+        assert "시맨틱 검색으로 부재를 재확인하지 마라" in SYSTEM_PROMPT
+
+    def test_adjustment_questions_use_structured_facts(self):
+        assert "가감점" in SYSTEM_PROMPT
+        assert "metric='가감점'" in SYSTEM_PROMPT
+        assert "get_fund_evaluations" in SYSTEM_PROMPT
+
+    def test_annual_summary_uses_distribution_and_rank(self):
+        assert "연도 전체 평가결과" in SYSTEM_PROMPT
+        assert "operation='distribution'" in SYSTEM_PROMPT
+        assert "operation='rank'" in SYSTEM_PROMPT
+        assert "최상·최하 종합등급" in SYSTEM_PROMPT
+
+    def test_combined_grade_performance_answer_omits_metric_grade(self):
+        assert "계량 성과 자체의 세부등급은 덧붙이지 마라" in SYSTEM_PROMPT
+
+    def test_cross_year_remediation_matches_same_issues(self):
+        assert "지적사항이 다음 연도에 개선됐는지" in SYSTEM_PROMPT
+        assert "미흡점·개선방안·권고" in SYSTEM_PROMPT
+        assert "동일한 주제어" in SYSTEM_PROMPT
+        assert "개선·미개선·부분개선" in SYSTEM_PROMPT
+        assert "다른 수치 항목으로 대체하지 마라" in SYSTEM_PROMPT
+        assert "위원 겸직과 참석률은 별개 항목" in SYSTEM_PROMPT
+        assert "'위원 겸직'과 '참석률'의 별도 검색" in SYSTEM_PROMPT
+        assert "모두 완료하기 전에는 답하지 마라" in SYSTEM_PROMPT
+        assert "검색한 모든 지적사항" in SYSTEM_PROMPT
+        assert "참석률 판정" in SYSTEM_PROMPT
+
+    def test_missing_document_forbids_filter_widening_or_substitution(self):
+        assert "corpus manifest" in SYSTEM_PROMPT
+        assert "연도·문서유형 필터를 제거하지 마라" in SYSTEM_PROMPT
+        assert "다른 연도나 문서유형으로 대체하지 마라" in SYSTEM_PROMPT
+
+    def test_fact_source_citation(self):
+        # Must instruct citation of fact sources
+        assert "출처" in SYSTEM_PROMPT

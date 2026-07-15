@@ -22,8 +22,16 @@ uv run python scripts/smoke_test.py   # 연결 스모크 테스트
 ```bash
 # PDF를 파싱·청킹·임베딩하여 AI Search 2개 인덱스에 적재
 uv run python -m ingest.run --pdf "Docs/<파일>.pdf" --doc-id "<고유ID>"
+
+# 전체 코퍼스 인제스트 (report 3건 + guideline 2건)
+uv run python -m ingest.run --all
+
+# 검증만 수행 (임베딩·Azure Search 쓰기 없이 추출·카탈로그·팩트 완전성 확인)
+uv run python -m ingest.run --all --validate-only
 ```
 추가 자료는 전달받는 대로 동일 명령을 새 --doc-id로 재실행하면 upsert 됩니다.
+
+> `--validate-only`는 PDF 파싱·청킹·기금 카탈로그 추출·청크 주석·평가 팩트 추출과 완전성 검증만 수행합니다. 임베딩, Vision 그림 설명(figure descriptions), Azure Search 인덱스 생성/쓰기는 일절 하지 않으므로 Azure 연결 없이 로컬에서 실행 가능합니다. 그림은 실제 인제스트에서만 생성됩니다.
 
 > 그림(figures)은 Foundry gpt-4o 멀티모달로 설명을 생성해 함께 인덱싱합니다(`--no-figures`로 비활성).
 
@@ -47,10 +55,20 @@ uv run chainlit run app/chat.py -w
 
 ## 평가 (P5)
 ```bash
-uv run python -m eval.run_eval            # 전체 Golden Q&A 평가 → reports/eval-report.md
-uv run python -m eval.run_eval --limit 3  # 소규모 실행
+# Azure 호출 없이 Excel 구조와 문항 수 확인
+uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713" --validate-only
+
+# 전체 질문·정답 평가
+uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713"
+
+# 처음 3문항만 평가
+uv run python -m eval.run_eval "Chatbot_질문지리스트_20260713" --limit 3
 ```
-Foundry judge(azure-ai-evaluation)로 Groundedness·Relevance·Retrieval·Coherence·Fluency를 측정하고, 인용율·할루시네이션 방어를 목표선(정확도 80%·인용 90%·방어 90%)과 비교합니다.
+제목은 `Docs/<제목>.xlsx`의 확장자를 제외한 파일명입니다. 활성 시트의 첫 번째 비어 있지 않은 행에서 `질문`과 `정답` 열을 찾으며 두 값은 필수입니다. `순번`과 `유형`은 선택값이고, 없으면 각각 Excel 행 기반 ID와 `미분류`를 사용합니다. 영문 헤더 `question`/`query`, `ground_truth`/`reference_answer`, `id`, `qtype`/`category`도 지원합니다.
+
+Foundry judge(`azure-ai-evaluation==1.17.0`)로 Groundedness·Relevance·Similarity·Coherence·Fluency를 각각 1~5점, 통과 기준 3점으로 평가합니다. Similarity는 Excel의 검토 정답을 사용하고, Fluency는 답변을 번역하지 않고 답변이 작성된 언어의 문법·자연스러움·가독성을 평가합니다. 결과는 기본적으로 `reports/eval-<제목>.md`와 같은 이름의 `.json`에 저장되며, 점수·판정 이유·실제 judge context·검색 trace·출처·실패 군집·개선 제안을 포함합니다.
+
+전체 실행은 문항마다 에이전트 호출 1회와 judge 호출 5회를 수행하므로 Azure 사용 비용과 실행 시간이 발생합니다. 먼저 `--validate-only` 또는 작은 `--limit`으로 입력과 연결을 확인하세요.
 
 ## 관측성 (P8)
 `.env`에 `APPINSIGHTS_CONNECTION_STRING`이 있으면 에이전트 실행·툴 콜(입력=근거, 출력=답변)이 OpenTelemetry로 Azure Application Insights에 자동 기록됩니다(민감 데이터 포함). 각 진입점(챗봇/CLI)이 시작 시 `setup_observability()`를 호출합니다. 미설정 시 안전하게 no-op.

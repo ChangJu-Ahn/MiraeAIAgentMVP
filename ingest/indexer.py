@@ -41,6 +41,8 @@ def build_index(name: str) -> SearchIndex:
         SimpleField(name="doc_type", type=SearchFieldDataType.String, filterable=True, facetable=True),
         SimpleField(name="fund_name", type=SearchFieldDataType.String, filterable=True, facetable=True),
         SimpleField(name="fund_scale", type=SearchFieldDataType.String, filterable=True, facetable=True),
+        SimpleField(name="fund_id", type=SearchFieldDataType.String, filterable=True, facetable=True),
+        SimpleField(name="ministry", type=SearchFieldDataType.String, filterable=True, facetable=True),
         SimpleField(name="year", type=SearchFieldDataType.Int32, filterable=True, facetable=True),
         SimpleField(name="page_physical", type=SearchFieldDataType.Int32, filterable=True),
         SimpleField(name="page_printed", type=SearchFieldDataType.Int32, filterable=True),
@@ -100,7 +102,7 @@ def _chunk_to_doc(chunk: Chunk) -> dict:
         "section_path": chunk.section_path,
         "page_physical": chunk.page_physical,
     }
-    for k in ("year", "doc_type", "fund_name", "fund_scale", "page_printed"):
+    for k in ("year", "doc_type", "fund_name", "fund_scale", "fund_id", "ministry", "page_printed"):
         v = getattr(chunk, k)
         if v is not None:
             doc[k] = v
