@@ -135,11 +135,13 @@ def test_container_includes_dashboard_and_runtime_evaluator_without_raw_reports(
 
     assert "COPY eval/ eval/" in dockerfile
     assert "COPY public/ public/" in dockerfile
-    assert "COPY [Dd]ocs/ Docs/" in dockerfile
+    assert "COPY */*.pdf Docs/" in dockerfile
     assert "eval" not in ignored
     assert "docs" not in ignored
     assert "docs/" not in ignored
     assert "docs/*.pdf" not in ignored
     assert "*.pdf" not in ignored
     assert "reports" in ignored
-    assert len(list((ROOT / "docs").glob("*.pdf"))) == 5
+    matched_pdfs = list(ROOT.glob("*/*.pdf"))
+    assert len(matched_pdfs) == 5
+    assert {path.parent.name.casefold() for path in matched_pdfs} == {"docs"}

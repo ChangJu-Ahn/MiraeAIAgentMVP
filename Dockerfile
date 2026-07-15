@@ -21,7 +21,7 @@ COPY ingest/ ingest/
 COPY config/ config/
 COPY eval/ eval/
 COPY public/ public/
-COPY [Dd]ocs/ Docs/
+COPY */*.pdf Docs/
 COPY .chainlit/ .chainlit/
 COPY chainlit.md ./
 
