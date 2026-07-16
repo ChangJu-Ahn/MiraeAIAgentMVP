@@ -169,6 +169,7 @@ def test_container_includes_dashboard_and_runtime_evaluator_without_raw_reports(
     assert "docs/*.pdf" not in ignored
     assert "*.pdf" not in ignored
     assert "reports" in ignored
+    assert ".worktrees" in ignored
     matched_pdfs = list(ROOT.glob("*/*.pdf"))
     assert len(matched_pdfs) == 5
     assert {path.parent.name.casefold() for path in matched_pdfs} == {"docs"}
