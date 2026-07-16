@@ -1,6 +1,6 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Deployed 2026-07-16 (v14)
+Status: Deployed 2026-07-16 (v15)
 
 Recipe: Bicep infrastructure with Azure CLI container deployment
 
@@ -58,11 +58,21 @@ uv run python scripts/smoke_test.py
 - Region: `koreacentral`
 - Container App: `ca-mirae-v4xy5m5d3ltw6`
 - Public URL: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
-- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v14`
+- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v15`
+- Revision: `ca-mirae-v4xy5m5d3ltw6--0000016`
 
 The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
 
 ## Validation Proof
+
+Revalidated at 2026-07-15 16:54 UTC for the Readme and source-document restoration on image `mirae-chat:v15`.
+
+- Git and tests: commit `4f25662641f3d30a708941f96c7352174703dcea` is the verified tip of both local and remote `main`; `uv run pytest -q` passed 435 tests after the Docker compatibility fix; `uv lock --check`, staged and unstaged `git diff --check`, and VS Code diagnostics for the changed implementation, tests, and Dockerfile passed. The three raw evaluation reports remain untracked and excluded from the image.
+- Target and baseline: the only enabled/default subscription is `ME-MngEnvMCAP094463-changjuahn-1` (`347e0df7-94e9-4feb-b42d-57d7e49566f2`). Existing resource group `rg-mirae-ai-agent-poc`, Container Apps environment `cae-mirae-v4xy5m5d3ltw6`, and Container App `ca-mirae-v4xy5m5d3ltw6` are in `koreacentral` and `Succeeded`. Healthy revision `0000015` runs `mirae-chat:v14` with one replica and 100% traffic.
+- Bicep compilation and static contract: MCP Bicep 0.45.15 compiled `infra/main.bicep` and `infra/main.bicepparam` with zero diagnostics. Container Apps ingress and Chainlit both use port 8000, ACR admin access is disabled, and the UAMI is used for registry and Azure service access. Git tracks the five PDFs under canonical `Docs/`; `COPY */*.pdf Docs/` matches exactly those five PDFs from either macOS or Linux checkout casing and normalizes the runtime path used by corpus and source-document routes.
+- ARM preflight: resource-group validation returned `Succeeded` with correlation ID `ce7f2344-ef8b-40f0-805c-c1237ae65818`. What-if returned `Succeeded` with 11 Modify, 6 NoChange, 2 Ignore, 5 expected Unsupported role assignments, zero Create, and zero Delete changes.
+- Policy and RBAC: active subscription and management-group policy assignments were reviewed; ARM validation succeeded under the current policy set. UAMI principal `e2a20198-9516-43e0-b54a-fc1a5d088cb6` has Search Index Data Reader, Cognitive Services OpenAI User, Cognitive Services User, and AcrPull at the required resource scopes, matching `infra/modules/apprbac.bicep`.
+- Image gate: initial ACR run `dej` rejected the directory bracket glob before an image or tag was produced. A focused RED-GREEN test and the full 435-test suite verified the file-glob correction in commit `4f25662`; neither `mirae-chat:v15` nor `mirae-chat:4f25662` existed before the retry. The local Docker daemon is unavailable, so ACR remote build is the Linux image build and validation path.
 
 Revalidated on 2026-07-16 for the evaluation experience and image `mirae-chat:v14`.
 
@@ -113,6 +123,20 @@ Validated on 2026-07-15 against subscription `347e0df7-94e9-4feb-b42d-57d7e49566
 - Azure AI Search inventory: `narrative-index`, `table-index`, `fund-catalog-index`, and `evaluation-facts-index`; all four are referenced by production code, so no index is eligible for deletion.
 
 ## Deployment Verification
+
+### v15 Readme and Source Documents
+
+- Git commit `4f25662641f3d30a708941f96c7352174703dcea` is pushed to `origin/main`. The initial ACR run `dej` rejected `COPY [Dd]ocs/ Docs/` before producing a tag; regression-tested commit `4f25662` replaced it with `COPY */*.pdf Docs/`.
+- ACR remote build run `dek` passed the PDF copy stage and pushed `mirae-chat:v15` and `mirae-chat:4f25662` with the same digest, `sha256:00dca7b48d624398b7c19ed1d22a8ad90a2949940b045818c6d33172e9118ef8`.
+- ARM deployment `mirae-v15-deploy-20260716` succeeded with correlation ID `3276f730-71d5-4aaa-a3e9-38e253f8e176`; all 19 deployment operations succeeded.
+- Container App revision `ca-mirae-v4xy5m5d3ltw6--0000016` is active, `Healthy`, and `Provisioned`, runs one ready replica of `mirae-chat:v15` with zero restarts, and receives 100% of latest-revision traffic.
+- Public `/`, `/health`, `/source-docs`, `/public/evaluation.html`, `/public/evaluation-data.json`, `/public/evaluation-icon.png`, and `/public/custom.css` requests returned HTTP 200 with the expected content types. The deployed evaluation snapshot has schema version 1 and 16 rows.
+- All five stable source-document URLs returned inline PDF responses with HTTP 206, a valid `%PDF-` signature, and correct byte ranges. An unknown document ID returned 404.
+- Browser verification confirmed the audited Readme, both header links, five evaluator cards, 16 evaluation questions, the privacy notice, and five source-document links. Desktop and 390-pixel mobile layouts had no horizontal overflow; mobile hid only the two custom-link labels and retained both icons. The Evaluation and source-document pages emitted no console errors.
+- A live grounded question completed in 17.3 seconds and answered that the 2025 국민연금기금 final grade is `양호`, citing the evaluation summary on p.180. A repeat run returned the same grade and page. Neither run displayed `E_STREAM`.
+- Post-deployment Search, Document Intelligence, and Foundry keyless smoke tests passed. UAMI principal `e2a20198-9516-43e0-b54a-fc1a5d088cb6` retains Search Index Data Reader, Cognitive Services OpenAI User, Cognitive Services User, and AcrPull at the required scopes.
+- Active-revision workload logs contained zero traceback, exception, unhandled-error, critical, fatal, `E_STREAM`, or error-level patterns. The verified chat run recorded seven successful Application Insights dependencies, zero failed dependencies, and zero exceptions.
+- System logs recorded nine transient startup-probe failures from 17:11:11 through 17:11:19 UTC while revision `0000016` initialized; none recurred afterward. Chainlit also requests avatar images derived from the reasoning-step labels (`/avatars/생각 중...`), which return non-blocking HTTP 400 responses without affecting the rendered reasoning step or answer.
 
 ### v14 Evaluation Experience
 
