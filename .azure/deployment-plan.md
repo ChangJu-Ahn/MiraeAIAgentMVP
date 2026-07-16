@@ -1,6 +1,6 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Deployed 2026-07-16 (v15)
+Status: Validated 2026-07-16 (v16)
 
 Recipe: Bicep infrastructure with Azure CLI container deployment
 
@@ -64,6 +64,14 @@ uv run python scripts/smoke_test.py
 The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
 
 ## Validation Proof
+
+Revalidated at 2026-07-16 01:37 UTC for the MVP visibility notice and image `mirae-chat:v16`.
+
+- Git and application gates: `main` commit `0890cc9c6ec6140f4788c6cbb9c5a079ebd50be8` is pushed to `origin/main`; the checkout passed all 436 tests, `uv lock --check`, JavaScript syntax validation, `git diff --check`, zero VS Code diagnostics, the exact 429-line `README.md` suffix contract, and a RED-GREEN build-context regression test. `.dockerignore` excludes `.worktrees`, `.env`, and `reports`, so the isolated checkout, its environment symlink, and the three raw evaluation reports are not uploaded to ACR.
+- Target and baseline: the only enabled/default subscription is `ME-MngEnvMCAP094463-changjuahn-1` (`347e0df7-94e9-4feb-b42d-57d7e49566f2`). Existing resource group `rg-mirae-ai-agent-poc`, Container Apps environment `cae-mirae-v4xy5m5d3ltw6`, and Container App `ca-mirae-v4xy5m5d3ltw6` are in `koreacentral` and `Succeeded`. Healthy revision `0000016` runs `mirae-chat:v15` with one replica and 100% latest-revision traffic.
+- Bicep and ARM preflight: MCP Bicep 0.45.15 compiled `infra/main.bicep` and `infra/main.bicepparam` with zero diagnostics. Resource-group validation returned `Succeeded` with correlation ID `13743b35-b0a4-4a4f-8dae-99b6ef71b9ed`. What-if returned `Succeeded` with 17 Deploy, 5 expected Unsupported role assignments, 2 Ignore, and zero Delete changes.
+- Security and dependencies: active subscription and management-group policy assignments were reviewed. UAMI principal `e2a20198-9516-43e0-b54a-fc1a5d088cb6` retains Search Index Data Reader, Cognitive Services OpenAI User, Cognitive Services User, and AcrPull on the required resource scopes. Pre-deployment keyless smoke tests passed for Azure AI Search, Document Intelligence, and Microsoft Foundry.
+- Image gate: ACR `acrmiraev4xy5m5d3ltw6` and repository `mirae-chat` exist, while tag `mirae-chat:v16` does not. The existing AcrPull assignment is already propagated; no phase-one resource provisioning or RBAC change is required for this image-only rollout.
 
 Revalidated at 2026-07-15 16:54 UTC for the Readme and source-document restoration on image `mirae-chat:v15`.
 
