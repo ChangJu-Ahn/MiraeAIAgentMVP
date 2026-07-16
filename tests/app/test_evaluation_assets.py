@@ -60,6 +60,11 @@ def test_chainlit_registers_evaluation_and_source_document_header_links():
 
 def test_chainlit_readme_documents_the_verified_user_experience():
     readme = (ROOT / "chainlit.md").read_text(encoding="utf-8")
+    repository_readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    notice = (
+        "본 서비스는 기능과 사용자 경험 검증을 위한 PoC/MVP이며, "
+        "Production 운영용 서비스가 아닙니다."
+    )
 
     for required_text in (
         "Microsoft Foundry",
@@ -74,8 +79,9 @@ def test_chainlit_readme_documents_the_verified_user_experience():
     ):
         assert required_text in readme
 
-    assert "uv run" not in readme
-    assert "DefaultAzureCredential" not in readme
+    assert readme.startswith("> **MVP 안내**")
+    assert notice in readme
+    assert readme.endswith(repository_readme)
 
 
 def test_chainlit_mobile_header_compacts_custom_links_without_hiding_icons():
@@ -91,6 +97,27 @@ def test_chainlit_mobile_header_compacts_custom_links_without_hiding_icons():
     assert "display: none" in css
     assert 'a[href="/public/evaluation.html"] > img' not in css
     assert 'a[href="/source-docs"] > img' not in css
+
+
+def test_chainlit_registers_accessible_responsive_mvp_banner():
+    config = tomllib.loads(
+        (ROOT / ".chainlit" / "config.toml").read_text(encoding="utf-8")
+    )
+
+    assert config["UI"].get("custom_js") == "/public/mvp-notice.js"
+
+    javascript = (ROOT / "public" / "mvp-notice.js").read_text(encoding="utf-8")
+    css = (ROOT / "public" / "custom.css").read_text(encoding="utf-8")
+
+    assert 'notice.id = "mvp-notice"' in javascript
+    assert 'notice.setAttribute("role", "note")' in javascript
+    assert 'notice.setAttribute("aria-label", "MVP 서비스 안내")' in javascript
+    assert 'document.getElementById("mvp-notice")' in javascript
+    assert "Production 운영용 서비스가 아닙니다" in javascript
+    assert "--mvp-notice-height" in css
+    assert "body.mvp-notice-active #root" in css
+    assert "#mvp-notice" in css
+    assert "@media (max-width: 480px)" in css
 
 
 def test_evaluation_dashboard_has_theme_methodology_and_safe_dom_contract():
