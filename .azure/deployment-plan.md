@@ -137,6 +137,7 @@ Validated on 2026-07-15 against subscription `347e0df7-94e9-4feb-b42d-57d7e49566
 - Post-deployment Search, Document Intelligence, and Foundry keyless smoke tests passed. UAMI principal `e2a20198-9516-43e0-b54a-fc1a5d088cb6` retains Search Index Data Reader, Cognitive Services OpenAI User, Cognitive Services User, and AcrPull at the required scopes.
 - Active-revision workload logs contained zero traceback, exception, unhandled-error, critical, fatal, `E_STREAM`, or error-level patterns. The verified chat run recorded seven successful Application Insights dependencies, zero failed dependencies, and zero exceptions.
 - System logs recorded nine transient startup-probe failures from 17:11:11 through 17:11:19 UTC while revision `0000016` initialized; none recurred afterward. Chainlit also requests avatar images derived from the reasoning-step labels (`/avatars/생각 중...`), which return non-blocking HTTP 400 responses without affecting the rendered reasoning step or answer.
+- Browser verification retained two non-blocking upstream Chainlit warnings: Chromium skipped an invalid `*/*` MIME declaration, and the mobile dialog reported a missing description or `aria-describedby`. Neither warning caused layout overflow, navigation failure, or chat errors.
 
 ### v14 Evaluation Experience
 
