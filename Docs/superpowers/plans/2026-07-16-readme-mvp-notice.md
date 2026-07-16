@@ -264,7 +264,7 @@ At a desktop viewport, verify:
 
 At `390x844`, verify that the two-line banner is visible, `#root` begins below it, Evaluation and source-document icons remain present, the composer remains usable, and `scrollWidth <= clientWidth`.
 
-- [ ] **Step 5: Review and commit implementation**
+- [x] **Step 5: Review and commit implementation**
 
 Stage only the plan, application, public assets, configuration, tests, and `chainlit.md`. Explicitly reject anything under `reports/` before committing:
 
