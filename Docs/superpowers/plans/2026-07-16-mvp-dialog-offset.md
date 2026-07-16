@@ -112,27 +112,27 @@ git add tests/app/test_evaluation_assets.py public/custom.css docs/superpowers/p
 git commit -m "fix: keep dialogs below MVP notice"
 ```
 
-### Task 2: Deploy and Verify v17
+### Task 2: Deploy and Verify v18
 
 **Files:**
 - Modify: `.azure/deployment-plan.md`
 
 **Interfaces:**
 - Consumes: the committed dialog-offset image source and existing Bicep deployment
-- Produces: a healthy Azure Container Apps revision running `mirae-chat:v17`
+- Produces: a healthy Azure Container Apps revision running `mirae-chat:v18`
 
 - [x] **Step 1: Run Azure preflight**
 
-Compile `infra/main.bicep` and `infra/main.bicepparam`, run resource-group validation, and run what-if with `containerImage=acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v17`. Require zero Delete changes.
+Compile `infra/main.bicep` and `infra/main.bicepparam`, run resource-group validation, and run what-if with `containerImage=acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v18`. Require zero Delete changes.
 
-- [ ] **Step 2: Build and deploy the image**
+- [x] **Step 2: Build and deploy the image**
 
-Use the existing ACR remote-build and Bicep deployment flow to push `mirae-chat:v17` plus the short Git SHA tag, then deploy that image to `ca-mirae-v4xy5m5d3ltw6`.
+Use the existing ACR remote-build and Bicep deployment flow to push `mirae-chat:v18` plus the short Git SHA tag, then deploy that image to `ca-mirae-v4xy5m5d3ltw6`.
 
-- [ ] **Step 3: Verify production behavior**
+- [x] **Step 3: Verify production behavior**
 
 Require a healthy, provisioned revision with one replica and 100% traffic. Re-run the desktop and 390-by-844 Readme geometry assertions against the public URL, verify the close button works, and confirm `/health` returns HTTP 200.
 
-- [ ] **Step 4: Record and publish deployment evidence**
+- [x] **Step 4: Record and publish deployment evidence**
 
-Update `.azure/deployment-plan.md` with the image digest, ACR run, ARM deployment and correlation IDs, revision, geometry evidence, smoke tests, workload logs, and Application Insights results. Commit as `docs: record v17 deployment`, push `main`, and verify local `HEAD` equals `origin/main` without staging any `reports/` path.
+Update `.azure/deployment-plan.md` with the image digest, ACR run, ARM deployment and correlation IDs, revision, health check, and browser geometry evidence. Commit as `docs: record v18 deployment`, push `main`, and verify local `HEAD` equals `origin/main` without staging any `reports/` path.

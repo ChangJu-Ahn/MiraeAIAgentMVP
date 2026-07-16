@@ -1,6 +1,6 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Validated 2026-07-16 (v17)
+Status: Deployed 2026-07-16 (v18)
 
 Recipe: Bicep infrastructure with Azure CLI container deployment
 
@@ -58,8 +58,8 @@ uv run python scripts/smoke_test.py
 - Region: `koreacentral`
 - Container App: `ca-mirae-v4xy5m5d3ltw6`
 - Public URL: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
-- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v16`
-- Revision: `ca-mirae-v4xy5m5d3ltw6--0000017`
+- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v18`
+- Revision: `ca-mirae-v4xy5m5d3ltw6--0000019`
 
 The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
 
@@ -139,6 +139,16 @@ Validated on 2026-07-15 against subscription `347e0df7-94e9-4feb-b42d-57d7e49566
 - Azure AI Search inventory: `narrative-index`, `table-index`, `fund-catalog-index`, and `evaluation-facts-index`; all four are referenced by production code, so no index is eligible for deletion.
 
 ## Deployment Verification
+
+### v18 MVP Dialog Offset
+
+- Feature branch `fix/mvp-dialog-offset-v17` was fast-forwarded into `main` with zero deleted or renamed files. Local and remote `main` both resolved to `b4e138fe6c210cca012cd9fceacdca3770ea60d3`; the three raw evaluation reports remained untracked.
+- The merged checkout passed 437 tests, `uv lock --check`, JavaScript syntax validation, and `git diff --check`. A transient live groundedness judge response returned `not_applicable` once; the focused retry and complete rerun passed without code changes.
+- ARM validation for `mirae-chat:v18` succeeded with correlation ID `d1dd6d02-51c5-4ab6-8c65-45612f983b88`. ACR remote build run `dep` pushed `mirae-chat:v18` and `mirae-chat:b4e138f` with digest `sha256:c6fb591d8c2963ddac50df49dc609671a3e0e43b5162f728ec54e1eb05200bd4`.
+- ARM deployment `mirae-v18-deploy-20260716` succeeded with correlation ID `602499ad-fb12-459c-94f0-c8096a080a01`; all 19 deployment operations succeeded.
+- Container App revision `ca-mirae-v4xy5m5d3ltw6--0000019` is active, `Healthy`, and `Provisioned`, runs one replica of `mirae-chat:v18`, and receives 100% of latest-revision traffic. The live UAMI retains `AcrPull` on the registry.
+- Public `/`, `/health`, and `/public/custom.css` requests returned HTTP 200; the stylesheet contains both vertical animation overrides and `/health` returned `{"status":"ok"}`.
+- Production browser verification confirmed the dialog and Close control stay below the notice at both animation endpoints. Desktop measured initial `57.6/72.8` pixels and settled `36/52` pixels for dialog/Close; mobile measured initial `71.8/87` pixels and settled `52/68` pixels. Both layouts had zero horizontal overflow, the Close control won hit-testing, and clicking it changed the dialog state to `closed`.
 
 ### v16 MVP Visibility Notice and Complete Readme
 
