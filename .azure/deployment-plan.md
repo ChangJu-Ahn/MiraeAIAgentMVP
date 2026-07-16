@@ -1,6 +1,6 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Validated 2026-07-16 (v16)
+Status: Deployed 2026-07-16 (v16)
 
 Recipe: Bicep infrastructure with Azure CLI container deployment
 
@@ -58,8 +58,8 @@ uv run python scripts/smoke_test.py
 - Region: `koreacentral`
 - Container App: `ca-mirae-v4xy5m5d3ltw6`
 - Public URL: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
-- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v15`
-- Revision: `ca-mirae-v4xy5m5d3ltw6--0000016`
+- Image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v16`
+- Revision: `ca-mirae-v4xy5m5d3ltw6--0000017`
 
 The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
 
@@ -131,6 +131,20 @@ Validated on 2026-07-15 against subscription `347e0df7-94e9-4feb-b42d-57d7e49566
 - Azure AI Search inventory: `narrative-index`, `table-index`, `fund-catalog-index`, and `evaluation-facts-index`; all four are referenced by production code, so no index is eligible for deletion.
 
 ## Deployment Verification
+
+### v16 MVP Visibility Notice and Complete Readme
+
+- Source commits `d9fb9e4` and `d4d3b8e` were merged into `main` as `58a8502`. Build-context hardening commit `0890cc9` and validated deployment-source commit `89e1f83` are pushed to `origin/main`. The verified checkout passed 436 tests, `uv lock --check`, JavaScript syntax validation, `git diff --check`, zero VS Code diagnostics, and the exact 429-line `README.md` suffix contract.
+- ACR remote build run `dem` pushed `mirae-chat:v16` and `mirae-chat:89e1f83` with digest `sha256:0f6bac0163d158af492a382e7df44d445c1a28d1d7b8584173d21e8739d4d9b9`.
+- ARM deployment `mirae-v16-deploy-20260716` succeeded with correlation ID `4d6c8aed-366f-4f2a-8a33-32588bfb41d1`; all 19 deployment operations succeeded.
+- Container App revision `ca-mirae-v4xy5m5d3ltw6--0000017` is active, `Healthy`, and `Provisioned`, runs one replica of `mirae-chat:v16`, and receives 100% of latest-revision traffic. The Container App provisioning state is `Succeeded` and both latest revision pointers resolve to `0000017`.
+- Public `/`, `/health`, `/source-docs`, Evaluation assets, `/public/mvp-notice.js`, and `/public/custom.css` requests returned HTTP 200. All five source-document URLs returned HTTP 206 with a valid `%PDF-` signature, while an unknown source ID returned 404.
+- Production browser verification confirmed exactly one persistent MVP notice on initial load and after starting a new chat. Desktop reserved a 36-pixel banner offset with zero horizontal overflow. At 390 by 844 pixels, the banner reserved 52 pixels, both custom header icons remained 24 by 24 pixels, the composer remained visible, and horizontal overflow was zero.
+- The deployed Readme begins with the MVP notice, includes the canonical `Mirae AI Agent MVP` content and final repository-README sentence, and renders 18,512 characters. The chat-start welcome message also begins with the non-Production MVP notice.
+- A live grounded question completed in 18.1 seconds, answered that the 2025 국민연금기금 final grade is `양호`, and cited the `table-index` evaluation summary on p.180. The answer did not display `E_STREAM`.
+- Post-deployment keyless smoke tests passed for Azure AI Search, Document Intelligence, and Microsoft Foundry. Live RBAC recheck confirmed Search Index Data Reader, Cognitive Services OpenAI User, Cognitive Services User, and AcrPull for UAMI principal `e2a20198-9516-43e0-b54a-fc1a5d088cb6` on the required runtime scopes.
+- The active-revision workload-log sample contained 302 entries and zero traceback, exception, unhandled-error, critical, fatal, `E_STREAM`, or standalone error patterns. Since rollout at 01:49 UTC, Application Insights recorded eight successful dependencies, zero failed dependencies, zero exceptions, and zero error-level traces; no request telemetry was emitted in that window.
+- System logs recorded six transient KEDA `ScaledObjectCheckFailed` events as the revision was created and ten transient startup-probe failures through 01:50:10 UTC. The captured system events contain no later warning for revision `0000017`; traffic was set to 100% at 01:50:21 UTC, and the final live-state check remained healthy with one replica.
 
 ### v15 Readme and Source Documents
 
