@@ -1,6 +1,6 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Deployed 2026-07-16 (v16)
+Status: Validated 2026-07-16 (v17)
 
 Recipe: Bicep infrastructure with Azure CLI container deployment
 
@@ -64,6 +64,14 @@ uv run python scripts/smoke_test.py
 The previously deployed Storage account is no longer referenced by code or Bicep. Removing that existing Azure resource is an explicit operational cleanup, not an incremental Bicep deployment side effect.
 
 ## Validation Proof
+
+Revalidated at 2026-07-16 03:29 UTC for the MVP notice dialog-offset fix and image `mirae-chat:v17`.
+
+- Git and application gates: branch `fix/mvp-dialog-offset-v17` at commit `3291d10ab5ac9e39e174682b43628cd2c56984c4` passed 428 tests with 9 environment-dependent skips and 4 existing dependency warnings. `uv lock --check`, JavaScript syntax validation, `git diff --check`, and the focused CSS regression contract also passed.
+- Rendered behavior: a fresh local origin served the v17 CSS. At 1280 by 900 pixels, the notice, overlay, and Readme dialog boundaries were all 36 pixels; the close button began at 52 pixels. At 390 by 844 pixels, the three boundaries were all 52 pixels; the close button began at 68 pixels. Both layouts had zero document-level horizontal overflow, and clicking Close removed the dialog while retaining exactly one notice and the root offset.
+- Target and baseline: the only enabled/default subscription is `ME-MngEnvMCAP094463-changjuahn-1` (`347e0df7-94e9-4feb-b42d-57d7e49566f2`). Existing resource group `rg-mirae-ai-agent-poc`, Container Apps environment `cae-mirae-v4xy5m5d3ltw6`, and Container App `ca-mirae-v4xy5m5d3ltw6` are in `koreacentral` and `Succeeded`. Healthy revision `0000017` runs `mirae-chat:v16` with one replica and 100% latest-revision traffic.
+- Bicep and ARM preflight: MCP Bicep 0.45.15 compiled `infra/main.bicep` and `infra/main.bicepparam` with zero diagnostics. Resource-group validation returned `Succeeded` with correlation ID `c536ce36-886b-4b28-87ba-65c56b15da5f`. What-if returned `Succeeded` with 11 Modify, 6 NoChange, 5 expected Unsupported role assignments, 2 Ignore, and zero Delete changes.
+- Security and image gate: static Bicep retains Search Index Data Reader, Cognitive Services OpenAI User, Cognitive Services User, and AcrPull at resource scope for UAMI principal `e2a20198-9516-43e0-b54a-fc1a5d088cb6`. The live AcrPull assignment is propagated on ACR `acrmiraev4xy5m5d3ltw6`, and tag `mirae-chat:v17` does not exist before the build. `.dockerignore` excludes `.worktrees`, `.env`, `.azure`, `reports`, and `.superpowers` from the remote build context.
 
 Revalidated at 2026-07-16 01:37 UTC for the MVP visibility notice and image `mirae-chat:v16`.
 

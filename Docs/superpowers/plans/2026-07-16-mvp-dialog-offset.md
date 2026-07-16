@@ -121,7 +121,7 @@ git commit -m "fix: keep dialogs below MVP notice"
 - Consumes: the committed dialog-offset image source and existing Bicep deployment
 - Produces: a healthy Azure Container Apps revision running `mirae-chat:v17`
 
-- [ ] **Step 1: Run Azure preflight**
+- [x] **Step 1: Run Azure preflight**
 
 Compile `infra/main.bicep` and `infra/main.bicepparam`, run resource-group validation, and run what-if with `containerImage=acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:v17`. Require zero Delete changes.
 
