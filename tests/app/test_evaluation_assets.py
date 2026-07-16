@@ -124,11 +124,16 @@ def test_chainlit_fullscreen_dialog_stays_below_mvp_banner():
     css = (ROOT / "public" / "custom.css").read_text(encoding="utf-8")
 
     assert "body.mvp-notice-active > [data-state].fixed.inset-0" in css
-    assert 'body.mvp-notice-active > [role="dialog"].h-screen.w-screen' in css
-    assert "top: var(--mvp-notice-height);" in css
-    assert "height: calc(100dvh - var(--mvp-notice-height));" in css
-    assert "max-height: calc(100dvh - var(--mvp-notice-height));" in css
-    assert "transform: translateX(-50%);" in css
+    selector = 'body.mvp-notice-active > [role="dialog"].h-screen.w-screen'
+    assert selector in css
+
+    dialog_rule = css.split(f"{selector} {{", maxsplit=1)[1].split("}", maxsplit=1)[0]
+    assert "top: var(--mvp-notice-height);" in dialog_rule
+    assert "height: calc(100dvh - var(--mvp-notice-height));" in dialog_rule
+    assert "max-height: calc(100dvh - var(--mvp-notice-height));" in dialog_rule
+    assert "transform: translateX(-50%);" in dialog_rule
+    assert "--tw-enter-translate-y: 0;" in dialog_rule
+    assert "--tw-exit-translate-y: 0;" in dialog_rule
 
 
 def test_evaluation_dashboard_has_theme_methodology_and_safe_dom_contract():

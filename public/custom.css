@@ -43,6 +43,8 @@ body.mvp-notice-active > [data-state].fixed.inset-0 {
 }
 
 body.mvp-notice-active > [role="dialog"].h-screen.w-screen {
+  --tw-enter-translate-y: 0;
+  --tw-exit-translate-y: 0;
   top: var(--mvp-notice-height);
   height: calc(100dvh - var(--mvp-notice-height));
   max-height: calc(100dvh - var(--mvp-notice-height));
