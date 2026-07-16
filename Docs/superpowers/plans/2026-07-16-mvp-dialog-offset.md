@@ -27,7 +27,7 @@
 - Consumes: `--mvp-notice-height` and `body.mvp-notice-active` from `public/custom.css`
 - Produces: a CSS contract that positions body-level Radix overlays and full-screen dialogs below the notice
 
-- [ ] **Step 1: Write the failing CSS contract test**
+- [x] **Step 1: Write the failing CSS contract test**
 
 Add this test after `test_chainlit_registers_accessible_responsive_mvp_banner`:
 
@@ -43,7 +43,7 @@ def test_chainlit_fullscreen_dialog_stays_below_mvp_banner():
     assert "transform: translateX(-50%);" in css
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run:
 
@@ -53,7 +53,7 @@ Run:
 
 Expected: FAIL because the overlay and dialog selectors are absent.
 
-- [ ] **Step 3: Add the minimal CSS implementation**
+- [x] **Step 3: Add the minimal CSS implementation**
 
 Add after the existing `body.mvp-notice-active #root` rule:
 
@@ -70,7 +70,7 @@ body.mvp-notice-active > [role="dialog"].h-screen.w-screen {
 }
 ```
 
-- [ ] **Step 4: Verify GREEN and the affected test module**
+- [x] **Step 4: Verify GREEN and the affected test module**
 
 Run:
 
@@ -80,7 +80,7 @@ Run:
 
 Expected: all tests pass.
 
-- [ ] **Step 5: Verify the rendered desktop and mobile geometry**
+- [x] **Step 5: Verify the rendered desktop and mobile geometry**
 
 Run Chainlit locally, open Readme with Playwright, and assert:
 
@@ -92,7 +92,7 @@ dialog.scrollHeight >= dialog.clientHeight
 document.documentElement.scrollWidth == viewport width
 ```
 
-- [ ] **Step 6: Run complete local verification and commit**
+- [x] **Step 6: Run complete local verification and commit**
 
 Run:
 

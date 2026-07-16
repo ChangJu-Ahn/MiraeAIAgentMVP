@@ -120,6 +120,17 @@ def test_chainlit_registers_accessible_responsive_mvp_banner():
     assert "@media (max-width: 480px)" in css
 
 
+def test_chainlit_fullscreen_dialog_stays_below_mvp_banner():
+    css = (ROOT / "public" / "custom.css").read_text(encoding="utf-8")
+
+    assert "body.mvp-notice-active > [data-state].fixed.inset-0" in css
+    assert 'body.mvp-notice-active > [role="dialog"].h-screen.w-screen' in css
+    assert "top: var(--mvp-notice-height);" in css
+    assert "height: calc(100dvh - var(--mvp-notice-height));" in css
+    assert "max-height: calc(100dvh - var(--mvp-notice-height));" in css
+    assert "transform: translateX(-50%);" in css
+
+
 def test_evaluation_dashboard_has_theme_methodology_and_safe_dom_contract():
     html = (ROOT / "public" / "evaluation.html").read_text(encoding="utf-8")
 

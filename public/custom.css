@@ -38,6 +38,17 @@ body.mvp-notice-active #root {
   min-height: 0;
 }
 
+body.mvp-notice-active > [data-state].fixed.inset-0 {
+  top: var(--mvp-notice-height);
+}
+
+body.mvp-notice-active > [role="dialog"].h-screen.w-screen {
+  top: var(--mvp-notice-height);
+  height: calc(100dvh - var(--mvp-notice-height));
+  max-height: calc(100dvh - var(--mvp-notice-height));
+  transform: translateX(-50%);
+}
+
 @media (max-width: 480px) {
   :root {
     --mvp-notice-height: 52px;
