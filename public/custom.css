@@ -1,4 +1,56 @@
+:root {
+  --mvp-notice-height: 36px;
+}
+
+#mvp-notice {
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--mvp-notice-height);
+  padding: 0 48px;
+  border-bottom: 1px solid #c98500;
+  background: #fff2bf;
+  box-shadow: 0 1px 5px rgb(83 52 0 / 18%);
+  color: #3d2a00;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+#mvp-notice strong {
+  margin-right: 4px;
+  color: #7a3f00;
+  font-weight: 750;
+}
+
+body.mvp-notice-active #root {
+  position: fixed;
+  inset: var(--mvp-notice-height) 0 0;
+  width: 100%;
+  min-height: 0;
+}
+
 @media (max-width: 480px) {
+  :root {
+    --mvp-notice-height: 52px;
+  }
+
+  #mvp-notice {
+    justify-content: flex-start;
+    padding: 6px 12px;
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: left;
+  }
+
   a[href="/public/evaluation.html"] > span,
   a[href="/source-docs"] > span {
     display: none;

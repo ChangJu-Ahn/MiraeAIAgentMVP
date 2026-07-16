@@ -31,7 +31,7 @@
 - Consumes: canonical detailed content from `README.md`.
 - Produces: `chainlit.md` whose first block is the MVP notice and whose final bytes equal `README.md`; one existing `cl.Message` welcome message beginning with the same notice.
 
-- [ ] **Step 1: Write the failing Readme contract test**
+- [x] **Step 1: Write the failing Readme contract test**
 
 Replace the old developer-content exclusions with an exact source contract:
 
@@ -47,7 +47,7 @@ assert notice in readme
 assert readme.endswith(repository_readme)
 ```
 
-- [ ] **Step 2: Write the failing welcome-message test**
+- [x] **Step 2: Write the failing welcome-message test**
 
 Capture sent messages in `test_chat_start_sends_debug_and_reasoning_settings`:
 
@@ -68,7 +68,7 @@ assert sent_messages[0].startswith("**MVP 안내**")
 assert "Production 운영용 서비스가 아닙니다" in sent_messages[0]
 ```
 
-- [ ] **Step 3: Run tests and verify RED**
+- [x] **Step 3: Run tests and verify RED**
 
 Run:
 
@@ -80,7 +80,7 @@ uv run pytest -q \
 
 Expected: both tests fail because the MVP notice and exact README suffix are absent.
 
-- [ ] **Step 4: Implement the Readme and welcome message**
+- [x] **Step 4: Implement the Readme and welcome message**
 
 Prepend this block to `chainlit.md`:
 
@@ -99,7 +99,7 @@ After the existing final paragraph, add `---` and then the complete unmodified c
 "답변의 출처와 원본 문서를 함께 확인해 주세요.\n\n"
 ```
 
-- [ ] **Step 5: Run tests and verify GREEN**
+- [x] **Step 5: Run tests and verify GREEN**
 
 Run the Step 3 command again.
 
@@ -117,7 +117,7 @@ Expected: `2 passed`.
 - Consumes: Chainlit `UI.custom_js` loading `/public/mvp-notice.js`.
 - Produces: one `aside#mvp-notice[role="note"]` under `body`, the `mvp-notice-active` body class, and responsive CSS using `--mvp-notice-height`.
 
-- [ ] **Step 1: Write the failing asset and DOM contract test**
+- [x] **Step 1: Write the failing asset and DOM contract test**
 
 Add a focused test that checks the public contract:
 
@@ -141,7 +141,7 @@ def test_chainlit_registers_accessible_responsive_mvp_banner():
     assert "@media (max-width: 480px)" in css
 ```
 
-- [ ] **Step 2: Run the test and verify RED**
+- [x] **Step 2: Run the test and verify RED**
 
 Run:
 
@@ -151,7 +151,7 @@ uv run pytest -q tests/app/test_evaluation_assets.py::test_chainlit_registers_ac
 
 Expected: fail because `custom_js` and `public/mvp-notice.js` do not exist.
 
-- [ ] **Step 3: Implement minimal JavaScript and configuration**
+- [x] **Step 3: Implement minimal JavaScript and configuration**
 
 Set `custom_js = "/public/mvp-notice.js"` in `.chainlit/config.toml`. Create an IIFE that mounts once:
 
@@ -181,7 +181,7 @@ Set `custom_js = "/public/mvp-notice.js"` in `.chainlit/config.toml`. Create an 
 })();
 ```
 
-- [ ] **Step 4: Implement responsive CSS**
+- [x] **Step 4: Implement responsive CSS**
 
 Use a 36-pixel desktop and 52-pixel mobile reserved height. Fix the banner at the top, constrain text, and place `#root` below it:
 
@@ -211,7 +211,7 @@ body.mvp-notice-active #root {
 
 Complete the visual properties with an amber warning surface, readable contrast, centered desktop text, left-aligned mobile text, stable line heights, and no viewport-scaled font size.
 
-- [ ] **Step 5: Run the focused asset tests and verify GREEN**
+- [x] **Step 5: Run the focused asset tests and verify GREEN**
 
 Run:
 
@@ -230,7 +230,7 @@ Expected: all tests in the file pass.
 - Consumes: all Task 1 and Task 2 outputs.
 - Produces: executable proof for automated contracts and desktop/mobile browser behavior.
 
-- [ ] **Step 1: Run focused and full automated gates**
+- [x] **Step 1: Run focused and full automated gates**
 
 ```bash
 uv run pytest -q tests/app/test_evaluation_assets.py tests/agent/test_streaming.py
@@ -241,7 +241,7 @@ git diff --check
 
 Expected: focused tests pass, full suite reports zero failures, lock is current, and no whitespace errors are reported.
 
-- [ ] **Step 2: Start or restart local Chainlit**
+- [x] **Step 2: Start or restart local Chainlit**
 
 ```bash
 uv run chainlit run app/chat.py --host 127.0.0.1 --port 8001
@@ -249,7 +249,7 @@ uv run chainlit run app/chat.py --host 127.0.0.1 --port 8001
 
 Expected: the app starts and serves `/public/mvp-notice.js`, `/public/custom.css`, and the chat UI.
 
-- [ ] **Step 3: Verify desktop browser behavior**
+- [x] **Step 3: Verify desktop browser behavior**
 
 At a desktop viewport, verify:
 
@@ -260,7 +260,7 @@ At a desktop viewport, verify:
 - opening Readme or starting a new chat does not duplicate the banner;
 - there is no horizontal overflow.
 
-- [ ] **Step 4: Verify 390-pixel mobile behavior**
+- [x] **Step 4: Verify 390-pixel mobile behavior**
 
 At `390x844`, verify that the two-line banner is visible, `#root` begins below it, Evaluation and source-document icons remain present, the composer remains usable, and `scrollWidth <= clientWidth`.
 

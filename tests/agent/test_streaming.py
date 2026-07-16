@@ -8,12 +8,15 @@ def test_chat_start_sends_debug_and_reasoning_settings(monkeypatch):
     agent_session = object()
     stored = {}
     settings_inputs = []
+    sent_messages = []
 
     class FakeSendable:
         def __init__(self, content=""):
             self.content = content
 
         async def send(self):
+            if self.content:
+                sent_messages.append(self.content)
             return self
 
     class FakeChatSettings(FakeSendable):
@@ -47,6 +50,9 @@ def test_chat_start_sends_debug_and_reasoning_settings(monkeypatch):
     assert evaluation_setting.label == (
         "답변 평가 (답변 완료 후 백그라운드 품질 평가)"
     )
+    assert len(sent_messages) == 1
+    assert sent_messages[0].startswith("**MVP 안내**")
+    assert "Production 운영용 서비스가 아닙니다" in sent_messages[0]
 
 
 def test_settings_update_persists_values_and_closes_disabled_debug(monkeypatch):
