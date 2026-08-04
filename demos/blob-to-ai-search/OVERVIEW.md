@@ -118,3 +118,29 @@ SEARCH_ENDPOINT=https://srch-mirae-v4xy5m5d3ltw6.search.windows.net \
 > 🖼️ **이미지 첨부 방법**: 캡처한 스크린샷을 `demos/blob-to-ai-search/images/` 폴더에 위 파일명
 > (`01-upload-page.png` `02-settings-detail.png` `03-search-explorer.png` `04-verify-script.png`)으로 저장하면
 > 이 문서에 자동으로 렌더링됩니다.
+
+---
+
+## 7. 실제 Azure Portal에서 확인할 수 있는 방법.
+
+1) Azure Blob Storage에서 Event 항목에서 트리거를 잡을 수 있음
+![alt text](image.png)
+
+2) 블롭 스토리지 내 특정 컨테이너에 파일이 업로드 된다면, Azure Function을 실행하라는 옵션
+![alt text](image-1.png)
+
+3) (2)항에서 트리거 발생 시 서버리스로 코드를 동작시킬 Azure Function에 업로드된 소스코드 예시
+![alt text](image-2.png)
+
+4) 웹 페이지에서 파일 업로드
+![alt text](image-5.png)
+![alt text](image-6.png)
+
+5) 실제 Azure Blob Storage부터 트리거링되어서 Azure Function이 호출 된 로그
+![alt text](image-3.png)
+
+6) 성공한 로깅 확인은 다음과 같이 확인
+![alt text](image-4.png)
+
+7) 자동으로 적재된 AI Search Index 확인
+![alt text](image-7.png)
