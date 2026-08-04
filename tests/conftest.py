@@ -1,16 +1,11 @@
 import sys
 from pathlib import Path
 
-# The Azure Functions app uses flat imports (e.g. `import chunking`). Expose its
-# pure modules to the repo test suite by putting the app root on sys.path.
-_FUNC_DIR = Path(__file__).resolve().parent.parent / "functions" / "blob_to_search"
-if str(_FUNC_DIR) not in sys.path:
-    sys.path.insert(0, str(_FUNC_DIR))
-
-def pytest_configure(config):
-    """Preload the flat config module for test_blob_config.py."""
-    # Import the flat config module to cache it in sys.modules before
-    # other tests try to import the config package.
-    # This works because pytest_configure runs before test collection.
-    import importlib
-    importlib.import_module('config')
+# The Azure Functions app (functions/blob_to_search) uses flat module imports
+# (e.g. `import chunking`, `import func_config`). Append its directory so the
+# repo test suite can import those pure modules. It is appended (not inserted at
+# position 0) so the repo's own top-level packages — notably `config` — keep
+# precedence and are never shadowed by a flat module of the same name.
+_FUNC_DIR = str(Path(__file__).resolve().parent.parent / "functions" / "blob_to_search")
+if _FUNC_DIR not in sys.path:
+    sys.path.append(_FUNC_DIR)

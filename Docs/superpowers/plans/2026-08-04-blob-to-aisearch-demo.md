@@ -44,11 +44,14 @@ Create `tests/conftest.py`:
 import sys
 from pathlib import Path
 
-# The Azure Functions app uses flat imports (e.g. `import chunking`). Expose its
-# pure modules to the repo test suite by putting the app root on sys.path.
-_FUNC_DIR = Path(__file__).resolve().parent.parent / "functions" / "blob_to_search"
-if str(_FUNC_DIR) not in sys.path:
-    sys.path.insert(0, str(_FUNC_DIR))
+# The Azure Functions app (functions/blob_to_search) uses flat module imports
+# (e.g. `import chunking`, `import func_config`). Append its directory so the
+# repo test suite can import those pure modules. It is appended (not inserted at
+# position 0) so the repo's own top-level packages — notably `config` — keep
+# precedence and are never shadowed by a flat module of the same name.
+_FUNC_DIR = str(Path(__file__).resolve().parent.parent / "functions" / "blob_to_search")
+if _FUNC_DIR not in sys.path:
+    sys.path.append(_FUNC_DIR)
 ```
 
 - [ ] **Step 2: Write the failing tests**
@@ -374,7 +377,7 @@ git commit -m "feat(blob-demo): add upload page HTML and validation"
 ### Task 3: Runtime configuration
 
 **Files:**
-- Create: `functions/blob_to_search/config.py`
+- Create: `functions/blob_to_search/func_config.py`
 - Test: `tests/test_blob_config.py`
 
 **Interfaces:**
@@ -383,16 +386,20 @@ git commit -m "feat(blob-demo): add upload page HTML and validation"
   - `Config` frozen dataclass with fields `search_endpoint, index_name, storage_blob_endpoint, upload_container, chunk_size, max_upload_mb`.
   - `load_config(env: dict[str, str] | None = None) -> Config`.
 
+> **Naming:** the module is `func_config.py` (not `config.py`) on purpose. The
+> repo already has a top-level `config/` package (`config.settings`), and a flat
+> `config` module on `sys.path` would shadow it and break the rest of the suite.
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `tests/test_blob_config.py`:
 
 ```python
-import config
+import func_config
 
 
 def test_load_config_defaults():
-    c = config.load_config({})
+    c = func_config.load_config({})
     assert c.index_name == "demo-blob-index"
     assert c.upload_container == "pdfs"
     assert c.chunk_size == 1000
@@ -401,7 +408,7 @@ def test_load_config_defaults():
 
 
 def test_load_config_overrides():
-    c = config.load_config(
+    c = func_config.load_config(
         {"CHUNK_SIZE": "500", "SEARCH_ENDPOINT": "https://s", "MAX_UPLOAD_MB": "10"}
     )
     assert c.chunk_size == 500
@@ -412,13 +419,13 @@ def test_load_config_overrides():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_blob_config.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'config'`.
+Expected: FAIL with `ModuleNotFoundError: No module named 'func_config'`.
 
-> Note: this imports the function-local `config.py` via the `tests/conftest.py` path shim from Task 1, not the repo's `config/` package.
+> Note: this imports the function-local `func_config.py` via the `tests/conftest.py` path shim from Task 1. Because the shim *appends* the function dir, the repo's own `config/` package keeps precedence and is not shadowed.
 
 - [ ] **Step 3: Write minimal implementation**
 
-Create `functions/blob_to_search/config.py`:
+Create `functions/blob_to_search/func_config.py`:
 
 ```python
 from __future__ import annotations
@@ -457,7 +464,7 @@ Expected: PASS (2 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add functions/blob_to_search/config.py tests/test_blob_config.py
+git add functions/blob_to_search/func_config.py tests/test_blob_config.py
 git commit -m "feat(blob-demo): add runtime config loader"
 ```
 
@@ -609,7 +616,7 @@ git commit -m "feat(blob-demo): add blob, pdf, and search data-plane wrappers"
 - Modify: `.gitignore` (append function-local ignores)
 
 **Interfaces:**
-- Consumes: `config.load_config`, `blob_io.download_blob`, `blob_io.upload_blob`, `pdf_text.extract_pages`, `search_index.ensure_index`, `search_index.upload_documents`, `chunking.build_documents`, `upload_page.render_form_html/render_result_html/render_error_html/validate_upload`.
+- Consumes: `func_config.load_config`, `blob_io.download_blob`, `blob_io.upload_blob`, `pdf_text.extract_pages`, `search_index.ensure_index`, `search_index.upload_documents`, `chunking.build_documents`, `upload_page.render_form_html/render_result_html/render_error_html/validate_upload`.
 - Produces: two Functions named `index` (Event Grid) and `upload` (HTTP `/api/upload`).
 
 - [ ] **Step 1: Write `function_app.py`**
@@ -624,7 +631,7 @@ import logging
 import azure.functions as func
 
 import blob_io
-import config
+import func_config
 import pdf_text
 import search_index
 import upload_page
@@ -636,7 +643,7 @@ log = logging.getLogger("blob_to_search")
 
 @app.event_grid_trigger(arg_name="event")
 def index(event: func.EventGridEvent) -> None:
-    cfg = config.load_config()
+    cfg = func_config.load_config()
     subject = event.subject or ""
     # subject: /blobServices/default/containers/<container>/blobs/<path>
     if "/blobs/" not in subject:
@@ -660,7 +667,7 @@ def index(event: func.EventGridEvent) -> None:
 
 @app.route(route="upload", methods=["GET", "POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def upload(req: func.HttpRequest) -> func.HttpResponse:
-    cfg = config.load_config()
+    cfg = func_config.load_config()
     if req.method == "GET":
         return func.HttpResponse(upload_page.render_form_html(), mimetype="text/html")
 
