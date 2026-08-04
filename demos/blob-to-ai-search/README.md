@@ -140,6 +140,15 @@ demos/blob-to-ai-search/
 | AI Search | **Search Service Contributor** | 인덱스 생성·관리 |
 | AI Search | **Search Index Data Contributor** | 인덱스에 청크 문서 업로드 |
 
+> **왜 이 3개만으로 충분한가 (검증됨)** — 코드의 모든 데이터 평면 호출이 이 3개 역할에 1:1로 대응하며,
+> 그 외 Azure 접점은 **역할이 필요 없습니다**:
+> - **Storage Blob Data Owner(Contributor 아님)인 이유**: 같은 관리 ID가 앱의 blob 읽기/쓰기뿐 아니라
+>   **`AzureWebJobsStorage` 호스트 스토리지**로도 쓰입니다. 호스트 스토리지 ID 연결은 Microsoft 권장값이
+>   **Owner**라 이 값을 사용합니다(앱 blob I/O만 보면 Contributor로도 가능).
+> - **Event Grid 트리거에 역할이 없는 이유**: 이벤트 구독이 `endpointType=AzureFunction`이라 Event Grid가
+>   함수의 **시스템 키**로 호출합니다. 따라서 트리거 수신에는 함수 MI 역할이 **불필요**합니다.
+> - **App Insights**: 연결 문자열 기반이라 역할 불필요. 큐·테이블·Key Vault 등 **다른 의존성 없음**.
+
 **권한 — 배포 실행 주체(당신/파트너)**
 
 - **Contributor**(리소스 생성) + **Owner** 또는 **User Access Administrator**(위 3개 역할을 *할당*하는 데 필요)
