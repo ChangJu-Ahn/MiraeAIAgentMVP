@@ -116,6 +116,45 @@ demos/blob-to-ai-search/
 - 대상 리소스 그룹에 **기존 스토리지 계정 · AI Search 서비스 · App Insights** 존재
   (스크립트가 RG에서 자동 탐색; 여러 개면 아래 환경변수로 지정)
 
+### 필요한 권한 · SKU (현재 배포 기준)
+
+> 아래는 이 데모의 **실제 배포된 리소스에서 조회한 현재 설정**입니다
+> (`az functionapp/plan/storage/search show` · `az role assignment list`).
+> 파트너 환경도 동일한 SKU/역할이면 그대로 동작합니다.
+
+**SKU · 보안 설정**
+
+| 리소스 | 현재 SKU · 설정 | 이유 |
+|---|---|---|
+| Function 플랜 | **App Service `B1` (Basic)** · Linux · 인스턴스 1 | Consumption/Flex/EP는 공유키 기반 배포 스토리지가 필요 → 키리스·프라이빗 정책에서 불가. **Dedicated만 배포 가능** |
+| Storage 계정 | **Standard_LRS** · StorageV2 · `allowSharedKeyAccess=false` · `publicNetworkAccess=Disabled` · TLS 1.2 | 키리스 강제. 함수는 VNet 통합 + Blob **프라이빗 엔드포인트**로 접근 |
+| AI Search | **basic** · 파티션 1 · 복제본 1 · `disableLocalAuth=true` | admin/query 키 비활성 → **RBAC 전용**. 관리 ID로만 인덱스 생성·적재 |
+
+**권한(RBAC) — Function의 시스템 할당 관리 ID**
+
+배포 시 Bicep(`blobdemorbac.bicep`)이 아래 3개 역할을 자동 할당합니다(현재 배포에서 실제 할당 확인됨).
+
+| 스코프 | 역할 | 용도 |
+|---|---|---|
+| Storage 계정 | **Storage Blob Data Owner** | 런타임(`AzureWebJobsStorage`)·배포·`pdfs` 컨테이너를 키 없이 read/write |
+| AI Search | **Search Service Contributor** | 인덱스 생성·관리 |
+| AI Search | **Search Index Data Contributor** | 인덱스에 청크 문서 업로드 |
+
+**권한 — 배포 실행 주체(당신/파트너)**
+
+- **Contributor**(리소스 생성) + **Owner** 또는 **User Access Administrator**(위 3개 역할을 *할당*하는 데 필요)
+- `Microsoft.EventGrid` 등록 권한 — 스크립트가 `az provider register --namespace Microsoft.EventGrid` 수행
+
+**포털에서 확인**
+
+| 확인 대상 | 포털 위치 |
+|---|---|
+| 관리 ID 켜짐 | Function App → 설정 → **ID(Identity)** → 시스템 할당 = 켜짐 |
+| 함수 MI 역할 | Function App → **Azure 역할 할당(Azure role assignments)** |
+| 스토리지 역할 부여 | 스토리지 → **액세스 제어(IAM)** → 역할 할당 → *Storage Blob Data Owner* |
+| 검색 RBAC 전용 | AI Search → **키(Keys)** → API 액세스 제어 = *역할 기반 액세스 제어* |
+| 함수 플랜 SKU | Function App → **App Service 플랜** → 크기 = `B1` |
+
 ### 원클릭 배포
 
 ```bash
@@ -137,9 +176,8 @@ demos/blob-to-ai-search/scripts/deploy_blob_demo.sh
 ③ 스토리지에 `BlobCreated` → `index` 함수 **Event Grid 구독** 생성.
 완료 시 **업로드 페이지 URL**을 출력합니다.
 
-> 참고: 함수 관리 ID에 부여되는 역할 — Storage Blob Data Owner(스토리지), Search Service
-> Contributor + Search Index Data Contributor(검색). 배포 실행 주체는 이 역할들을
-> **할당할 수 있는 권한**(예: Owner/User Access Administrator)이 있어야 합니다.
+> 참고: 함수 관리 ID에 부여되는 역할·SKU·배포자 권한은 위 **[필요한 권한 · SKU (현재 배포 기준)]**
+> 섹션 표를 참고하세요.
 
 ### 테스트 (목표 달성 확인)
 
