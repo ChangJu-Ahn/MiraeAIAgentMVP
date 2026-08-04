@@ -10,7 +10,6 @@ param existingAppInsightsName string
 param namePrefix string = 'blobsearch'
 param suffix string = uniqueString(resourceGroup().id)
 param uploadContainer string = 'pdfs'
-param deploymentContainer string = 'deploymentpackage'
 param searchIndexName string = 'demo-blob-index'
 
 resource sa 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
@@ -27,17 +26,18 @@ resource pdfs 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05
     publicAccess: 'None'
   }
 }
-// Flex Consumption 배포 패키지 저장용 컨테이너
-resource deployPkg 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
-  parent: blobSvc
-  name: deploymentContainer
-  properties: {
-    publicAccess: 'None'
-  }
-}
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: existingAppInsightsName
+}
+
+module net 'modules/blobdemonet.bicep' = {
+  name: 'blobdemo-net'
+  params: {
+    location: location
+    vnetName: 'vnet-${namePrefix}-${suffix}'
+    storageAccountName: existingStorageAccountName
+  }
 }
 
 module fn 'modules/functionapp.bicep' = {
@@ -46,8 +46,8 @@ module fn 'modules/functionapp.bicep' = {
     name: '${namePrefix}-${suffix}'
     location: location
     storageAccountName: existingStorageAccountName
-    deploymentContainer: deploymentContainer
     searchEndpoint: 'https://${existingSearchName}.search.windows.net'
+    funcSubnetId: net.outputs.funcSubnetId
     appInsightsConnectionString: appInsights.properties.ConnectionString
     searchIndexName: searchIndexName
     uploadContainer: uploadContainer

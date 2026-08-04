@@ -37,8 +37,9 @@ export APP_INSIGHTS_NAME
 echo "storage=$UPLOAD_STORAGE_ACCOUNT  search=$SEARCH_SERVICE_NAME  appinsights=$APP_INSIGHTS_NAME"
 
 # 이 데모는 공유키(shared key) 없이 관리 ID(RBAC)만으로 동작한다.
-# Flex Consumption 플랜 + AzureWebJobsStorage__accountName + 배포 컨테이너(관리 ID)로
-# allowSharedKeyAccess=false 정책과 호환된다.
+# 스토리지가 allowSharedKeyAccess=false + publicNetworkAccess=Disabled(정책 강제)라
+# Dedicated(App Service) 플랜을 쓴다: 코드는 플랫폼 관리 wwwroot에 배포(사용자 스토리지 미접근)되고
+# 런타임 스토리지 접근만 VNet 통합 + 프라이빗 엔드포인트로 처리한다.
 
 echo "== Bicep 배포 =="
 az deployment group create \
@@ -54,18 +55,18 @@ FUNC_ID="$(az deployment group show -g "$RG" -n blob-demo --query properties.out
 UPLOAD_URL="$(az deployment group show -g "$RG" -n blob-demo --query properties.outputs.uploadUrl.value -o tsv)"
 echo "function=$FUNC_NAME"
 
-echo "== 함수 코드 배포 (원격 빌드; RBAC 전파 대기 재시도) =="
-# 새로 만든 관리 ID의 Storage Blob Data Owner 권한 전파에 수 분이 걸릴 수 있어
-# 배포(배포 컨테이너 쓰기)가 실패하면 대기 후 재시도한다.
-sleep 60
+echo "== 함수 코드 배포 (Linux 원격 빌드; wwwroot 배포) =="
+# Dedicated 플랜은 코드를 플랫폼 관리 wwwroot에 배포하므로 사용자 스토리지에 접근하지 않는다.
+# SCM_DO_BUILD_DURING_DEPLOYMENT=true 로 Oryx 원격 빌드(pip install)가 수행된다.
+sleep 30
 PUBLISH_OK=0
-for attempt in 1 2 3 4 5 6 7 8; do
-  if ( cd "$FUNC_DIR" && func azure functionapp publish "$FUNC_NAME" ); then
+for attempt in 1 2 3 4 5 6; do
+  if ( cd "$FUNC_DIR" && func azure functionapp publish "$FUNC_NAME" --python --build remote ); then
     PUBLISH_OK=1
     break
   fi
-  echo "publish 실패 — RBAC 전파 대기 후 재시도 ($attempt/8)..." >&2
-  sleep 45
+  echo "publish 실패 — 대기 후 재시도 ($attempt/6)..." >&2
+  sleep 30
 done
 if [[ "$PUBLISH_OK" != "1" ]]; then
   echo "함수 코드 배포에 실패했습니다." >&2
