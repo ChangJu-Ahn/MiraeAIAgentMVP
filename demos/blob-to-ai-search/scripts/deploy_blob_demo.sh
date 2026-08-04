@@ -5,8 +5,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMO_ROOT="$(dirname "$SCRIPT_DIR")"
 
-SUB="347e0df7-94e9-4feb-b42d-57d7e49566f2"
-RG="rg-mirae-ai-agent-poc"
+# 파트너가 자신의 환경에 배포하려면 SUB/RG를 환경변수로 넘기면 된다.
+#   예) SUB=<구독ID> RG=<리소스그룹> ./deploy_blob_demo.sh
+# 그 리소스 그룹에는 기존 스토리지 계정·AI Search·App Insights가 있어야 하며,
+# 여러 개면 UPLOAD_STORAGE_ACCOUNT/SEARCH_SERVICE_NAME/APP_INSIGHTS_NAME로 지정한다.
+SUB="${SUB:-347e0df7-94e9-4feb-b42d-57d7e49566f2}"
+RG="${RG:-rg-mirae-ai-agent-poc}"
 LOCATION="${LOCATION:-koreacentral}"
 FUNC_DIR="$DEMO_ROOT/function"
 
