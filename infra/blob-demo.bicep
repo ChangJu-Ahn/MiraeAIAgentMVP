@@ -5,9 +5,12 @@ param location string = resourceGroup().location
 param existingStorageAccountName string
 @description('기존 AI Search 서비스 이름')
 param existingSearchName string
+@description('기존 Application Insights 이름 (Function 관측/디버깅)')
+param existingAppInsightsName string
 param namePrefix string = 'blobsearch'
 param suffix string = uniqueString(resourceGroup().id)
 param uploadContainer string = 'pdfs'
+param deploymentContainer string = 'deploymentpackage'
 param searchIndexName string = 'demo-blob-index'
 
 resource sa 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
@@ -24,6 +27,18 @@ resource pdfs 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05
     publicAccess: 'None'
   }
 }
+// Flex Consumption 배포 패키지 저장용 컨테이너
+resource deployPkg 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobSvc
+  name: deploymentContainer
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
+  name: existingAppInsightsName
+}
 
 module fn 'modules/functionapp.bicep' = {
   name: 'blobdemo-func'
@@ -31,7 +46,9 @@ module fn 'modules/functionapp.bicep' = {
     name: '${namePrefix}-${suffix}'
     location: location
     storageAccountName: existingStorageAccountName
+    deploymentContainer: deploymentContainer
     searchEndpoint: 'https://${existingSearchName}.search.windows.net'
+    appInsightsConnectionString: appInsights.properties.ConnectionString
     searchIndexName: searchIndexName
     uploadContainer: uploadContainer
   }

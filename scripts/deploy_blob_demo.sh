@@ -30,13 +30,15 @@ if [[ -z "${SEARCH_SERVICE_NAME:-}" ]]; then
   SEARCH_SERVICE_NAME="$(az search service list -g "$RG" --query "[0].name" -o tsv)"
 fi
 export SEARCH_SERVICE_NAME
-echo "storage=$UPLOAD_STORAGE_ACCOUNT  search=$SEARCH_SERVICE_NAME"
-
-SK="$(az storage account show -g "$RG" -n "$UPLOAD_STORAGE_ACCOUNT" --query allowSharedKeyAccess -o tsv)"
-if [[ "$SK" == "false" ]]; then
-  echo "경고: shared key 접근이 꺼져 있어 AzureWebJobsStorage(연결문자열)가 실패할 수 있습니다." >&2
-  echo "필요 시: az storage account update -g $RG -n $UPLOAD_STORAGE_ACCOUNT --allow-shared-key-access true" >&2
+if [[ -z "${APP_INSIGHTS_NAME:-}" ]]; then
+  APP_INSIGHTS_NAME="$(az resource list -g "$RG" --resource-type Microsoft.Insights/components --query "[0].name" -o tsv)"
 fi
+export APP_INSIGHTS_NAME
+echo "storage=$UPLOAD_STORAGE_ACCOUNT  search=$SEARCH_SERVICE_NAME  appinsights=$APP_INSIGHTS_NAME"
+
+# 이 데모는 공유키(shared key) 없이 관리 ID(RBAC)만으로 동작한다.
+# Flex Consumption 플랜 + AzureWebJobsStorage__accountName + 배포 컨테이너(관리 ID)로
+# allowSharedKeyAccess=false 정책과 호환된다.
 
 echo "== Bicep 배포 =="
 az deployment group create \
@@ -52,8 +54,23 @@ FUNC_ID="$(az deployment group show -g "$RG" -n blob-demo --query properties.out
 UPLOAD_URL="$(az deployment group show -g "$RG" -n blob-demo --query properties.outputs.uploadUrl.value -o tsv)"
 echo "function=$FUNC_NAME"
 
-echo "== 함수 코드 배포 (원격 빌드) =="
-( cd "$FUNC_DIR" && func azure functionapp publish "$FUNC_NAME" --build remote )
+echo "== 함수 코드 배포 (원격 빌드; RBAC 전파 대기 재시도) =="
+# 새로 만든 관리 ID의 Storage Blob Data Owner 권한 전파에 수 분이 걸릴 수 있어
+# 배포(배포 컨테이너 쓰기)가 실패하면 대기 후 재시도한다.
+sleep 60
+PUBLISH_OK=0
+for attempt in 1 2 3 4 5 6 7 8; do
+  if ( cd "$FUNC_DIR" && func azure functionapp publish "$FUNC_NAME" ); then
+    PUBLISH_OK=1
+    break
+  fi
+  echo "publish 실패 — RBAC 전파 대기 후 재시도 ($attempt/8)..." >&2
+  sleep 45
+done
+if [[ "$PUBLISH_OK" != "1" ]]; then
+  echo "함수 코드 배포에 실패했습니다." >&2
+  exit 1
+fi
 
 echo "== Event Grid 구독 생성 =="
 STORAGE_ID="$(az storage account show -g "$RG" -n "$UPLOAD_STORAGE_ACCOUNT" --query id -o tsv)"

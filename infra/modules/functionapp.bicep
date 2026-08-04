@@ -3,8 +3,12 @@ param name string
 param location string
 @description('Function 런타임 스토리지 겸 업로드 대상 기존 스토리지 계정 이름')
 param storageAccountName string
+@description('배포 패키지를 저장할 blob 컨테이너 이름')
+param deploymentContainer string
 @description('AI Search 엔드포인트 (https://<name>.search.windows.net)')
 param searchEndpoint string
+@description('Application Insights 연결 문자열 (관측/디버깅용)')
+param appInsightsConnectionString string = ''
 param searchIndexName string = 'demo-blob-index'
 param uploadContainer string = 'pdfs'
 param chunkSize int = 1000
@@ -14,24 +18,24 @@ resource sa 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
 }
 
-var storageKey = sa.listKeys().keys[0].value
-var storageConn = 'DefaultEndpointsProtocol=https;AccountName=${sa.name};AccountKey=${storageKey};EndpointSuffix=${environment().suffixes.storage}'
 var blobEndpoint = 'https://${sa.name}.blob.${environment().suffixes.storage}'
 
+// Flex Consumption(FC1) 플랜: 공유키 없이 관리 ID로만 동작하는 서버리스 플랜.
+// 기존 스토리지의 allowSharedKeyAccess=false 정책과 호환된다.
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${name}-plan'
   location: location
   kind: 'functionapp'
   sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
+    name: 'FC1'
+    tier: 'FlexConsumption'
   }
   properties: {
     reserved: true
   }
 }
 
-resource funcApp 'Microsoft.Web/sites@2023-12-01' = {
+resource funcApp 'Microsoft.Web/sites@2024-04-01' = {
   name: name
   location: location
   kind: 'functionapp,linux'
@@ -41,17 +45,32 @@ resource funcApp 'Microsoft.Web/sites@2023-12-01' = {
   properties: {
     serverFarmId: plan.id
     httpsOnly: true
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: '${blobEndpoint}/${deploymentContainer}'
+          authentication: {
+            // 배포 컨테이너 접근을 시스템 관리 ID로 처리 → 공유키 불필요
+            type: 'SystemAssignedIdentity'
+          }
+        }
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: 40
+        instanceMemoryMB: 2048
+      }
+      runtime: {
+        name: 'python'
+        version: '3.12'
+      }
+    }
     siteConfig: {
-      linuxFxVersion: 'Python|3.12'
       ftpsState: 'Disabled'
       appSettings: [
-        { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
-        { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
-        { name: 'AzureWebJobsStorage', value: storageConn }
-        { name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING', value: storageConn }
-        { name: 'WEBSITE_CONTENTSHARE', value: toLower(name) }
-        { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'true' }
-        { name: 'ENABLE_ORYX_BUILD', value: 'true' }
+        // AzureWebJobsStorage를 연결 문자열 대신 계정 이름 + 관리 ID로 지정 (키리스)
+        { name: 'AzureWebJobsStorage__accountName', value: sa.name }
+        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
         { name: 'SEARCH_ENDPOINT', value: searchEndpoint }
         { name: 'SEARCH_INDEX_NAME', value: searchIndexName }
         { name: 'STORAGE_BLOB_ENDPOINT', value: blobEndpoint }
