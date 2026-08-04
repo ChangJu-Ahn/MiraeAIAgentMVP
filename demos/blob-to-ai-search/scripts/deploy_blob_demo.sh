@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# 이 스크립트는 위치에 상관없이 실행되도록 자기 폴더 기준으로 경로를 계산한다.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEMO_ROOT="$(dirname "$SCRIPT_DIR")"
+
 SUB="347e0df7-94e9-4feb-b42d-57d7e49566f2"
 RG="rg-mirae-ai-agent-poc"
 LOCATION="${LOCATION:-koreacentral}"
-FUNC_DIR="functions/blob_to_search"
+FUNC_DIR="$DEMO_ROOT/function"
 
 command -v func >/dev/null 2>&1 || {
   echo "Azure Functions Core Tools(func)가 필요합니다: npm i -g azure-functions-core-tools@4" >&2
@@ -45,8 +49,8 @@ echo "== Bicep 배포 =="
 az deployment group create \
   --resource-group "$RG" \
   --name blob-demo \
-  --template-file infra/blob-demo.bicep \
-  --parameters infra/blob-demo.bicepparam \
+  --template-file "$DEMO_ROOT/infra/blob-demo.bicep" \
+  --parameters "$DEMO_ROOT/infra/blob-demo.bicepparam" \
   --parameters location="$LOCATION" \
   -o none
 
@@ -88,4 +92,4 @@ echo ""
 echo "== 완료 =="
 echo "업로드 페이지: $UPLOAD_URL"
 echo "CLI 업로드 예: az storage blob upload --account-name $UPLOAD_STORAGE_ACCOUNT --container pdfs --auth-mode login -f <sample.pdf> -n <sample.pdf>"
-echo "인덱스 확인:  SEARCH_ENDPOINT=https://$SEARCH_SERVICE_NAME.search.windows.net uv run python scripts/verify_blob_demo.py"
+echo "인덱스 확인:  SEARCH_ENDPOINT=https://$SEARCH_SERVICE_NAME.search.windows.net uv run python \"$DEMO_ROOT/scripts/verify_blob_demo.py\""
