@@ -25,3 +25,8 @@ venv/
 
 # Office temp lock files
 ~$*
+
+# Azure Functions local state (blob-to-search demo)
+functions/blob_to_search/local.settings.json
+functions/blob_to_search/.venv/
+functions/**/__pycache__/
