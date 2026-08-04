@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 import azure.functions as func
 
@@ -43,7 +44,10 @@ def index(event: func.EventGridEvent) -> None:
 def upload(req: func.HttpRequest) -> func.HttpResponse:
     cfg = func_config.load_config()
     if req.method == "GET":
-        return func.HttpResponse(upload_page.render_form_html(), mimetype="text/html")
+        info = upload_page.build_resource_info(cfg, dict(os.environ))
+        return func.HttpResponse(
+            upload_page.render_form_html(info), mimetype="text/html"
+        )
 
     part = req.files.get("file") if req.files else None
     if part is None:
