@@ -144,3 +144,5 @@ SEARCH_ENDPOINT=https://srch-mirae-v4xy5m5d3ltw6.search.windows.net \
 
 7) 자동으로 적재된 AI Search Index 확인
 ![alt text](image-7.png)
+![alt text](image-8.png)
+
