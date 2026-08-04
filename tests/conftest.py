@@ -6,3 +6,11 @@ from pathlib import Path
 _FUNC_DIR = Path(__file__).resolve().parent.parent / "functions" / "blob_to_search"
 if str(_FUNC_DIR) not in sys.path:
     sys.path.insert(0, str(_FUNC_DIR))
+
+def pytest_configure(config):
+    """Preload the flat config module for test_blob_config.py."""
+    # Import the flat config module to cache it in sys.modules before
+    # other tests try to import the config package.
+    # This works because pytest_configure runs before test collection.
+    import importlib
+    importlib.import_module('config')
