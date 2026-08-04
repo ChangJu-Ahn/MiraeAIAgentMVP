@@ -18,8 +18,6 @@ def _sample_env():
         "WEBSITE_SITE_NAME": "blobsearch-demo",
         "WEBSITE_RESOURCE_GROUP": "rg-demo",
         "WEBSITE_OWNER_NAME": "sub-guid-1234+rg-demo-KoreaCentralwebspace-Linux",
-        "WEBSITE_SKU": "Basic",
-        "REGION_NAME": "Korea Central",
     }
 
 
@@ -115,41 +113,29 @@ def test_render_form_escapes_resource_names():
 
 def test_build_resource_info_includes_config_detail():
     info = upload_page.build_resource_info(_sample_cfg(), _sample_env())
-    assert info.search_endpoint == "https://srch-demo.search.windows.net"
-    assert info.storage_blob_endpoint == "https://stdemo.blob.core.windows.net"
     assert info.chunk_size == 1000
     assert info.max_upload_mb == 50
-    assert info.plan_sku == "Basic"
-    assert info.region == "Korea Central"
 
 
-def test_render_form_includes_config_detail_when_info_given():
+def test_render_form_includes_config_summary_when_info_given():
     info = upload_page.build_resource_info(_sample_cfg(), _sample_env())
     html = upload_page.render_form_html(info)
-    # section + runtime config values
-    assert "설정 상세" in html
-    assert "런타임 설정" in html
-    assert "https://srch-demo.search.windows.net" in html
+    # compact "주요 설정" essentials
+    assert "주요 설정" in html
+    assert "demo-blob-index" in html
+    assert "pdfs" in html
     assert ">1000<" in html  # chunk size value rendered
     assert ">50<" in html  # max upload MB value rendered
-    # index schema fields
-    assert "인덱스 스키마" in html
-    for field in ("content", "source_file", "chunk_index", "uploaded_at"):
-        assert field in html
-    assert "ko.lucene" in html
-    # event subscription details
-    assert "Microsoft.Storage.BlobCreated" in html
-    assert "/blobServices/default/containers/pdfs/" in html
-    # RBAC roles
-    assert "Storage Blob Data Owner" in html
-    assert "Search Index Data Contributor" in html
-    # hosting / security
+    assert "임베딩 없이 정적 분할" in html
+    assert "BlobCreated" in html
     assert "키리스" in html
-    assert "Basic" in html
-    assert "Korea Central" in html
+    # verbose detail intentionally dropped
+    assert "인덱스 스키마" not in html
+    assert "Search Index Data Contributor" not in html
+    assert "Edm.String" not in html
 
 
-def test_render_form_omits_config_detail_without_info():
+def test_render_form_omits_config_summary_without_info():
     html = upload_page.render_form_html()
-    assert "설정 상세" not in html
-    assert "Microsoft.Storage.BlobCreated" not in html
+    assert "주요 설정" not in html
+    assert "키리스" not in html

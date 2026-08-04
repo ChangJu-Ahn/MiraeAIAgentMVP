@@ -7,20 +7,6 @@ from urllib.parse import urlsplit
 _PDF_SUFFIX = ".pdf"
 _DEFAULT_EVENT_SUB = "blob-to-search-demo"
 _PORTAL_BASE = "https://portal.azure.com/#@/resource"
-_EVENT_TYPE = "Microsoft.Storage.BlobCreated"
-_MI_ROLES = (
-    ("Storage Blob Data Owner", "스토리지 계정", "blob 다운로드·업로드"),
-    ("Search Service Contributor", "AI Search 서비스", "인덱스 생성/수정"),
-    ("Search Index Data Contributor", "AI Search 서비스", "문서 업로드"),
-)
-_INDEX_SCHEMA = (
-    ("id", "Edm.String · key", "&lt;파일키&gt;-&lt;청크번호&gt; 고유 ID"),
-    ("content", "Edm.String · searchable", "청크 텍스트 (분석기 ko.lucene)"),
-    ("source_file", "Edm.String · filterable·facetable", "원본 blob 이름"),
-    ("chunk_index", "Edm.Int32 · filterable·sortable", "청크 순번(문서 전역)"),
-    ("page", "Edm.Int32 · filterable", "원본 페이지 번호"),
-    ("uploaded_at", "Edm.DateTimeOffset · filterable·sortable", "적재 시각(UTC)"),
-)
 
 _PAGE_CSS = """
   * { box-sizing: border-box; }
@@ -49,13 +35,6 @@ _PAGE_CSS = """
   table.portal code { background: #eef2f3; padding: 1px 5px; border-radius: 4px;
     font-size: .86em; }
   table.portal small { color: #78868d; }
-  h3 { font-size: 1rem; margin: 20px 0 6px; color: #26343b; }
-  .card h3:first-child { margin-top: 0; }
-  ul.facts { margin: 6px 0 0; padding-left: 18px; font-size: .9rem; }
-  ul.facts li { margin: 5px 0; line-height: 1.5; }
-  .badge { display: inline-block; background: #e6f2f0; color: #006b5f;
-    border: 1px solid #b7ddd7; border-radius: 999px; padding: 1px 9px;
-    font-size: .78rem; font-weight: 700; margin-right: 6px; }
 """
 
 
@@ -69,12 +48,8 @@ class ResourceInfo:
     search_service: str
     search_index: str
     event_subscription: str
-    search_endpoint: str
-    storage_blob_endpoint: str
     chunk_size: int
     max_upload_mb: int
-    plan_sku: str
-    region: str
     storage_url: str
     search_url: str
     function_url: str
@@ -111,8 +86,6 @@ def build_resource_info(cfg, env: dict[str, str]) -> ResourceInfo:
         "AZURE_SUBSCRIPTION_ID", ""
     )
     event_subscription = env.get("EVENT_SUBSCRIPTION_NAME", _DEFAULT_EVENT_SUB)
-    plan_sku = env.get("WEBSITE_SKU", "")
-    region = env.get("REGION_NAME", "")
 
     return ResourceInfo(
         subscription_id=subscription_id,
@@ -123,12 +96,8 @@ def build_resource_info(cfg, env: dict[str, str]) -> ResourceInfo:
         search_service=search_service,
         search_index=cfg.index_name,
         event_subscription=event_subscription,
-        search_endpoint=cfg.search_endpoint,
-        storage_blob_endpoint=cfg.storage_blob_endpoint,
         chunk_size=cfg.chunk_size,
         max_upload_mb=cfg.max_upload_mb,
-        plan_sku=plan_sku,
-        region=region,
         storage_url=_resource_url(
             subscription_id, resource_group,
             f"Microsoft.Storage/storageAccounts/{storage_account}",
@@ -315,70 +284,22 @@ def _kv_table(header_cols: tuple[str, ...], rows: list[tuple[str, ...]]) -> str:
 def _config_card(info: ResourceInfo) -> str:
     container = escape(info.upload_container)
     index = escape(info.search_index)
-
-    runtime = _kv_table(
-        ("설정", "값 / 의미"),
+    table = _kv_table(
+        ("설정", "값"),
         [
-            ("AI Search 엔드포인트",
-             f"<code>{escape(info.search_endpoint or '—')}</code>"),
             ("대상 인덱스", f"<code>{index}</code>"),
-            ("Blob 엔드포인트",
-             f"<code>{escape(info.storage_blob_endpoint or '—')}</code>"),
             ("업로드 컨테이너", f"<code>{container}</code>"),
-            ("청크 크기",
-             f"<code>{info.chunk_size}</code> 자 · 임베딩 없이 정적 분할"),
-            ("업로드 최대 크기",
-             f"<code>{info.max_upload_mb}</code> MB · <code>.pdf</code>만 허용"),
+            ("청크 크기", f"<code>{info.chunk_size}</code> 자 · 임베딩 없이 정적 분할"),
+            ("업로드 제한", f"<code>{info.max_upload_mb}</code> MB · <code>.pdf</code>만"),
+            ("트리거", "blob 생성(<code>BlobCreated</code>) → Function <code>index</code>"),
         ],
     )
-
-    schema = _kv_table(
-        ("필드", "타입 · 속성", "설명"),
-        [(f"<code>{f}</code>", t, d) for f, t, d in _INDEX_SCHEMA],
-    )
-
-    event = _kv_table(
-        ("항목", "값"),
-        [
-            ("이벤트 종류", f"<code>{escape(_EVENT_TYPE)}</code>"),
-            ("필터 (subject)",
-             f"<code>/blobServices/default/containers/{container}/</code> 로 시작"),
-            ("구독 이름", f"<code>{escape(info.event_subscription)}</code>"),
-            ("호출 대상", "Function <code>index</code> · Event Grid 트리거"),
-        ],
-    )
-
-    rbac = _kv_table(
-        ("역할", "범위", "용도"),
-        [(f"<code>{r}</code>", scope, purpose) for r, scope, purpose in _MI_ROLES],
-    )
-
-    sku = escape(info.plan_sku or "Basic (B1)")
-    region = escape(info.region or "—")
-    hosting = (
-        '<ul class="facts">'
-        '<li><span class="badge">키리스</span> 모든 접근을 관리 ID + RBAC로 처리 — '
-        "계정 키·연결 문자열·SAS·검색 admin 키를 사용하지 않습니다.</li>"
-        '<li><span class="badge">호스팅</span> Dedicated(App Service) Linux · '
-        f"Python 3.12 · 플랜 SKU <code>{sku}</code> · 지역 <code>{region}</code></li>"
-        '<li><span class="badge">네트워크</span> VNet 통합 + Blob 프라이빗 엔드포인트 + '
-        "프라이빗 DNS — 스토리지 퍼블릭 액세스가 막혀 있어도 동작합니다.</li>"
-        '<li><span class="badge">재사용</span> 기존 스토리지 계정·AI Search 서비스를 '
-        f"그대로 쓰고 컨테이너 <code>{container}</code>·인덱스 <code>{index}</code>만 "
-        "새로 추가합니다.</li>"
-        "</ul>"
-    )
-
     return (
-        "<h2>설정 상세</h2>"
+        "<h2>주요 설정</h2>"
         '<div class="card">'
-        "<h3>런타임 설정 (Function 앱 구성)</h3>" + runtime +
-        "<h3>인덱스 스키마</h3>" + schema +
-        "<h3>이벤트 구독</h3>" + event +
-        "<h3>관리 ID 역할 (RBAC)</h3>" + rbac +
-        "<h3>호스팅 &amp; 보안 설계</h3>" + hosting +
-        '<p class="cap">위 값은 Function 앱의 <code>구성 → 환경 변수</code>와 '
-        "AI Search·이벤트 구독 설정에서 그대로 확인할 수 있습니다.</p>"
+        + table +
+        '<p class="cap">모든 접근은 관리 ID + 권한(RBAC)으로 처리되는 키리스 구성이며, '
+        "기존 스토리지·검색 서비스를 재사용하고 컨테이너·인덱스만 새로 추가합니다.</p>"
         "</div>"
     )
 

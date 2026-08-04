@@ -4,6 +4,8 @@
 > 실행되어 → 텍스트를 **정적으로 청킹**한 뒤 → **Azure AI Search 인덱스**에 적재합니다.
 > **임베딩 없음 · 키(비밀) 없음(관리 ID + RBAC) · 기존 리소스 재사용.**
 
+> 📌 Azure에 익숙하지 않은 분께 전달할 **쉬운 소개 문서**: [OVERVIEW.md](./OVERVIEW.md)
+
 이 폴더는 메인 애플리케이션(Chainlit 기반 RAG 챗봇)과 **독립적인 참고용 데모**입니다.
 레포를 참고하는 사람이 "블롭에 파일이 올라오면 이벤트로 함수가 돌아 검색 인덱스에 적재되는"
 전형적인 이벤트 기반 인제스트 패턴을 그대로 따라 배포·확인할 수 있도록 구성했습니다.
@@ -117,7 +119,11 @@ demos/blob-to-ai-search/
 ### 원클릭 배포
 
 ```bash
-# (선택) 리소스가 여러 개면 명시적으로 지정
+# 파트너 환경에 배포: 자신의 구독/리소스 그룹 지정 (미지정 시 데모 기본값 사용)
+export SUB=<구독 ID>
+export RG=<리소스 그룹>
+
+# (선택) RG 안에 리소스가 여러 개면 명시적으로 지정
 export UPLOAD_STORAGE_ACCOUNT=<스토리지 계정명>
 export SEARCH_SERVICE_NAME=<검색 서비스명>
 export APP_INSIGHTS_NAME=<App Insights명>
@@ -138,8 +144,8 @@ demos/blob-to-ai-search/scripts/deploy_blob_demo.sh
 ### 테스트 (목표 달성 확인)
 
 1. **웹 업로드**: 출력된 업로드 페이지(`https://<함수앱>.azurewebsites.net/api/upload`)에서 PDF 업로드.
-   페이지 하단에 **아키텍처 도식** · **Azure 포털에서 찾는 경로** · **설정 상세**(런타임 설정,
-   인덱스 스키마, 이벤트 구독, 관리 ID 역할(RBAC), 호스팅·보안)가 실시간 값으로 함께 표시됩니다.
+   페이지 하단에 **아키텍처 도식** · **Azure 포털에서 찾는 경로** · **주요 설정**(대상 인덱스,
+   업로드 컨테이너, 청크 크기, 트리거)이 실시간 값으로 함께 표시됩니다.
 2. **(대안) CLI 업로드**:
    ```bash
    az storage blob upload --account-name <스토리지> --container pdfs \
@@ -203,7 +209,7 @@ az storage container delete --account-name <스토리지> --name pdfs --auth-mod
 ## 8. 제약 / 참고
 
 - 이 데모는 **파이프라인 연결 확인**이 목적이라, 검색 품질(임베딩/시맨틱/재랭킹)은 다루지 않습니다.
-- `subscription id`·리소스 그룹명은 배포 스크립트에 상수로 들어 있습니다(비밀 아님). 다른 환경에서
-  쓰려면 `scripts/deploy_blob_demo.sh` 상단의 `SUB`/`RG`를 수정하세요.
+- `subscription id`·리소스 그룹명은 데모 기본값이 배포 스크립트에 들어 있습니다(비밀 아님). 다른 환경에서
+  쓰려면 `SUB=<구독> RG=<리소스그룹>` 환경변수로 넘기면 됩니다(스크립트 수정 불필요).
 - 메인 애플리케이션 코드/인프라(`infra/main.bicep` 등)와 **소스코드 결합이 없습니다**. 같은 레포에
   공존하며 일부 Azure 리소스(스토리지/검색/App Insights)만 격리된 방식으로 공유합니다.
