@@ -22,7 +22,9 @@ has:
 
 ## Goals
 
-- Upload a PDF to a blob container → Function runs automatically within seconds.
+- Upload a PDF from a **simple web page served by the Function App itself** →
+  the blob lands in the `pdfs` container → the Function runs automatically within
+  seconds. No separate web app and no changes to the existing Chainlit app.
 - Function statically chunks the extracted text and uploads documents to a new
   AI Search index. No embedding / vector generation.
 - Deployable end-to-end from a single script; independently removable.
@@ -34,6 +36,8 @@ has:
 - No high-fidelity PDF parsing (no Document Intelligence). A lightweight text
   extraction is sufficient for the demo.
 - Not production-hardened (no DLQ, no private networking, no alerting).
+- The upload page uses **anonymous** HTTP auth (demo only) — no authentication on
+  the upload endpoint.
 
 ## Requirements
 
@@ -49,20 +53,19 @@ has:
 6. Text extraction inside the Function using **pypdf** (no external service).
 7. Static chunking: fixed **1000-character** chunks (configurable).
 8. Idempotent: re-uploading the same PDF overwrites the same documents.
+9. Provide a **minimal PDF upload web page** served by the same Function App
+   (HTTP trigger, demo-only anonymous auth). The browser upload writes the blob
+   that triggers indexing — no Chainlit / Container App changes.
 
 ## Architecture
 
-```
-PDF upload ──► Storage (existing)          AI Search (existing)
-              └─ container: pdfs               └─ index: demo-blob-index
-                     │  BlobCreated                     ▲
-                     ▼                                   │ upload_documents (MI)
-              Event Grid subscription ──► Azure Function (new, Python)
-              (endpoint-type=azurefunction)   1. parse event → blob URL
-                                              2. download blob (MI)
-                                              3. pypdf extract text
-                                              4. static 1000-char chunk
-                                              5. ensure index + upload docs
+```mermaid
+flowchart TD
+    U["Browser<br/>GET/POST /api/upload"] -->|multipart PDF| UP["Function: upload<br/>(HTTP trigger, anonymous)"]
+    UP -->|write blob (MI)| C[("Storage (existing)<br/>container: pdfs")]
+    C -->|BlobCreated| EG["Event Grid subscription<br/>endpoint-type=azurefunction"]
+    EG --> IDX["Function: index<br/>(Event Grid trigger)"]
+    IDX -->|"1 download blob (MI)<br/>2 pypdf extract per page<br/>3 static 1000-char chunk<br/>4 ensure index + upload (MI)"| S[("AI Search (existing)<br/>index: demo-blob-index")]
 ```
 
 The Event Grid subscription and its auto-created system topic are lightweight,
@@ -101,18 +104,21 @@ The Function ensures the index via `create_or_update_index` on invocation
 ### 3. Azure Function — `functions/blob_to_search/`
 
 Isolated Python project with its own `requirements.txt` (does NOT pull in
-chainlit / agent-framework, keeping the deployment package small).
+chainlit / agent-framework, keeping the deployment package small). The app hosts
+**two** functions (v2 programming model, one `function_app.py`).
 
 Files:
 
-- `function_app.py` — v2 model app with a single `@app.event_grid_trigger`.
+- `function_app.py` — registers both triggers below.
 - `chunking.py` — pure `chunk_text(text, size) -> list[str]` (unit-testable, no
   Azure imports).
+- `upload_page.py` — returns the static HTML for the upload form (no Azure
+  imports; unit-testable).
 - `requirements.txt` — `azure-functions`, `azure-identity`,
   `azure-search-documents`, `azure-storage-blob`, `pypdf`.
 - `host.json`, `.funcignore`.
 
-Handler flow:
+#### 3a. `index` — Event Grid trigger (`@app.event_grid_trigger`)
 
 1. Parse the Event Grid event; read `data.url` (blob URL) and container/blob
    name from the event subject. Skip if the blob is not under `pdfs/` or does
@@ -128,9 +134,20 @@ Document id is deterministic: `f"{sanitize(source_file)}-{chunk_index}"`
 (sanitized to the Search key charset: letters, digits, `_`, `-`, `=`). Using
 `merge_or_upload` semantics makes re-delivery / re-upload idempotent.
 
+#### 3b. `upload` — HTTP trigger (`@app.route`, `auth_level=ANONYMOUS`, demo only)
+
+- `GET /api/upload` → returns a minimal HTML page with one file input and a
+  submit button (styled like the app's existing `/source-docs` page).
+- `POST /api/upload` (multipart form) → reads `req.files["file"]`, validates it
+  is a `.pdf` within `MAX_UPLOAD_MB`, and writes it to the `pdfs` container via
+  `BlobClient(..., credential=DefaultAzureCredential()).upload_blob(overwrite=True)`,
+  then returns an HTML success page. Writing the blob raises the `BlobCreated`
+  event that drives 3a.
+
 App settings: `SEARCH_ENDPOINT`, `SEARCH_INDEX_NAME=demo-blob-index`,
 `STORAGE_BLOB_ENDPOINT` (e.g. `https://<acct>.blob.core.windows.net`),
-`CHUNK_SIZE=1000`, `FUNCTIONS_WORKER_RUNTIME=python`, `AzureWebJobsStorage`.
+`UPLOAD_CONTAINER=pdfs`, `CHUNK_SIZE=1000`, `MAX_UPLOAD_MB=50`,
+`FUNCTIONS_WORKER_RUNTIME=python`, `AzureWebJobsStorage`.
 
 ### 4. Event Grid subscription
 
@@ -141,7 +158,7 @@ az eventgrid event-subscription create \
   --name blob-to-search-demo \
   --source-resource-id <storage-account-id> \
   --endpoint-type azurefunction \
-  --endpoint <function-app-id>/functions/<FunctionName> \
+  --endpoint <function-app-id>/functions/index \
   --included-event-types Microsoft.Storage.BlobCreated \
   --subject-begins-with /blobServices/default/containers/pdfs/
 ```
@@ -153,11 +170,11 @@ Subscription* flow. It auto-creates a free system topic.
 
 Reusing the repo's role-GUID convention (`infra/modules/*rbac.bicep`):
 
-| scope             | role                          | GUID                                   | why                     |
-| ----------------- | ----------------------------- | -------------------------------------- | ----------------------- |
-| existing Storage  | Storage Blob Data Reader      | `2a2b9908-6ea1-4ae2-8e65-a410df84e7d1` | download PDF bytes      |
-| existing Search   | Search Service Contributor    | `7ca78c08-252a-4471-8644-bb5ff32d4ba0` | `create_or_update_index`|
-| existing Search   | Search Index Data Contributor | `8ebe5a00-799e-43f5-93ac-243d3dce84a7` | `upload_documents`      |
+| scope             | role                          | GUID                                   | why                                        |
+| ----------------- | ----------------------------- | -------------------------------------- | ------------------------------------------ |
+| existing Storage  | Storage Blob Data Contributor | `ba92f5b4-2d11-453d-a403-e96b0029c9fe` | write uploaded PDF (upload) + download (index) |
+| existing Search   | Search Service Contributor    | `7ca78c08-252a-4471-8644-bb5ff32d4ba0` | `create_or_update_index`                   |
+| existing Search   | Search Index Data Contributor | `8ebe5a00-799e-43f5-93ac-243d3dce84a7` | `upload_documents`                         |
 
 If identity-based `AzureWebJobsStorage` is required (shared key disabled), also
 add Storage Blob Data Owner (`b7e6dc6d-f1e8-4753-8033-0f276bb0955b`) and Storage
@@ -193,15 +210,20 @@ New files, none touching `main.bicep`:
    (Azure Functions Core Tools; remote build). Documented zip-deploy fallback:
    `az functionapp deployment source config-zip` with
    `SCM_DO_BUILD_DURING_DEPLOYMENT=true`.
-5. Create the Event Grid subscription (command above).
-6. Print the test command.
+5. Create the Event Grid subscription pointing to the `index` function
+   (command above).
+6. Print the **upload page URL** (`https://<app>.azurewebsites.net/api/upload`)
+   plus the CLI upload alternative.
 
 ## Testing
 
 - **Unit** (`tests/test_blob_chunking.py`): `chunk_text` boundary cases (empty,
   shorter than size, exact multiple, remainder, unicode). Pure function, no
   Azure — runs in the existing `pytest` suite.
-- **Manual E2E**:
+- **Manual E2E (primary)**: open `https://<app>.azurewebsites.net/api/upload` in
+  a browser, choose a PDF and submit → confirm documents appear in
+  `demo-blob-index`.
+- **Manual E2E (CLI alt)**:
   `az storage blob upload --account-name <acct> --container pdfs --auth-mode login -f sample.pdf -n sample.pdf`
   then confirm documents in `demo-blob-index`.
 - **Verify helper** (`scripts/verify_blob_demo.py`): query the index document
@@ -215,6 +237,8 @@ New files, none touching `main.bicep`:
 - Upload is idempotent (`merge_or_upload` + deterministic ids), so Event Grid's
   at-least-once delivery and any retries are safe.
 - Missing index: created on the fly by the Function.
+- Upload endpoint: reject non-`.pdf` files and files over `MAX_UPLOAD_MB` with a
+  clear HTML error; only ever write into the `pdfs` container.
 
 ## Alternatives Considered
 
@@ -229,6 +253,11 @@ New files, none touching `main.bicep`:
 4. **Document Intelligence for extraction**: higher-quality text but adds an
    external call, cost, and RBAC. Overkill for a static-chunking demo. Rejected
    in favor of pypdf.
+5. **Upload UI inside the existing Chainlit Container App**: matches the phrase
+   "our base container app", but requires an image rebuild, Container App
+   redeploy, UAMI storage RBAC, and `main.bicep` edits. Rejected in favor of
+   serving the upload page from the Function App, keeping the demo
+   self-contained and the Chainlit app untouched.
 
 ## Assumptions
 
