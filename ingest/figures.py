@@ -5,6 +5,7 @@ import io
 import os
 import subprocess
 import tempfile
+from collections.abc import Callable
 
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AzureOpenAI
@@ -88,16 +89,18 @@ def heading_path_at(doc: ParsedDoc, offset: int) -> str:
 def build_figure_chunks(
     doc: ParsedDoc, pdf_path: str,
     *, year: int | None = None, doc_type: str | None = None, fund_scale_default: str | None = None,
+    store_image: Callable[[str, bytes], str] | None = None,
 ) -> list[Chunk]:
     from ingest.chunker import derive_fund_name, derive_fund_scale
 
     chunks: list[Chunk] = []
     for i, fig in enumerate(doc.figures):
-        try:
-            png = render_figure_png(pdf_path, fig.page, fig.polygon)
-            desc = describe_figure(png)
-        except Exception as exc:  # noqa: BLE001
-            desc = f"(그림 설명 생성 실패: {exc})"
+        png = (fig.image_path.read_bytes() if fig.image_path else
+               render_figure_png(pdf_path, fig.page, fig.polygon))
+        desc = describe_figure(png)
+        if not desc:
+            raise ValueError(f"Empty description for {doc.doc_id} figure {i}")
+        image_url = store_image(str(i), png) if store_image else None
         prefix = f"[그림] {fig.caption}\n" if fig.caption else "[그림] "
         section_path = heading_path_at(doc, fig.offset)
         chunks.append(
@@ -113,6 +116,8 @@ def build_figure_chunks(
                 doc_type=doc_type,
                 fund_name=derive_fund_name(section_path),
                 fund_scale=derive_fund_scale(section_path, fund_scale_default),
+                image_url=image_url,
+                bounding_regions=fig.bounding_regions,
             )
         )
     return chunks

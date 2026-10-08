@@ -77,13 +77,17 @@ def make_visual_tools(recorder: VisualRecorder) -> list[Callable[..., str]]:
         )
         return f"차트 '{title}' 표시함"
 
-    def show_source_page(page: int) -> str:
+    def show_source_page(page: int, doc_id: str | None = None) -> str:
         """인용 근거의 원문 PDF 페이지를 이미지로 사용자에게 보여줍니다.
 
         Args:
             page: 표시할 물리 페이지 번호(검색 결과의 page 값).
+            doc_id: 검색 결과의 원본 문서 ID. Blob 문서는 반드시 지정하세요.
         """
-        recorder.items.append(ImageVisual(title=f"원문 {page}페이지", path=f"__page__:{page}"))
+        if page < 1:
+            raise ValueError("페이지는 1 이상이어야 합니다.")
+        marker = f"__page__:{page}" + (f":{doc_id}" if doc_id else "")
+        recorder.items.append(ImageVisual(title=f"원문 {page}페이지", path=marker))
         return f"원문 {page}페이지 이미지 표시함"
 
     return [make_table, make_chart, show_source_page]

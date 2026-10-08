@@ -20,6 +20,7 @@ specs
 scripts
 *.log
 infra
+functions/**/local.settings.json
 # docs/ 는 원본 PDF가 있어 포함하되, 스펙/시나리오 문서는 제외
 docs/superpowers
 docs/*.docx

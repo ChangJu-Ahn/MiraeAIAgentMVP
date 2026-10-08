@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import subprocess
 import sys
-import tempfile
 import uuid
 from pathlib import Path
 from time import perf_counter
@@ -21,7 +22,7 @@ from agent.reflection import augmented_question, critique
 from agent.tools import TraceRecorder
 from agent.visuals import ChartVisual, ImageVisual, TableVisual, VisualRecorder
 from app.formatting import cited_sources, dedup_sources, format_citations, format_debug
-from app.source_docs import source_document_response, source_docs_page
+from app.source_docs import source_document_response, source_docs_page, source_page_png
 from app.visual_bind import chart_to_figure, table_to_dataframe
 from config.settings import get_settings
 from eval.live import (
@@ -131,25 +132,32 @@ def _visual_elements(visuals: list) -> list:
         elif isinstance(v, ImageVisual):
             if v.path.startswith("__page__:"):
                 try:
-                    page = int(v.path.split(":", 1)[1])
-                    pdf = _resolve_source_pdf(get_settings().source_pdf_path)
-                    if not pdf:
-                        continue
-                    png = render_page_png(pdf, page)
-                    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                    tmp.write(png)
-                    tmp.close()
+                    parts = v.path.split(":", 2)
+                    page = int(parts[1])
+                    if len(parts) == 3:
+                        png = source_page_png(parts[2], page)
+                    else:
+                        if get_settings().ingest_api_endpoint:
+                            raise ValueError("Blob 원문에는 doc_id가 필요합니다.")
+                        pdf = _resolve_source_pdf(get_settings().source_pdf_path)
+                        if not pdf:
+                            raise ValueError("원본 PDF를 찾을 수 없습니다.")
+                        png = render_page_png(pdf, page)
                     elements.append(
                         cl.Image(
-                            path=tmp.name,
+                            content=png,
                             name=v.title,
                             display="inline",
                             mime="image/png",
                             size="large",
                         )
                     )
-                except Exception:  # noqa: BLE001 - 원문 페이지 렌더 실패는 건너뜀
-                    continue
+                except (OSError, ValueError, subprocess.CalledProcessError):
+                    logging.getLogger(__name__).exception("Source page rendering failed")
+                    elements.append(cl.Text(
+                        name=v.title, content="원문 페이지를 표시하지 못했습니다.",
+                        display="inline",
+                    ))
             else:
                 elements.append(cl.Image(path=v.path, name=v.title, display="inline", size="large"))
     return elements

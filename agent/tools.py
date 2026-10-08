@@ -7,7 +7,7 @@ from typing import Callable, Literal
 from pydantic import BaseModel, Field
 
 from config.settings import get_settings
-from ingest.corpus import CORPUS
+from search.documents import indexed_documents
 from search.hybrid import hybrid_search
 from search import structured as _structured
 
@@ -21,6 +21,10 @@ class RetrievedSource(BaseModel):
     snippet: str
     score: float = 0.0
     source_chunk_id: str | None = None
+    doc_id: str | None = None
+    source_file: str | None = None
+    source_url: str | None = None
+    image_url: str | None = None
 
 
 class TraceStep(BaseModel):
@@ -123,17 +127,31 @@ def _run_tool(
                 chunk_type=h.chunk_type,
                 snippet=source_excerpt,
                 score=h.score,
+                doc_id=getattr(h, "doc_id", None),
+                source_file=getattr(h, "source_file", None),
+                source_url=getattr(h, "source_url", None),
+                image_url=getattr(h, "image_url", None),
             )
         )
         lines.append(
-            f"[출처 {n}] ({h.section_path}, p.{h.page_physical})\n{agent_excerpt}"
+            f"[출처 {n}] ({h.section_path}, p.{h.page_physical}, "
+            f"doc_id={getattr(h, 'doc_id', None)})\n{agent_excerpt}"
         )
+        if getattr(h, "image_url", None):
+            lines.append(f"그림 URL: {h.image_url}")
     return "\n\n".join(lines)
 
 
 
 def make_search_tools(recorder: TraceRecorder) -> list[Callable[..., str]]:
     settings = get_settings()
+    documents = None
+
+    def current_documents():
+        nonlocal documents
+        if documents is None:
+            documents = indexed_documents()
+        return documents
     missing_documents: set[tuple[int, str]] = set()
     requested_documents = {
         (year, recorder.requested_doc_type)
@@ -144,7 +162,7 @@ def make_search_tools(recorder: TraceRecorder) -> list[Callable[..., str]]:
     def _document_exists(year: int, doc_type: str) -> bool:
         return any(
             document.year == year and document.doc_type == doc_type
-            for document in CORPUS
+            for document in current_documents()
         )
 
     def _document_label(year: int, doc_type: str) -> str:
@@ -162,8 +180,8 @@ def make_search_tools(recorder: TraceRecorder) -> list[Callable[..., str]]:
 
         available = sorted(
             document.year
-            for document in CORPUS
-            if document.doc_type == doc_type
+            for document in current_documents()
+            if document.doc_type == doc_type and document.year is not None
         )
         available_text = ", ".join(map(str, available)) or "없음"
         label = _document_label(year, doc_type)
@@ -250,10 +268,25 @@ def make_search_tools(recorder: TraceRecorder) -> list[Callable[..., str]]:
         @wraps(tool)
         def wrapped(*args, **kwargs) -> str:
             output = tool(*args, **kwargs)
+            provenance = [
+                f"[출처 {source.n}] doc_id={source.doc_id}, p.{source.page_physical}"
+                for source in recorder.sources
+                if source.doc_id and f"[출처 {source.n}]" in output
+            ]
+            if provenance:
+                output += "\n" + "\n".join(provenance)
             recorder.evidence.append(output)
             return output
 
         return wrapped
+
+    def _source_metadata(doc_id: str | None) -> dict:
+        document = next((d for d in current_documents() if d.doc_id == doc_id), None)
+        return {
+            "doc_id": doc_id,
+            "source_file": document.source_file if document else None,
+            "source_url": document.source_url if document else None,
+        }
 
     def _record_catalog_source(entries, year: int, ministry: str | None) -> int:
         source_chunk_id = f"catalog-list:{year}:{ministry or '*'}"
@@ -281,6 +314,9 @@ def make_search_tools(recorder: TraceRecorder) -> list[Callable[..., str]]:
                     + ", ".join(names)
                 ),
                 source_chunk_id=source_chunk_id,
+                **_source_metadata(
+                    entries[0].doc_id if len({e.doc_id for e in entries}) == 1 else None,
+                ),
             )
         )
         return n
@@ -305,6 +341,7 @@ def make_search_tools(recorder: TraceRecorder) -> list[Callable[..., str]]:
                 chunk_type="fact",
                 snippet=fact.source_text[:300],
                 source_chunk_id=fact.source_chunk_id,
+                **_source_metadata(fact.doc_id),
             )
         )
         return n
@@ -383,6 +420,22 @@ def make_search_tools(recorder: TraceRecorder) -> list[Callable[..., str]]:
         if blocked is not None:
             return blocked
         return _run_tool(recorder, "search_tables", settings.search_index_table, query, odata_filter=f)
+
+    def search_figures(
+        query: str, year: int | None = None, doc_type: str | None = None,
+        fund_name: str | None = None, fund_scale: str | None = None,
+    ) -> str:
+        """사진·그림·차트 설명을 검색합니다. 결과에는 추출 이미지 URL과 문서 ID가 포함됩니다."""
+        f = _build_odata_filter(year, doc_type, fund_name, fund_scale)
+        blocked = _guard_document_search(
+            tool_name="search_figures", query=query, year=year, doc_type=doc_type,
+            odata_filter=f,
+        )
+        if blocked is not None:
+            return blocked
+        return _run_tool(
+            recorder, "search_figures", settings.search_index_figure, query, odata_filter=f,
+        )
 
     # ── Structured catalog / aggregation closures ────────────────────────
 
@@ -755,4 +808,5 @@ def make_search_tools(recorder: TraceRecorder) -> list[Callable[..., str]]:
         _capture_evidence(get_fund_evaluations),
         _capture_evidence(aggregate_evaluations),
         _capture_evidence(fund_analytics),
+        search_figures,
     ]

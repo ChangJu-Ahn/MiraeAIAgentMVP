@@ -35,12 +35,27 @@ THEME_VARIABLES = {
 }
 
 
+def test_chainlit_disables_chat_file_attachments():
+    config = tomllib.loads(
+        (ROOT / ".chainlit" / "config.toml").read_text(encoding="utf-8")
+    )
+
+    assert config["features"]["spontaneous_file_upload"]["enabled"] is False
+
+
 def test_chainlit_registers_evaluation_and_source_document_header_links():
     config = tomllib.loads(
         (ROOT / ".chainlit" / "config.toml").read_text(encoding="utf-8")
     )
 
     assert config["UI"]["header_links"] == [
+        {
+            "name": "질문 예시",
+            "display_name": "질문 예시",
+            "icon_url": "/public/question-examples.svg",
+            "url": "#question-examples",
+            "target": "_self",
+        },
         {
             "name": "Evaluation",
             "display_name": "Evaluation",
@@ -56,6 +71,20 @@ def test_chainlit_registers_evaluation_and_source_document_header_links():
             "target": "_blank",
         },
     ]
+
+
+def test_question_picker_uses_evaluation_questions_without_auto_submission():
+    script = (ROOT / "public" / "mvp-notice.js").read_text(encoding="utf-8")
+    assert "/public/evaluation-data.json" in script
+    assert "row.question" in script
+    assert "row.answer" not in script
+    assert "row.ground_truth" not in script
+    assert 'getElementById("chat-input")' in script
+    assert "HTMLTextAreaElement.prototype" in script
+    assert '"input", { bubbles: true }' in script
+    assert "requestSubmit" not in script
+    assert "KeyboardEvent" not in script
+    assert "window.confirm" in script
 
 
 def test_chainlit_readme_documents_the_verified_user_experience():
