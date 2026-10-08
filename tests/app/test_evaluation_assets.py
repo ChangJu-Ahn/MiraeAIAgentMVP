@@ -50,13 +50,6 @@ def test_chainlit_registers_evaluation_and_source_document_header_links():
 
     assert config["UI"]["header_links"] == [
         {
-            "name": "질문 예시",
-            "display_name": "질문 예시",
-            "icon_url": "/public/question-examples.svg",
-            "url": "#question-examples",
-            "target": "_self",
-        },
-        {
             "name": "Evaluation",
             "display_name": "Evaluation",
             "icon_url": "/public/evaluation-icon.png",
@@ -85,6 +78,14 @@ def test_question_picker_uses_evaluation_questions_without_auto_submission():
     assert "requestSubmit" not in script
     assert "KeyboardEvent" not in script
     assert "window.confirm" in script
+
+
+def test_question_picker_is_mounted_above_the_composer():
+    script = (ROOT / "public" / "mvp-notice.js").read_text(encoding="utf-8")
+    assert 'getElementById("message-composer")' in script
+    assert 'button.id = "question-examples-trigger"' in script
+    assert "composer.before(toolbar)" in script
+    assert "new MutationObserver" in script
 
 
 def test_chainlit_readme_documents_the_verified_user_experience():

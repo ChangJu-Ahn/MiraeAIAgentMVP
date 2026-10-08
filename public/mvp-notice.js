@@ -67,6 +67,7 @@
     input.dispatchEvent(new Event("input", { bubbles: true }));
     focusAfterClose = input;
     dialog.close();
+    input.focus();
     input.setSelectionRange(question.length, question.length);
   };
 
@@ -151,13 +152,52 @@
     }
   };
 
-  document.addEventListener("click", (event) => {
-    if (!(event.target instanceof Element)) return;
-    const link = event.target.closest('a[href="#question-examples"]') ||
-      event.target.closest("button")?.querySelector('a[href="#question-examples"]');
-    if (!link) return;
-    event.preventDefault();
-    event.stopPropagation();
-    openQuestions(link.closest("button") || link);
-  }, true);
+  const mountPicker = () => {
+    const composer = document.getElementById("message-composer");
+    let toolbar = document.getElementById("question-examples-toolbar");
+    if (!composer) {
+      toolbar?.remove();
+      return;
+    }
+    if (toolbar?.nextElementSibling === composer) return;
+    if (!toolbar) {
+      toolbar = document.createElement("div");
+      toolbar.id = "question-examples-toolbar";
+      const button = document.createElement("button");
+      button.id = "question-examples-trigger";
+      button.type = "button";
+      button.setAttribute("aria-haspopup", "dialog");
+      button.setAttribute("aria-controls", "question-examples-dialog");
+      const icon = document.createElement("img");
+      icon.src = "/public/question-examples.svg";
+      icon.alt = "";
+      icon.width = 20;
+      icon.height = 20;
+      button.append(icon, "질문 예시");
+      button.addEventListener("click", () => openQuestions(button));
+      toolbar.append(button);
+    }
+    composer.before(toolbar);
+  };
+
+  const watchComposer = () => {
+    mountPicker();
+    let scheduled = false;
+    new MutationObserver(() => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        mountPicker();
+      });
+    }).observe(document.getElementById("root") || document.body, {
+      childList: true,
+      subtree: true,
+    });
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", watchComposer, { once: true });
+  } else {
+    watchComposer();
+  }
 })();

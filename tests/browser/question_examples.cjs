@@ -2,6 +2,21 @@ const assert = require("node:assert/strict");
 const path = require("node:path");
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 
+async function assertNearComposer(page) {
+  const rects = await page.evaluate(() => {
+    const button = document.getElementById("question-examples-trigger").getBoundingClientRect();
+    const composer = document.getElementById("message-composer").getBoundingClientRect();
+    return {
+      gap: composer.top - button.bottom,
+      nearBottom: button.top > innerHeight / 2,
+      withinWidth: button.left >= composer.left && button.right <= composer.right,
+    };
+  });
+  assert.ok(rects.gap >= 0 && rects.gap <= 16, "picker must be directly above the input");
+  assert.ok(rects.nearBottom && rects.withinWidth, "picker must be beside the visible composer");
+  assert.equal(await page.locator('a[href="#question-examples"]').count(), 0);
+}
+
 (async () => {
   const base = process.env.CHAT_URL || "http://127.0.0.1:8765";
   const browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -14,8 +29,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       if (String(frame.payload).includes('"client_message"')) messages.push(frame.payload);
     }));
     await page.goto(base, { waitUntil: "networkidle" });
-    const picker = page.locator('a[href="#question-examples"]');
+    const picker = page.locator("#question-examples-trigger");
     await picker.waitFor({ timeout: 10000 });
+    await assertNearComposer(page);
+    await page.locator("#question-examples-toolbar").evaluate(node => node.remove());
+    await picker.waitFor();
+    assert.equal(await picker.count(), 1, "composer remount must not duplicate the button");
     const composer = page.locator("#chat-input");
     const evaluation = await (await page.request.get(base + "/public/evaluation-data.json")).json();
     const question = evaluation.rows[0].question;
@@ -53,6 +72,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       await settingsSheet.getByRole("button", { name: "취소", exact: true }).click();
       await settingsSheet.waitFor({ state: "hidden" });
     }
+    await assertNearComposer(page);
+    if (process.env.BROWSER_ARTIFACTS_DIR) {
+      await page.screenshot({
+        path: path.join(process.env.BROWSER_ARTIFACTS_DIR, "question-picker-composer-mobile.png"),
+        fullPage: true,
+      });
+    }
     await picker.click();
     const metrics = await dialog.evaluate(node => ({
       width: node.getBoundingClientRect().width,
@@ -72,12 +98,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     await retryPage.route("**/public/evaluation-data.json", route =>
       route.fulfill({ status: 503, body: "Unavailable" }));
     await retryPage.goto(base, { waitUntil: "networkidle" });
-    await retryPage.locator('a[href="#question-examples"]').click();
+    await retryPage.locator("#question-examples-trigger").click();
     await retryPage.locator('#question-examples-status[role="alert"]').waitFor();
     assert.match(await retryPage.locator("#question-examples-status").innerText(), /불러오지 못했습니다/);
     await retryPage.getByRole("button", { name: "질문 예시 닫기" }).click();
     await retryPage.unroute("**/public/evaluation-data.json");
-    await retryPage.locator('a[href="#question-examples"]').click();
+    await retryPage.locator("#question-examples-trigger").click();
     await retryPage.locator(".question-example").first().waitFor();
     assert.equal(await retryPage.locator(".question-example").count(), evaluation.rows.length);
     console.log("Question picker: 16 questions, editable prefill, no send, draft protection, keyboard and mobile checks passed.");

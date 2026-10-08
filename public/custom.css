@@ -53,8 +53,39 @@ html[data-theme="dark"] {
   --cp-highlight: rgba(253, 142, 161, 0.12);
 }
 
-html[data-theme="dark"] a[href="#question-examples"] img {
+html[data-theme="dark"] #question-examples-trigger img {
   filter: invert(1);
+}
+
+#question-examples-toolbar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+#question-examples-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--cp-border);
+  border-radius: 10px;
+  background: var(--cp-surface);
+  color: var(--cp-text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#question-examples-trigger:hover {
+  border-color: var(--cp-accent);
+  background: var(--cp-accent-soft);
+}
+
+#question-examples-trigger:focus-visible {
+  outline: 2px solid var(--cp-accent);
+  outline-offset: 2px;
 }
 
 #question-examples-dialog {
