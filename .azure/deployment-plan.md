@@ -1,8 +1,23 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Deployed 2026-10-08 — question picker and attachment-disabled chatbot
+Status: Deployed 2026-10-08 — question examples directly above the composer
 
 Recipe: Azure CLI code updates on existing resources (Bicep retained as infrastructure reference)
+
+## Composer-position follow-up (2026-10-08, 17:11 KST)
+
+- User corrected the button placement: remove the header entry and place it directly above the chat input.
+- Only the existing chatbot image changes. Do not reset indexes, remove PDFs or redeploy the Function while the newly uploaded report is processing.
+- Native composer toolbar remounts with the React UI without duplicating buttons. Existing question selection, draft protection and manual-send behavior remain unchanged.
+- Browser checks verify a 0–16px gap above the composer on desktop/mobile, lower-half viewport placement, no header entry, safe remount, editable prefill, immediate input focus, Escape and fetch retry.
+- Existing approved subscription, Container App, ACR and identity are reused.
+- Target image: `mirae-chat:composer-examples-20261008-1711`.
+- Validation proof: 448 offline tests passed, with the same 10 cache-dependent skips and 7 live-test deselections. Browser interaction and measured placement checks passed on desktop and mobile.
+- Existing app state is Succeeded and its UAMI still has AcrPull. Source integrity, lock and JavaScript syntax checks passed; no infrastructure or identity changes are needed.
+- ACR build `det` succeeded at `2026-10-08T08:29:25Z`, digest `sha256:e2dbba9a216daf817771f7770295070ddda75f231d23acf2dd83009d7872fa43`.
+- Activated revision `ca-mirae-v4xy5m5d3ltw6--composer-examples-20261008`, Healthy/Provisioned.
+- Live browser checks passed for desktop/mobile composer proximity, absence of the header entry, safe remount and all existing picker interactions.
+- No Function, Search or Blob mutations occurred during this placement-only rollout. The uploaded 2025 report remains in `stmiraev4xy5m5d3ltw6/pdfs`.
 
 ## Attachment-setting rollout (2026-10-08, 16:30 KST)
 

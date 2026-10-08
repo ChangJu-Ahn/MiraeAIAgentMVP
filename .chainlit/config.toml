@@ -167,13 +167,6 @@ default_avatar_file_url = ""
 # custom_build = "./public/build"
 
 [[UI.header_links]]
-name = "질문 예시"
-display_name = "질문 예시"
-icon_url = "/public/question-examples.svg"
-url = "#question-examples"
-target = "_self"
-
-[[UI.header_links]]
 name = "Evaluation"
 display_name = "Evaluation"
 icon_url = "/public/evaluation-icon.png"
