@@ -2,21 +2,70 @@ from __future__ import annotations
 
 import json
 import hashlib
+import logging
+import time
+import tempfile
 from pathlib import Path
+from urllib.parse import urlencode, urlsplit
 
 from azure.ai.documentintelligence import DocumentIntelligenceClient
-from azure.ai.documentintelligence.models import (
-    AnalyzeDocumentRequest,
-    AnalyzeResult,
-    DocumentAnalysisFeature,
-    DocumentContentFormat,
-)
+from azure.core.rest import HttpRequest
 from azure.identity import DefaultAzureCredential
 
 from config.settings import get_settings
 from ingest.models import ParsedDoc, ParsedFigure, ParsedParagraph, ParsedTable
 
 CACHE_DIR = Path(".ingest_cache")
+log = logging.getLogger(__name__)
+
+
+def _analyze_layout(
+    client: DocumentIntelligenceClient, endpoint: str, content: bytes, pages: str | None,
+) -> tuple[dict, str]:
+    params = {
+        "api-version": "2024-11-30", "outputContentFormat": "markdown",
+        "features": "keyValuePairs", "output": "figures",
+    }
+    if pages:
+        params["pages"] = pages
+    response = client.send_request(HttpRequest(
+        "POST", f"{endpoint}/documentintelligence/documentModels/prebuilt-layout:analyze?{urlencode(params)}",
+        headers={"Content-Type": "application/pdf"}, content=content,
+    ))
+    response.raise_for_status()
+    polling_url = response.headers["Operation-Location"]
+    origin, polling = urlsplit(endpoint), urlsplit(polling_url)
+    if polling.scheme != "https" or polling.netloc != origin.netloc:
+        raise ValueError("Unexpected Document Intelligence polling endpoint")
+    operation_id = polling.path.rsplit("/", 1)[-1]
+    log.info("ingest stage=di_submitted operation_id=%s", operation_id)
+    deadline = time.monotonic() + 900
+    while time.monotonic() < deadline:
+        response = client.send_request(HttpRequest("GET", polling_url), stream=True)
+        try:
+            response.raise_for_status()
+            # stream=True bypasses ContentDecodePolicy's additional full JSON copy.
+            with tempfile.TemporaryFile(mode="w+b") as payload:
+                for block in response.iter_bytes():
+                    payload.write(block)
+                payload.seek(0)
+                body = json.load(payload)
+        finally:
+            response.close()
+        status = body.get("status")
+        if status == "succeeded":
+            result = body["analyzeResult"]
+            # Use the SDK's authenticated transport, not its huge per-word model graph.
+            return {
+                "modelId": result["modelId"],
+                "paragraphs": result.get("paragraphs", []),
+                "tables": result.get("tables", []),
+                "figures": result.get("figures", []),
+            }, operation_id
+        if status not in {"notStarted", "running"}:
+            raise RuntimeError(f"Document Intelligence analysis {status}: {body.get('error')}")
+        time.sleep(min(10, max(1, float(response.headers.get("Retry-After", "2")))))
+    raise TimeoutError(f"Document Intelligence analysis exceeded 15 minutes: {operation_id}")
 
 
 def _table_to_markdown(table: dict) -> str:
@@ -116,23 +165,20 @@ def analyze_pdf(
 
     s = get_settings()
     client = DocumentIntelligenceClient(
-        endpoint=s.doc_intelligence_endpoint, credential=DefaultAzureCredential()
+        endpoint=s.doc_intelligence_endpoint.rstrip("/"), credential=DefaultAzureCredential()
     )
-    poller = client.begin_analyze_document(
-        "prebuilt-layout",
-        AnalyzeDocumentRequest(bytes_source=content),
-        pages=pages,
-        output_content_format=DocumentContentFormat.MARKDOWN,
-        features=[DocumentAnalysisFeature.KEY_VALUE_PAIRS],
-        output=["figures"],
+    log.info("ingest stage=di_analyze doc_id=%s bytes=%d", doc_id, len(content))
+    data, operation_id = _analyze_layout(
+        client, s.doc_intelligence_endpoint.rstrip("/"), content, pages,
     )
-    result: AnalyzeResult = poller.result()
-    data = result.as_dict()
+    del content
+    log.info("ingest stage=di_layout doc_id=%s paragraphs=%d tables=%d figures=%d",
+             doc_id, len(data["paragraphs"]), len(data["tables"]), len(data["figures"]))
     for i, figure in enumerate(data.get("figures", [])):
         if not figure.get("id"):
             raise ValueError("Document Intelligence returned a figure without an id")
         image = b"".join(client.get_analyze_result_figure(
-            model_id=data["modelId"], result_id=poller.details["operation_id"],
+            model_id=data["modelId"], result_id=operation_id,
             figure_id=figure["id"],
         ))
         if not image:
@@ -140,5 +186,7 @@ def analyze_pdf(
         image_path = directory / f"figure-{i}.png"
         image_path.write_bytes(image)
         figure["_image_path"] = str(image_path.resolve())
+        log.info("ingest stage=di_figure doc_id=%s figure=%s bytes=%d",
+                 doc_id, figure["id"], len(image))
     cache_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     return _result_to_parsed(doc_id, data)

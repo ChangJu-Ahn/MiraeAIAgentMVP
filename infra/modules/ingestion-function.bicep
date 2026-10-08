@@ -61,6 +61,7 @@ resource funcApp 'Microsoft.Web/sites@2024-04-01' = {
       appSettings: [
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
+        { name: 'FUNCTIONS_WORKER_PROCESS_COUNT', value: '1' }
         // AzureWebJobsStorage를 연결 문자열 대신 blob 엔드포인트 + 관리 ID로 지정 (키리스)
         { name: 'AzureWebJobsStorage__blobServiceUri', value: blobEndpoint }
         { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }

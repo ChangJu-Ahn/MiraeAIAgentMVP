@@ -1688,6 +1688,7 @@ dependencies = [
     { name = "pillow" },
     { name = "plotly" },
     { name = "pydantic-settings" },
+    { name = "pypdf" },
 ]
 
 [package.dev-dependencies]
@@ -1711,6 +1712,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=12.3.0" },
     { name = "plotly", specifier = ">=6.8.0" },
     { name = "pydantic-settings", specifier = ">=2.5" },
+    { name = "pypdf", git = "https://github.com/py-pdf/pypdf.git?rev=6.19.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -2957,6 +2959,11 @@ wheels = [
 crypto = [
     { name = "cryptography" },
 ]
+
+[[package]]
+name = "pypdf"
+version = "6.19.0"
+source = { git = "https://github.com/py-pdf/pypdf.git?rev=6.19.0#d62cb58d3988b291b0435eddfd118c4f8f6b6a46" }
 
 [[package]]
 name = "pytest"

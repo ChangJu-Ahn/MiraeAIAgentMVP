@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import logging
 from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 
 from azure.identity import DefaultAzureCredential
 from azure.search.documents import SearchClient
+from pydantic import BaseModel, Field
 
 from config.settings import get_settings
 from ingest.catalog import (
@@ -21,26 +23,34 @@ from ingest.facts import EvaluationFact, extract_evaluation_facts
 from ingest.figures import build_figure_chunks
 from ingest.indexer import ensure_indexes, reset_indexes, upload_chunks
 from ingest.parser import analyze_pdf
+from ingest.models import Chunk, ParsedDoc
 from ingest.structured_indexer import (
     ensure_structured_indexes,
     replace_catalog,
     replace_facts,
 )
+log = logging.getLogger(__name__)
 
 
-def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool = True,
-        reset: bool = False, year: int | None = None, doc_type: str | None = None,
+class PreparedDocument(BaseModel):
+    chunks: list[Chunk]
+    catalog: list[FundCatalogEntry] = Field(default_factory=list)
+    facts: list[EvaluationFact] = Field(default_factory=list)
+
+
+def prepare_document(
+    doc: ParsedDoc, pdf: str, *, figures: bool = True,
+    year: int | None = None, doc_type: str | None = None,
     fund_scale: str | None = None, validate_only: bool = False,
     expected_overall_grade_count: int | None = None,
     expected_overall_grade_excluded_fund_ids: tuple[str, ...] = (),
-    cache_dir: Path | None = None, source_file: str | None = None,
-    source_url: str | None = None,
-    store_image: Callable[[str, bytes], str] | None = None) -> int:
+    store_image: Callable[[str, bytes], str] | None = None,
+) -> PreparedDocument:
+    doc_id = doc.doc_id
     is_report = doc_type == "report"
 
-    # ── Phase 1: pure extraction (no Azure, no Vision) ────────────────────────
-    doc = analyze_pdf(pdf, doc_id, pages=pages, use_cache=use_cache, cache_dir=cache_dir)
     chunks = chunk_document(doc, year=year, doc_type=doc_type, fund_scale_default=fund_scale)
+    log.info("ingest stage=chunked doc_id=%s chunks=%d", doc_id, len(chunks))
 
     catalog: list[FundCatalogEntry] = []
     coverage: CatalogCoverage | None = None
@@ -134,9 +144,6 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
             f"missing_facts=0{vo_marker}"
         )
 
-        if validate_only:
-            return len(chunks)
-
     else:
         # Guideline path — figures only in real ingest
         if figures and not validate_only:
@@ -153,8 +160,29 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
             f"(narrative={n_total - n_table - n_fig}, table={n_table}, "
             f"figure={n_fig}){vo_marker}"
         )
-        if validate_only:
-            return len(chunks)
+
+    return PreparedDocument(chunks=chunks, catalog=catalog, facts=facts)
+
+
+def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool = True,
+        reset: bool = False, year: int | None = None, doc_type: str | None = None,
+    fund_scale: str | None = None, validate_only: bool = False,
+    expected_overall_grade_count: int | None = None,
+    expected_overall_grade_excluded_fund_ids: tuple[str, ...] = (),
+    cache_dir: Path | None = None, source_file: str | None = None,
+    source_url: str | None = None,
+    store_image: Callable[[str, bytes], str] | None = None) -> int:
+    doc = analyze_pdf(pdf, doc_id, pages=pages, use_cache=use_cache, cache_dir=cache_dir)
+    prepared = prepare_document(
+        doc, pdf, figures=figures, year=year, doc_type=doc_type, fund_scale=fund_scale,
+        validate_only=validate_only, store_image=store_image,
+        expected_overall_grade_count=expected_overall_grade_count,
+        expected_overall_grade_excluded_fund_ids=expected_overall_grade_excluded_fund_ids,
+    )
+    chunks, catalog, facts = prepared.chunks, prepared.catalog, prepared.facts
+    is_report = doc_type == "report"
+    if validate_only:
+        return len(chunks)
 
     # ── Phase 2: embedding + Azure writes ─────────────────────────────────────
     if not chunks:
@@ -162,6 +190,7 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
     for chunk in chunks:
         chunk.source_file = source_file or Path(pdf).name
         chunk.source_url = source_url
+    log.info("ingest stage=embedding doc_id=%s chunks=%d", doc_id, len(chunks))
     vectors = embed_texts([c.content for c in chunks])
     if len(vectors) != len(chunks):
         raise ValueError(
@@ -179,6 +208,7 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
         ensure_structured_indexes()
 
     total = upload_chunks(chunks, doc_id=doc_id)
+    log.info("ingest stage=content_indexed doc_id=%s chunks=%d", doc_id, total)
 
     if is_report:
         s = get_settings()
@@ -195,6 +225,8 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
         )
         replace_catalog(doc_id, catalog, cat_client)
         replace_facts(doc_id, facts, facts_client)
+        log.info("ingest stage=postprocessed doc_id=%s catalog=%d facts=%d",
+                 doc_id, len(catalog), len(facts))
 
     return total
 

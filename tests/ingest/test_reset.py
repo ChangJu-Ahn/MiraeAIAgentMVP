@@ -15,7 +15,7 @@ def test_reset_requires_exact_endpoint_before_any_mutation(monkeypatch):
     assert not client.mock_calls
 
 
-def test_reset_recreates_five_indexes_retires_demo_and_clears_only_manifests(monkeypatch):
+def test_reset_clears_jobs_and_receipts_but_preserves_source_and_figure_files(monkeypatch):
     from ingest import reset
     settings = SimpleNamespace(
         search_endpoint="https://intended.search.windows.net",
@@ -26,12 +26,21 @@ def test_reset_recreates_five_indexes_retires_demo_and_clears_only_manifests(mon
     monkeypatch.setattr(reset, "get_settings", lambda: settings)
     client = MagicMock()
     store = MagicMock()
-    store.assets.list_blobs.return_value = [SimpleNamespace(name="manifests/doc.json")]
+    names = [
+        "manifests/doc.json", "jobs/doc-job.json",
+        "checkpoints/doc-job/layout/00001.json", "checkpoints/doc-job/uploaded/00000.json",
+        "checkpoints/doc-job/images/00001-0.png",
+    ]
+    store.assets.list_blobs.side_effect = lambda name_starts_with: [
+        SimpleNamespace(name=name) for name in names if name.startswith(name_starts_with)
+    ]
     reset.reset_all(settings.search_endpoint, client=client, store=store)
     assert {c.args[0] for c in client.delete_index.call_args_list} == {
         "narrative-index", "table-index", "figure-index", "fund-catalog-index",
         "evaluation-facts-index", "demo-blob-index",
     }
     assert len(client.create_index.call_args_list) == 5
-    store.assets.delete_blob.assert_called_once_with("manifests/doc.json")
+    assert {call.args[0] for call in store.assets.delete_blob.call_args_list} == {
+        name for name in names if name.endswith(".json")
+    }
     store.inputs.delete_blob.assert_not_called()

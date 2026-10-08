@@ -21,9 +21,10 @@ from azure.search.documents.indexes.models import (
 
 from config.settings import get_settings
 from ingest.models import Chunk
-from ingest.structured_indexer import _check_results
+from ingest.structured_indexer import _check_results, _delete_keys, _fetch_existing_keys
 
 EMBED_DIM = 3072
+UPLOAD_BATCH = 100
 
 
 def build_index(name: str) -> SearchIndex:
@@ -145,8 +146,8 @@ def upload_chunks(chunks: list[Chunk], *, doc_id: str | None = None) -> int:
                 search_text="*", filter=f"doc_id eq '{escaped}'", select=["id"],
             )}
             stale.append((client, sorted(existing - {d["id"] for d in docs})))
-        for i in range(0, len(docs), 1000):
-            _check_results(client.upload_documents(documents=docs[i : i + 1000]), "upload")
+        for i in range(0, len(docs), UPLOAD_BATCH):
+            _check_results(client.upload_documents(documents=docs[i : i + UPLOAD_BATCH]), "upload")
         total += len(docs)
     # Only remove old evidence after all three upload batches have succeeded.
     for client, keys in stale:
@@ -156,3 +157,17 @@ def upload_chunks(chunks: list[Chunk], *, doc_id: str | None = None) -> int:
                 "delete",
             )
     return total
+
+
+def delete_stale_chunks(doc_id: str, current_ids: dict[str, set[str]]) -> None:
+    """Finalize a complete document, never an individual range or upload batch."""
+    s = get_settings()
+    credential = DefaultAzureCredential()
+    targets = {
+        "narrative": s.search_index_narrative, "table": s.search_index_table,
+        "figure": s.search_index_figure,
+    }
+    for kind, name in targets.items():
+        client = SearchClient(endpoint=s.search_endpoint, index_name=name, credential=credential)
+        stale = set(_fetch_existing_keys(client, doc_id)) - current_ids[kind]
+        _delete_keys(client, sorted(stale))

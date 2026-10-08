@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from urllib.parse import quote
 
 import azure.functions as func
@@ -9,10 +10,12 @@ from azure.core.exceptions import ResourceNotFoundError
 from azure.storage.blob import ContentSettings
 
 from config.settings import get_settings
-from ingest.blob import BlobStore, document_metadata, ingest_blob
+from ingest.blob import BlobStore, document_metadata
+from ingest.jobs import JobStore, enqueue_blob, process_next_job
 
 app = func.FunctionApp()
 log = logging.getLogger("document_ingestion")
+_INGEST_SLOT = threading.Lock()
 
 
 @app.event_grid_trigger(arg_name="event")
@@ -23,7 +26,17 @@ def index(event: func.EventGridEvent) -> None:
     if not subject.startswith(prefix) or not subject.lower().endswith(".pdf"):
         log.info("Ignoring non-source event %s", subject)
         return
-    ingest_blob(subject[len(prefix):])
+    enqueue_blob(subject[len(prefix):])
+
+
+@app.timer_trigger(schedule="*/5 * * * * *", arg_name="timer", run_on_startup=False, use_monitor=False)
+def process_jobs(timer: func.TimerRequest) -> None:
+    if not _INGEST_SLOT.acquire(blocking=False):
+        return  # Jobs are durable; the next timer tick will pick them up.
+    try:
+        process_next_job()
+    finally:
+        _INGEST_SLOT.release()
 
 
 _FORM = """<!doctype html><html lang="ko"><meta charset="utf-8">
@@ -36,7 +49,8 @@ _FORM = """<!doctype html><html lang="ko"><meta charset="utf-8">
 <option value="report">기금 보고서</option><option value="guideline">기금 지침</option></select></p>
 <p>회계연도 <input name="year" type="number" min="2000" max="2099"></p>
 <button type="submit">업로드</button></form>
-<p>업로드 완료와 인덱싱 완료는 다릅니다. 처리 중에는 같은 파일을 덮어쓸 수 없습니다.</p>
+<p>업로드 완료와 인덱싱 완료는 다릅니다. 문서는 25쪽씩 분석하며 중단된 범위부터 재개합니다.</p>
+<p><a href="/api/jobs">문서별 처리 단계 · 진행 상태 확인</a></p>
 <p><a href="/api/documents">인덱싱 완료 문서 확인</a></p>
 </body></html>"""
 
@@ -74,8 +88,13 @@ def upload(req: func.HttpRequest) -> func.HttpResponse:
         body, overwrite=True, metadata=metadata,
         content_settings=ContentSettings(content_type="application/pdf"),
     )
-    return _json({"status": "uploaded", "source_file": name,
+    return _json({"status": "uploaded", "source_file": name, "status_url": "/api/jobs",
                   "message": "Blob 저장 완료. 인덱싱은 비동기로 실행됩니다."}, 202)
+
+
+@app.route(route="jobs", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def jobs(req: func.HttpRequest) -> func.HttpResponse:
+    return _json([job.public_status() for job in JobStore().jobs()])
 
 
 @app.route(route="documents", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)

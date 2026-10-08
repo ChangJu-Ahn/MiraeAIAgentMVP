@@ -28,6 +28,7 @@ class ParsedFigure(BaseModel):
     caption: str | None = None
     figure_id: str | None = None
     image_path: Path | None = None
+    image_blob: str | None = None
     bounding_regions: str | None = None
 
 

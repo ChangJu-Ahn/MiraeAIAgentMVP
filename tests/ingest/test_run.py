@@ -647,6 +647,19 @@ class TestSummaryOutput:
 
 # ── CLI flag propagation ──────────────────────────────────────────────────────
 
+def test_prepare_document_can_validate_checkpointed_layout_without_reanalysis(monkeypatch):
+    from ingest.run import prepare_document
+    from ingest.models import ParsedParagraph
+    _block_all_azure(monkeypatch)
+    monkeypatch.setattr(f"{_RUN}.analyze_pdf", _azure_bomb("analyze_pdf"))
+    doc = ParsedDoc(doc_id="doc", paragraphs=[
+        ParsedParagraph(role=None, content="checkpointed body", page=26),
+    ], tables=[])
+    prepared = prepare_document(doc, "", figures=False, doc_type="document")
+    assert prepared.chunks[0].content == "checkpointed body"
+    assert prepared.chunks[0].page_physical == 26
+    assert prepared.catalog == [] and prepared.facts == []
+
 
 class TestCLI:
     """--validate-only must propagate to run and run_corpus."""
