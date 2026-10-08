@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 # poppler-utils: show_source_page(원문 페이지 이미지) 렌더용 pdftoppm
-RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils \
+RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils git \
     && rm -rf /var/lib/apt/lists/*
 
 # uv (astral)

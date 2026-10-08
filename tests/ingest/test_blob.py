@@ -101,8 +101,7 @@ def test_full_blob_pipeline_routes_three_types_and_preserves_image_bytes(monkeyp
     monkeypatch.setattr(blob, "source_lease", lambda source: nullcontext(None))
     png = b"\x89PNG\r\n\x1a\nreal DI image bytes"
     di = MagicMock()
-    di.begin_analyze_document.return_value.details = {"operation_id": "op"}
-    di.begin_analyze_document.return_value.result.return_value.as_dict.return_value = {
+    data = {
         "modelId": "prebuilt-layout",
         "paragraphs": [{"content": "Body text", "spans": [{"offset": 0, "length": 9}]}],
         "tables": [{
@@ -115,9 +114,18 @@ def test_full_blob_pipeline_routes_three_types_and_preserves_image_bytes(monkeyp
             "boundingRegions": [{"pageNumber": 1, "polygon": [0, 0, 1, 0, 1, 1, 0, 1]}],
         }],
     }
+    accepted = MagicMock()
+    accepted.headers = {"Operation-Location": "https://di.test/documentintelligence/documentModels/prebuilt-layout/analyzeResults/op?api-version=2024-11-30"}
+    completed = MagicMock()
+    import json
+    completed.iter_bytes.return_value = [
+        json.dumps({"status": "succeeded", "analyzeResult": data}).encode(),
+    ]
+    di.send_request.side_effect = [accepted, completed]
     di.get_analyze_result_figure.return_value = [png]
     monkeypatch.setattr(parser, "DocumentIntelligenceClient", lambda **kw: di)
     monkeypatch.setattr(parser, "DefaultAzureCredential", lambda: object())
+    monkeypatch.setattr(parser, "get_settings", lambda: SimpleNamespace(doc_intelligence_endpoint="https://di.test"))
     monkeypatch.setattr(figures, "describe_figure", lambda image: "Extracted chart" if image == png else "")
     monkeypatch.setattr(figures, "render_figure_png", MagicMock(side_effect=AssertionError("No Poppler in Function")))
     monkeypatch.setattr(runner, "embed_texts", lambda texts: [[0.0] * 3072 for _ in texts])
@@ -189,3 +197,12 @@ def test_published_versions_keep_old_pdf_and_figure_accessible():
     assert store.read_source("doc", version=a)[0] == a.encode()
     assert store.read_source("doc")[0] == b.encode()
     assert store.read_figure("doc", a, "0") == b"png:" + a.encode()
+
+
+def test_clearing_an_already_cleared_pending_marker_is_idempotent():
+    from azure.core.exceptions import ResourceNotFoundError
+    from ingest.blob import BlobStore
+    store = BlobStore.__new__(BlobStore)
+    store.assets = MagicMock()
+    store.assets.delete_blob.side_effect = ResourceNotFoundError("Already cleared")
+    store.clear_pending("doc")

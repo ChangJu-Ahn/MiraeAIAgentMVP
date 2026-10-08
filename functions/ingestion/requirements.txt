@@ -6,3 +6,4 @@ azure-ai-documentintelligence==1.0.2
 openai==2.44.0
 pydantic-settings==2.14.2
 pillow==12.3.0
+pypdf==6.19.0

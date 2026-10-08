@@ -13,6 +13,7 @@ from typing import Literal
 from urllib.parse import quote
 
 from azure.core.exceptions import ResourceNotFoundError
+from azure.core.credentials import TokenCredential
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobClient, BlobServiceClient, ContentSettings
 from pydantic import BaseModel, Field
@@ -54,14 +55,20 @@ def document_metadata(blob_name: str, metadata: dict[str, str]) -> DocumentMetad
     return result
 
 
+def document_fingerprint(content: bytes, metadata: DocumentMetadata) -> str:
+    return hashlib.sha256(
+        content + metadata.model_dump_json().encode() + b"layout-ingest-v1"
+    ).hexdigest()
+
+
 class BlobStore:
-    def __init__(self) -> None:
+    def __init__(self, *, credential: TokenCredential | None = None) -> None:
         settings = get_settings()
         if not settings.storage_blob_endpoint or not settings.ingest_api_endpoint:
             raise ValueError("STORAGE_BLOB_ENDPOINT and INGEST_API_ENDPOINT are required")
         self.endpoint = settings.ingest_api_endpoint.rstrip("/")
         self.service = BlobServiceClient(
-            settings.storage_blob_endpoint, credential=DefaultAzureCredential(),
+            settings.storage_blob_endpoint, credential=credential or DefaultAzureCredential(),
         )
         self.inputs = self.service.get_container_client(settings.upload_container)
         self.assets = self.service.get_container_client(settings.assets_container)
@@ -91,7 +98,10 @@ class BlobStore:
                          json.dumps({"fingerprint": fingerprint}).encode(), "application/json")
 
     def clear_pending(self, doc_id: str) -> None:
-        self.assets.delete_blob(f"pending/{doc_id}.json")
+        try:
+            self.assets.delete_blob(f"pending/{doc_id}.json")
+        except ResourceNotFoundError:
+            pass  # Finalization may have committed before the worker's last checkpoint.
 
     def write_asset(self, name: str, data: bytes, content_type: str) -> None:
         self.assets.upload_blob(
@@ -164,9 +174,7 @@ def ingest_blob(blob_name: str, *, store: BlobStore | None = None) -> dict:
             raise ValueError("Source is not a PDF")
         if len(content) > get_settings().max_upload_mb * 1024 * 1024:
             raise ValueError("Source exceeds MAX_UPLOAD_MB")
-        fingerprint = hashlib.sha256(
-            content + metadata.model_dump_json().encode() + b"layout-ingest-v1"
-        ).hexdigest()
+        fingerprint = document_fingerprint(content, metadata)
         previous = store.read_manifest(metadata.doc_id)
         if (previous and previous["fingerprint"] == fingerprint
                 and not store.has_pending(metadata.doc_id)):

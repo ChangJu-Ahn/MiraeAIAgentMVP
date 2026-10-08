@@ -1,8 +1,52 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Deployed 2026-10-08 — question examples directly above the composer
+Status: Deployed and verified — all five uploaded PDFs completed
 
 Recipe: Azure CLI code updates on existing resources (Bicep retained as infrastructure reference)
+
+## Durable page-range recovery (user approved autonomous implementation)
+
+- Event Grid only creates an ETag-keyed job and returns promptly. A timer in the same existing Function performs one bounded step at a time.
+- Original PDFs remain unchanged. PDF page count is read locally; DI analyzes 25-page ranges. Original physical page numbers were verified on a real pages 26–50 request.
+- Layout/PNG checkpoints persist in `document-assets`; range-local offsets are rebased before existing whole-document fund validation. Figures are described one at a time; 16-chunk embedding batches have durable upload receipts.
+- Finalization runs existing catalog/fact replacement and cleans stale content per index, only after all batches succeed. Source leases protect index-writing steps and completion persistence from concurrent replacement.
+- Repeated finalization is idempotent. Job progress/error/retry state is exposed at `/api/jobs`. No new compute, queue service, data resets or PDF deletion.
+- Code review found and regression tests addressed per-index stale IDs, last-figure checkpoint failure, already-cleared pending markers and source replacement during publication.
+- PyPDF 6.19.0 is pinned to its official GitHub release in `uv.lock` because the local PyPI file CDN was unreachable. Function runtime receives the same pure-Python package alongside its already verified Linux dependencies.
+- Rollout uses one controlled local run-from-package activation with event/timer processing paused, then enqueues the five existing source versions and enables the timer. No overlapping build/restart operations.
+- Validation proof: 466 offline tests passed (10 cache-dependent skips, 7 live-test deselections; live-only smoke modules excluded). Regression tests exercise range resume, figure-plan write failure, upload receipts, per-index cleanup, source lease protection, retries and reset safety.
+- An isolated package discovers all seven functions. The prebuilt Linux runtime package includes the pinned pure-Python PDF reader and unchanged verified SDK dependencies. Existing Function identity and all five required data-plane roles were rechecked.
+- Function package `20261008-ranged-jobs-v1.zip` (SHA-256 `ccdfceb1c326ef138742737d4da66a1a1bb12959e7d2712e2cb1fb530a9a6c43`) is active. Both `index` and `process_jobs` are enabled. All five original source versions are registered; page checkpoints are advancing without errors.
+- Observed Function working set during range processing is approximately 250–350 MB, versus the earlier peak of 1.27 GB.
+- ACR build `deu` succeeded for `mirae-chat:ranged-ingest-20261008`, digest `sha256:cd0d1caa440324df76e16d186d632df359ea76f2aed8a44f77bffa410443ca72`. Chatbot image update is independent of the running ingestion Function.
+- Live completion: guideline-2021-dh=184 chunks, guideline-2022-dh=148, report-2021=1083, report-2022=1015, report-2025=889. All jobs are completed, all completion manifests exist and no pending markers remain.
+- Verified index totals: narrative=2487, table=802, figure=30, fund catalog=89, evaluation facts=2340. Catalog populations are 33/31/25 for 2021/2022/2025; required performance facts and overall-grade populations match the preserved contracts.
+- Acceptance verified unique content IDs across indexes, original page bounds, source ETags, source PDF signatures, PNG signatures, 3072-dimensional vector schemas, three hybrid/semantic searches and all fact-to-chunk provenance links.
+- A new isolated synthetic PDF uploaded through the real HTTP endpoint completed automatically through BlobCreated/Event Grid and the timer worker. Only that test document and its artifacts were removed afterward; five user PDFs remain.
+- Live chatbot answered the 2025 공무원연금기금 grade question as **우수** with `[출처 1]`.
+- Existing chatbot revision `ca-mirae-v4xy5m5d3ltw6--ranged-ingest-20261008` is Healthy/Provisioned. Both event enqueue and timer processing functions are enabled.
+- Progress endpoint: https://blobsearch-v4xy5m5d3ltw6.azurewebsites.net/api/jobs
+
+## Ingestion recovery (2026-10-08, 19:24 KST)
+
+- Current verified state: five source PDFs are preserved. The two guideline documents completed; all three reports retain pending markers. Search currently contains narrative=1027, table=301, figure=2, catalog=0, facts=0. Report evidence is partial and must not be described as a completed recovery.
+- Automatic `index` execution is intentionally disabled. The client-side replay monitor has been stopped to prevent submitting further work.
+- Beyond the initial narrow code fix, remote-build and prebuilt-package deployment alternatives were attempted. The current settings are `WEBSITE_RUN_FROM_PACKAGE=1`, `SCM_DO_BUILD_DURING_DEPLOYMENT=false`, `ENABLE_ORYX_BUILD=false`, `FUNCTIONS_WORKER_PROCESS_COUNT=1`.
+- Current selected package is `20261008-recovery-streamed-layout.zip`; the earlier package `20261008104147.zip` is the last one with positively verified guideline completions. No package rollback, additional deployment or further replay should occur before the user decides how to proceed.
+- Large-report recovery remains unproven despite memory reductions. Preserve this evidence and stop trial-and-error deployment changes.
+- Uploaded PDFs and Event Grid delivery were confirmed; all five documents lack completed manifests. DI requests, figure artifacts and some embedding responses exist, so this is a processing failure rather than missing upload wiring.
+- Function peak working set reached 1.27 GB on its existing B1 host. CPU/memory pressure coincides with host restarts and host/source lease failures; concurrent Event Grid retries reanalyze documents.
+- The 532-page report returns 62,754,508 bytes of DI JSON. Required paragraph/table/figure data is 8,715,683 bytes. Local transformation of the actual result produces 877 chunks, 25 catalog entries and 667 facts with no missing funds.
+- Fix: serialize only required SDK fields, release the full result/poller before further processing, cap vector upload batches at 100, permit only one heavy ingest per worker and log processing stages.
+- Existing source leases remain in place. Busy events fail explicitly for Event Grid retry; they are not acknowledged and discarded.
+- Scope: update only the existing Function code/worker setting and replay existing uploads. Preserve PDFs, indexes, chatbot, networking and SKU; no resets or resource recreation.
+- Validation gates: regression tests, exact Function package discovery, unchanged role/config checks, live processing and Search counts. Tenant/subscription is pinned on diagnostic commands because the shared CLI default changed during investigation.
+- Validation proof: 451 offline tests passed (same live/cache exclusions), lock/diff checks passed, isolated recovery package discovers all five functions. All five required Function data-plane roles are present; no access grants or infrastructure/SKU changes are necessary.
+- Actual full-size SDK conversion test: selective serialization completed in 0.34 seconds after SDK construction; original raw model is explicitly released before figure/embedding work. The source-specific catalog/fact contract also passes on the existing DI output.
+- First recovery completed both guidelines (184 and 148 chunks), but a full report still stalled before the post-DI stage. The SDK's typed result construction itself is also expensive, not only `as_dict`.
+- Final correction uses `DocumentIntelligenceClient.send_request` (the existing authenticated/retrying SDK transport) with the same GA layout REST API, polling an origin-checked operation URL. It consumes only the required JSON layout fields without constructing every page/word model. A 15-minute service-operation deadline and explicit error propagation are included.
+- Read-only verification against the already analyzed 532-page report fetched/extracted raw layout in 9.64 seconds. Targeted regression suite: 49 passed.
+- Final full offline validation: 453 passed, 10 skipped, 7 deselected, with live-only Search/evaluation smoke modules excluded. No additional dependencies or identity changes.
 
 ## Composer-position follow-up (2026-10-08, 17:11 KST)
 

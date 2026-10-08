@@ -439,19 +439,22 @@ Bicep은 AI Search, Document Intelligence, Foundry, Application Insights, manage
 
 ## Blob 자동 인제스트
 
-별도 `demo-blob-index`/`pypdf` 파이프라인은 제거했습니다. `functions/ingestion/function_app.py`의 Event Grid 트리거가 `ingest/blob.py`를 통해 **동일한 `ingest.run.run()`**을 실행합니다. 기금 카탈로그·평가팩트 추출 및 집계 기능은 그대로 유지됩니다.
+별도 `demo-blob-index`/단순 텍스트 추출 파이프라인은 제거했습니다. `functions/ingestion/function_app.py`의 Event Grid 트리거는 **작업만 등록하고 즉시 응답**하며, 타이머 worker가 `ingest/jobs.py`의 짧은 작업 단계를 실행합니다. 기존 `ingest.run.prepare_document()`를 공유하므로 기금 카탈로그·평가팩트 추출 및 검증 로직은 그대로 유지됩니다.
 
-처리 순서: `pdfs` 업로드 → DI `prebuilt-layout` → 본문/표/그림 영역 분리 → 그림 설명 및 임베딩 → 콘텐츠 3개 인덱스 → 보고서의 기존 후처리 2개 인덱스 → 완료 문서 등록.
+처리 순서: `pdfs` 업로드 → Blob 작업 등록 → 25쪽씩 DI `prebuilt-layout` 분석·체크포인트 저장 → 원본 페이지·문서 순서로 결과 결합 → 기존 후처리 검증 → 그림별 설명 → 16개 청크씩 임베딩·적재 → 후처리 인덱스 및 완료 기록 확정.
 
 - DI 원문 문단은 후처리를 위해 유지하되, 표·그림에 속하는 문단은 본문 청크에서 제외합니다.
 - 본문은 페이지·섹션 기준 3,600자/540자 오버랩, 표는 Markdown 구조를 유지합니다.
 - 그림은 DI의 `output=figures`로 추출한 PNG를 `document-assets`에 저장합니다. DI가 인식하지 못한 그림을 별도로 감지하는 모델은 포함하지 않습니다.
 - 기존 5개 PDF는 `CORPUS`와 동일한 파일명으로 컨테이너 루트에 올리면 연도·문서유형·완전성 검증 설정이 자동 적용됩니다. 새 파일은 일반 문서(`document`)가 기본입니다. 기금 보고서/지침은 업로드 폼 또는 Blob metadata의 `doc_type`, `year`를 지정합니다.
-- Blob 원본은 보존합니다. PDF 내용·메타데이터가 같으면 중복 이벤트를 건너뛰며, 수정본은 재분석하고 해당 문서의 오래된 청크를 제거합니다. 처리 중에는 원본에 lease를 걸어 같은 파일의 동시 덮어쓰기를 막습니다.
+- Blob 원본은 보존합니다. 원본 이름·ETag가 같은 이벤트는 같은 작업으로 등록됩니다. 내용·메타데이터가 이미 적재된 버전과 같으면 재분석을 생략합니다. 수정본은 새 작업으로 처리하고, 모든 배치 성공 후에만 해당 문서의 오래된 청크를 정리합니다.
 - 부분 실패한 작업은 미완료 표시를 남깁니다. 마지막 성공 파일을 다시 올리더라도 미완료 표시가 있으면 재처리하여 혼합된 인덱스를 복구합니다.
+- B1에서는 한 worker가 한 단계씩 처리합니다. 작업은 기존 `document-assets` 컨테이너의 `jobs/`와 `checkpoints/`에 저장하므로 별도 Queue 서비스가 필요하지 않습니다. `FUNCTIONS_WORKER_PROCESS_COUNT=1`을 유지합니다.
+- 단계가 중단되면 마지막 체크포인트부터 재개합니다. 이미 성공한 페이지 분석·그림 설명·업로드 배치는 반복하지 않습니다. 일시 오류는 지연 재시도하며, 반복 실패는 `failed`와 오류 내용을 남깁니다.
+- DI 응답은 SDK 인증 전송 계층으로 스트리밍하고 필요한 문단·표·그림만 보존합니다. 원본 페이지 번호와 연속 표/헤딩 순서를 유지하며, 기금 후처리는 모든 범위가 모인 다음 한 문서 기준으로 수행합니다.
 - 완료한 원본의 스냅샷·이미지·manifest는 별도 컨테이너에 저장하므로 재귀 트리거되지 않습니다. PDF 재업로드마다 전체 인덱스를 지우지는 않습니다.
 - 원문·그림 인용 URL은 성공한 버전에 고정됩니다. 재업로드 후에도 이전 답변의 PDF 페이지와 추출 이미지를 같은 버전으로 열 수 있습니다.
-- 완료 목록은 `/api/documents`, 업로드는 `/api/upload`입니다. 업로드 응답 `202`는 Blob 저장 완료이며 인덱싱 성공이 아닙니다. 실패는 Function 로그/Application Insights에서 확인합니다.
+- 진행 상태는 `/api/jobs`, 완료 목록은 `/api/documents`, 업로드는 `/api/upload`입니다. `/api/jobs`에서 단계, 처리 페이지/그림/청크 수, 마지막 오류를 확인할 수 있습니다. 업로드 응답 `202`는 Blob 저장 완료이며 인덱싱 성공이 아닙니다.
 
 ### 배포
 
@@ -472,20 +475,20 @@ bash scripts/deploy_ingestion.sh
 
 ### 최초 데이터 초기화와 재업로드
 
-업로드를 멈추고 진행 중 인제스트가 끝난 뒤 실행하세요. **아래 명령은 기존 데이터 전체를 지웁니다.** `.env`의 Search/Storage/Function 설정과 인증을 준비하고, Storage private endpoint에 접근 가능한 실행 환경에서 사용합니다.
+업로드를 멈추고 `index`와 `process_jobs` 함수를 중지한 뒤 진행 중 작업이 끝났는지 확인하세요. **아래 명령은 기존 데이터 전체를 지웁니다.** `.env`의 Search/Storage/Function 설정과 인증을 준비하고, Storage private endpoint에 접근 가능한 실행 환경에서 사용합니다.
 
 ```bash
 uv run python -m ingest.reset --confirm-endpoint "https://<search>.search.windows.net"
 ```
 
-이 명령은 콘텐츠 3개와 후처리 2개 인덱스를 같은 이름으로 재생성하고 `demo-blob-index`를 삭제합니다. 완료 manifest도 비우므로 같은 PDF를 다시 올려도 인덱싱됩니다. 원본 PDF와 이전 이미지 스냅샷은 삭제하지 않습니다. 기존 파일의 자동 소급 처리는 없으므로 업로드 페이지에서 다시 올리거나 네트워크 접근 가능한 곳에서 다음을 실행합니다.
+이 명령은 콘텐츠 3개와 후처리 2개 인덱스를 같은 이름으로 재생성하고 `demo-blob-index`를 삭제합니다. 완료 manifest, 작업 기록, 체크포인트 JSON도 비워 오래된 업로드 영수증이 재적재를 생략하지 않게 합니다. 원본 PDF와 이전 이미지 파일은 삭제하지 않습니다. 함수를 다시 켠 뒤 업로드 페이지 또는 다음 명령으로 재업로드합니다.
 
 ```bash
 az storage blob upload --account-name "<storage>" --container-name pdfs \
   --auth-mode login --overwrite --file "Docs/<file>.pdf" --name "<file>.pdf"
 ```
 
-이 구성은 공개 데모입니다. 업로드·원본 조회 HTTP API에는 사용자 인증이 없으므로 민감한 자료를 올리지 마세요. 5개 인덱스 간 원자적 교체, Blob 삭제 이벤트 동기화, 중간 단계 재개는 범위에 포함하지 않습니다. 일부 단계가 실패하면 완료로 등록되지 않으며 같은 파일 재업로드로 재시도합니다.
+이 구성은 공개 데모입니다. 업로드·원본·진행 상태 HTTP API에는 사용자 인증이 없으므로 민감한 자료를 올리지 마세요. 5개 인덱스 간 원자적 교체와 Blob 삭제 이벤트 동기화는 범위에 포함하지 않습니다. 반복 실패한 작업은 완료로 등록되지 않으며, 원인을 수정한 뒤 재업로드하거나 운영자가 해당 작업을 재개해야 합니다.
 
 ## 로컬 인제스트
 

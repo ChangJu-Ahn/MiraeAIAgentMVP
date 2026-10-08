@@ -1,11 +1,25 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from azure.ai.documentintelligence.models import AnalyzeResult
 
 import pytest
 
 from ingest import indexer, parser
 from ingest.chunker import chunk_document
 from ingest.models import Chunk
+
+
+def _analysis_responses(data):
+    accepted = MagicMock()
+    accepted.headers = {
+        "Operation-Location": "https://di.test/documentintelligence/documentModels/prebuilt-layout/analyzeResults/operation?api-version=2024-11-30",
+    }
+    completed = MagicMock()
+    import json
+    completed.iter_bytes.return_value = [
+        json.dumps({"status": "succeeded", "analyzeResult": data}).encode(),
+    ]
+    return [accepted, completed]
 
 
 def test_layout_regions_are_excluded_from_narrative_but_preserved_for_postprocessing():
@@ -45,20 +59,78 @@ def test_cache_changes_with_pdf_content_and_downloads_di_figures(tmp_path, monke
         ]}],
     }
     client = MagicMock()
-    client.begin_analyze_document.return_value.result.return_value.as_dict.return_value = data
-    client.begin_analyze_document.return_value.details = {"operation_id": "operation"}
+    client.send_request.side_effect = _analysis_responses(data) + _analysis_responses(data)
     client.get_analyze_result_figure.return_value = [b"\x89PNG\r\n\x1a\n", b"image"]
     monkeypatch.setattr(parser, "DocumentIntelligenceClient", lambda **kw: client)
     monkeypatch.setattr(parser, "DefaultAzureCredential", lambda: object())
+    monkeypatch.setattr(parser, "get_settings", lambda: SimpleNamespace(doc_intelligence_endpoint="https://di.test"))
 
     first = parser.analyze_pdf(str(pdf), "doc", cache_dir=cache)
     assert first.figures[0].image_path.read_bytes().startswith(b"\x89PNG")
     parser.analyze_pdf(str(pdf), "doc", cache_dir=cache)
-    assert client.begin_analyze_document.call_count == 1
+    assert client.send_request.call_count == 2
     pdf.write_bytes(b"changed pdf")
     parser.analyze_pdf(str(pdf), "doc", cache_dir=cache)
-    assert client.begin_analyze_document.call_count == 2
-    assert client.begin_analyze_document.call_args.kwargs["output"] == ["figures"]
+    assert client.send_request.call_count == 4
+    first_request = client.send_request.call_args_list[0].args[0]
+    assert "output=figures" in first_request.url
+    assert first_request.headers["Content-Type"] == "application/pdf"
+    assert client.send_request.call_args_list[1].kwargs["stream"] is True
+
+
+def test_parser_does_not_materialize_unused_word_geometry(tmp_path, monkeypatch):
+    import json
+    pdf = tmp_path / "report.pdf"
+    pdf.write_bytes(b"%PDF-report")
+    data = {
+        "modelId": "prebuilt-layout",
+        "pages": [{"pageNumber": 1, "words": [{"content": "unused"}]}],
+        "paragraphs": [{"content": "Body", "spans": [{"offset": 0, "length": 4}]}],
+        "tables": [], "figures": [],
+    }
+    client = MagicMock()
+    client.send_request.side_effect = _analysis_responses(data)
+    client.begin_analyze_document.side_effect = AssertionError("Typed full-result deserialization is too expensive")
+    monkeypatch.setattr(parser, "DocumentIntelligenceClient", lambda **kwargs: client)
+    monkeypatch.setattr(parser, "DefaultAzureCredential", lambda: object())
+    monkeypatch.setattr(parser, "get_settings", lambda: SimpleNamespace(doc_intelligence_endpoint="https://di.test"))
+    monkeypatch.setattr(AnalyzeResult, "as_dict", lambda *a, **kw: pytest.fail(
+        "Do not expand the complete DI result including all word geometry",
+    ))
+    doc = parser.analyze_pdf(str(pdf), "doc", cache_dir=tmp_path / "cache")
+    assert doc.paragraphs[0].content == "Body"
+    cached = json.loads(next((tmp_path / "cache").rglob("layout.json")).read_text())
+    assert set(cached) == {"modelId", "paragraphs", "tables", "figures"}
+
+
+def test_analysis_rejects_a_polling_url_outside_the_di_endpoint():
+    client = MagicMock()
+    response = MagicMock()
+    response.headers = {"Operation-Location": "https://elsewhere.test/operation"}
+    client.send_request.return_value = response
+    with pytest.raises(ValueError, match="polling"):
+        parser._analyze_layout(client, "https://di.test", b"%PDF", None)
+    assert client.send_request.call_count == 1
+
+
+def test_analysis_surfaces_failed_service_operation():
+    client = MagicMock()
+    responses = _analysis_responses({})
+    responses[1].iter_bytes.return_value = [b'{"status":"failed","error":{"message":"Invalid PDF"}}']
+    client.send_request.side_effect = responses
+    with pytest.raises(RuntimeError, match="Invalid PDF"):
+        parser._analyze_layout(client, "https://di.test", b"%PDF", None)
+
+
+def test_content_upload_batches_bound_peak_vector_serialization(monkeypatch):
+    clients = _clients(monkeypatch)
+    chunks = [Chunk(
+        id=f"doc-{i}", doc_id="doc", content="body", chunk_type="narrative",
+        section_path="", page_physical=1, content_vector=[0.0] * 3072,
+    ) for i in range(201)]
+    indexer.upload_chunks(chunks, doc_id="doc")
+    batches = clients["narrative-index"].upload_documents.call_args_list
+    assert [len(c.kwargs["documents"]) for c in batches] == [100, 100, 1]
 
 
 def _settings():
@@ -113,6 +185,25 @@ def test_failed_upload_never_deletes_old_chunks(monkeypatch):
     with pytest.raises(RuntimeError, match="rejected"):
         indexer.upload_chunks(chunks, doc_id="doc")
     assert all(not c.delete_documents.called for c in clients.values())
+
+
+def test_stale_cleanup_is_separate_from_checkpointed_uploads(monkeypatch):
+    clients = _clients(monkeypatch)
+    indexer.delete_stale_chunks("doc", {"narrative": {"doc-new"}, "table": set(), "figure": set()})
+    assert set(clients) == {"narrative-index", "table-index", "figure-index"}
+    for client in clients.values():
+        client.upload_documents.assert_not_called()
+        client.delete_documents.assert_called_once_with(documents=[{"id": "doc-old"}])
+
+
+def test_cleanup_removes_ids_that_changed_content_type(monkeypatch):
+    clients = _clients(monkeypatch)
+    monkeypatch.setattr(indexer, "_fetch_existing_keys", lambda *args: ["doc-0"])
+    indexer.delete_stale_chunks("doc", {
+        "narrative": set(), "table": {"doc-0"}, "figure": set(),
+    })
+    clients["narrative-index"].delete_documents.assert_called_once_with(documents=[{"id": "doc-0"}])
+    clients["table-index"].delete_documents.assert_not_called()
 
 
 def test_index_schema_contains_source_and_image_references():

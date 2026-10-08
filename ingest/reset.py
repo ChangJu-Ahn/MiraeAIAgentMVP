@@ -32,8 +32,10 @@ def reset_all(
         build_facts_index(settings.search_index_facts),
     ]
     # Invalidate replay suppression first, even if a subsequent reset step fails.
-    for blob in store.assets.list_blobs(name_starts_with="manifests/"):
-        store.assets.delete_blob(blob.name)
+    for prefix in ("manifests/", "jobs/", "checkpoints/"):
+        for blob in store.assets.list_blobs(name_starts_with=prefix):
+            if blob.name.endswith(".json"):
+                store.assets.delete_blob(blob.name)
     for name in [index.name for index in indexes] + ["demo-blob-index"]:
         try:
             client.delete_index(name)

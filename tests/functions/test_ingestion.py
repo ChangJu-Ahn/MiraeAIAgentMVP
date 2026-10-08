@@ -18,7 +18,7 @@ def _invoke(function, request):
 def test_blob_event_invokes_main_adapter_only_for_source_pdf(monkeypatch):
     module = _module()
     handler = MagicMock(return_value={"chunks": 3})
-    monkeypatch.setattr(module, "ingest_blob", handler)
+    monkeypatch.setattr(module, "enqueue_blob", handler)
     for subject in (
         "/blobServices/default/containers/document-assets/blobs/image.png",
         "/blobServices/default/containers/pdfs/blobs/image.png",
@@ -29,6 +29,32 @@ def test_blob_event_invokes_main_adapter_only_for_source_pdf(monkeypatch):
         subject="/blobServices/default/containers/pdfs/blobs/folder/report.pdf",
     ))
     handler.assert_called_once_with("folder/report.pdf")
+
+
+def test_timer_serializes_work_without_blocking_event_enqueue(monkeypatch):
+    module = _module()
+    subject = "/blobServices/default/containers/pdfs/blobs/report.pdf"
+    calls = []
+    queued = MagicMock()
+    monkeypatch.setattr(module, "enqueue_blob", queued)
+    def process():
+        calls.append("step")
+        if len(calls) == 1:
+            _invoke(module.process_jobs, SimpleNamespace())
+            _invoke(module.index, SimpleNamespace(subject=subject))
+        return {}
+    monkeypatch.setattr(module, "process_next_job", process)
+    _invoke(module.process_jobs, SimpleNamespace())
+    assert calls == ["step"]
+    queued.assert_called_once_with("report.pdf")
+    # The slot must be released after success.
+    monkeypatch.setattr(module, "process_next_job", MagicMock(side_effect=ValueError("bad PDF")))
+    with pytest.raises(ValueError, match="bad PDF"):
+        _invoke(module.process_jobs, SimpleNamespace())
+    handler = MagicMock()
+    monkeypatch.setattr(module, "process_next_job", handler)
+    _invoke(module.process_jobs, SimpleNamespace())
+    handler.assert_called_once()
 
 
 def test_upload_returns_accepted_not_indexed(monkeypatch):
@@ -70,3 +96,21 @@ def test_document_list_exposes_completed_records_not_private_asset_paths(monkeyp
     records = json.loads(response.get_body())
     assert records[0]["doc_id"] == "doc"
     assert "private/" not in response.get_body().decode()
+
+
+def test_jobs_endpoint_reports_progress_without_internal_checkpoint_paths(monkeypatch):
+    from ingest.jobs import IngestionJob
+    from ingest.blob import DocumentMetadata
+    module = _module()
+    job = IngestionJob(
+        job_id="job", blob_name="report.pdf", source_etag="private-etag",
+        metadata=DocumentMetadata(doc_id="doc"), stage="layout",
+        total_pages=532, next_page=26,
+    )
+    store = MagicMock()
+    store.jobs.return_value = [job]
+    monkeypatch.setattr(module, "JobStore", lambda: store)
+    response = _invoke(module.jobs, func.HttpRequest("GET", "/api/jobs", body=b""))
+    row = json.loads(response.get_body())[0]
+    assert row["pages_completed"] == 25 and row["pages_total"] == 532
+    assert "source_etag" not in row and "metadata" not in row

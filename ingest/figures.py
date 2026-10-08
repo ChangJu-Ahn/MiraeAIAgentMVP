@@ -90,11 +90,12 @@ def build_figure_chunks(
     doc: ParsedDoc, pdf_path: str,
     *, year: int | None = None, doc_type: str | None = None, fund_scale_default: str | None = None,
     store_image: Callable[[str, bytes], str] | None = None,
+    start_index: int = 0,
 ) -> list[Chunk]:
     from ingest.chunker import derive_fund_name, derive_fund_scale
 
     chunks: list[Chunk] = []
-    for i, fig in enumerate(doc.figures):
+    for i, fig in enumerate(doc.figures, start=start_index):
         png = (fig.image_path.read_bytes() if fig.image_path else
                render_figure_png(pdf_path, fig.page, fig.polygon))
         desc = describe_figure(png)
