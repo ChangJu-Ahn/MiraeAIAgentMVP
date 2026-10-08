@@ -16,6 +16,8 @@ param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-hellowo
 
 @description('Container App 배포 여부 (1단계=false로 인프라만, 이미지 빌드 후 2단계=true)')
 param deployApp bool = false
+@description('Blob 인제스트 Function URL. 빈 값이면 기존 로컬 원본자료 모드를 유지한다.')
+param ingestApiEndpoint string = ''
 
 module search 'modules/search.bicep' = {
   name: 'search'
@@ -112,6 +114,8 @@ module containerapp 'modules/containerapp.bicep' = if (deployApp) {
       { name: 'SEARCH_ENDPOINT', value: search.outputs.searchEndpoint }
       { name: 'SEARCH_INDEX_NARRATIVE', value: 'narrative-index' }
       { name: 'SEARCH_INDEX_TABLE', value: 'table-index' }
+      { name: 'SEARCH_INDEX_FIGURE', value: 'figure-index' }
+      { name: 'INGEST_API_ENDPOINT', value: ingestApiEndpoint }
       { name: 'FOUNDRY_PROJECT_ENDPOINT', value: foundry.outputs.foundryProjectEndpoint }
       { name: 'FOUNDRY_CHAT_DEPLOYMENT', value: foundry.outputs.reasoningDeploymentName }
       { name: 'FOUNDRY_VISION_DEPLOYMENT', value: foundry.outputs.chatDeploymentName }

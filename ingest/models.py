@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from pydantic import BaseModel
 
 
@@ -8,6 +10,7 @@ class ParsedParagraph(BaseModel):
     content: str
     page: int
     offset: int = 0
+    region_type: str | None = None
 
 
 class ParsedTable(BaseModel):
@@ -15,6 +18,7 @@ class ParsedTable(BaseModel):
     page: int
     caption: str | None = None
     offset: int = 0
+    bounding_regions: str | None = None
 
 
 class ParsedFigure(BaseModel):
@@ -22,6 +26,9 @@ class ParsedFigure(BaseModel):
     polygon: list[float]
     offset: int = 0
     caption: str | None = None
+    figure_id: str | None = None
+    image_path: Path | None = None
+    bounding_regions: str | None = None
 
 
 class ParsedDoc(BaseModel):
@@ -46,3 +53,7 @@ class Chunk(BaseModel):
     fund_id: str | None = None
     ministry: str | None = None
     content_vector: list[float] | None = None
+    source_file: str | None = None
+    source_url: str | None = None
+    image_url: str | None = None
+    bounding_regions: str | None = None

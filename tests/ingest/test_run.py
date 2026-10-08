@@ -580,7 +580,8 @@ class TestSummaryOutput:
                 annotated_fund_count=1, missing_fund_ids=[],
             )
 
-        def upload(input_chunks):
+        def upload(input_chunks, *, doc_id):
+            assert doc_id == "report-2025"
             uploaded.extend(input_chunks)
             return len(input_chunks)
 

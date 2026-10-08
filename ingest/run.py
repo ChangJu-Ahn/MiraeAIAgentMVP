@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from collections.abc import Callable
+from pathlib import Path
 
 from azure.identity import DefaultAzureCredential
 from azure.search.documents import SearchClient
@@ -30,11 +32,14 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
         reset: bool = False, year: int | None = None, doc_type: str | None = None,
     fund_scale: str | None = None, validate_only: bool = False,
     expected_overall_grade_count: int | None = None,
-    expected_overall_grade_excluded_fund_ids: tuple[str, ...] = ()) -> int:
+    expected_overall_grade_excluded_fund_ids: tuple[str, ...] = (),
+    cache_dir: Path | None = None, source_file: str | None = None,
+    source_url: str | None = None,
+    store_image: Callable[[str, bytes], str] | None = None) -> int:
     is_report = doc_type == "report"
 
     # ── Phase 1: pure extraction (no Azure, no Vision) ────────────────────────
-    doc = analyze_pdf(pdf, doc_id, pages=pages, use_cache=use_cache)
+    doc = analyze_pdf(pdf, doc_id, pages=pages, use_cache=use_cache, cache_dir=cache_dir)
     chunks = chunk_document(doc, year=year, doc_type=doc_type, fund_scale_default=fund_scale)
 
     catalog: list[FundCatalogEntry] = []
@@ -106,7 +111,8 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
         # ── Post-validation figure build (Vision calls happen here) ───────────
         if figures and not validate_only:
             fig_chunks = build_figure_chunks(
-                doc, pdf, year=year, doc_type=doc_type, fund_scale_default=fund_scale
+                doc, pdf, year=year, doc_type=doc_type, fund_scale_default=fund_scale,
+                store_image=store_image,
             )
             if fig_chunks:
                 chunks = chunks + fig_chunks
@@ -135,7 +141,8 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
         # Guideline path — figures only in real ingest
         if figures and not validate_only:
             chunks += build_figure_chunks(
-                doc, pdf, year=year, doc_type=doc_type, fund_scale_default=fund_scale
+                doc, pdf, year=year, doc_type=doc_type, fund_scale_default=fund_scale,
+                store_image=store_image,
             )
         n_table = sum(1 for c in chunks if c.chunk_type == "table")
         n_fig = sum(1 for c in chunks if c.chunk_type == "figure")
@@ -150,6 +157,11 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
             return len(chunks)
 
     # ── Phase 2: embedding + Azure writes ─────────────────────────────────────
+    if not chunks:
+        raise ValueError(f"No extractable content in {doc_id}; existing indexes unchanged")
+    for chunk in chunks:
+        chunk.source_file = source_file or Path(pdf).name
+        chunk.source_url = source_url
     vectors = embed_texts([c.content for c in chunks])
     if len(vectors) != len(chunks):
         raise ValueError(
@@ -166,7 +178,7 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
     if is_report:
         ensure_structured_indexes()
 
-    total = upload_chunks(chunks)
+    total = upload_chunks(chunks, doc_id=doc_id)
 
     if is_report:
         s = get_settings()

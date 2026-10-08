@@ -308,7 +308,8 @@ class TestMakeSearchToolsReturnsAllTools:
         assert "get_fund_evaluations" in names
         assert "aggregate_evaluations" in names
         assert "fund_analytics" in names
-        assert len(all_tools) == 7
+        assert "search_figures" in names
+        assert len(all_tools) == 8
 
 
 class TestListFundsTool:

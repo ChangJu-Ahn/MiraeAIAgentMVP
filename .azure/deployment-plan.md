@@ -1,8 +1,109 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Deployed 2026-07-16 (v18)
+Status: Deployed 2026-10-08 — question picker and attachment-disabled chatbot
 
-Recipe: Bicep infrastructure with Azure CLI container deployment
+Recipe: Azure CLI code updates on existing resources (Bicep retained as infrastructure reference)
+
+## Attachment-setting rollout (2026-10-08, 16:30 KST)
+
+- User requested Azure deployment after disabling chat file attachments in code.
+- Scope: rebuild and update only the existing `ca-mirae-v4xy5m5d3ltw6` chatbot image. No Function redeployment, resource provisioning, data reset or Blob deletion.
+- Same approved subscription, resource group, region and UAMI as the rollout below.
+- `.chainlit/config.toml`: `features.spontaneous_file_upload.enabled=false`; external Blob ingestion remains enabled.
+- Validation checks: configuration/UI tests; lock/diff integrity; existing target health and AcrPull; image build; live `/project/settings` value and `/health`.
+- Preflight: 15 focused tests passed, lock/diff checks passed, current app is Succeeded on `blob-ingest-20261008-1425`, ingestion endpoint is retained and UAMI AcrPull is present.
+- Target image tag `mirae-chat:attachments-off-20261008-1630` did not exist before build.
+- ACR build `der` succeeded with digest `sha256:1c2ae3170cd2ed77694b03337a270841d5dcdc70469c154db0b21c00b5f23fa4`. This intermediate image was **not activated**, because the user added the question picker before deployment.
+
+## Final UI rollout and source publication
+
+- User approved a persistent question-examples button populated from Evaluation's 16 questions. Selection only fills the composer; sending remains manual.
+- User requested completion, Azure deployment, source commit/push and merge to main.
+- Changes are limited to the existing chatbot image. Preserve the already-deployed Function and all Search/Blob data.
+- Native dialog, editable React textarea prefill, draft replacement confirmation, accessible loading/error state, retry, Escape close and responsive styling are implemented.
+- Local browser verification passed: all 16 questions, no `client_message` on selection, cancel/accept draft replacement, editing, keyboard close, mobile layout and failed-fetch retry. Chainlit's Escape shortcut interception is handled explicitly.
+- Fresh offline regression suite: 447 passed, 10 cache-dependent skips, 7 live-test deselections; live Search/evaluation smoke files excluded.
+- Final image target: `mirae-chat:question-examples-20261008-1630`.
+- ACR build `des` succeeded at `2026-10-08T07:59:24Z`; digest `sha256:6a8e0e095d2b9298625f83c481af12444da48ac5525b551a23c611e31d0ae880`.
+- Validation proof: existing Container App and ingestion endpoint were re-read, current UAMI AcrPull confirmed, source/lock/JavaScript checks passed. No infrastructure template or role change is part of this final image-only rollout.
+- Activated revision `ca-mirae-v4xy5m5d3ltw6--question-examples-20261008`; it is Healthy/Provisioned.
+- Live `/project/settings` reports chat attachments disabled. Live browser checks pass for all 16 questions, editable prefill without a `client_message`, draft protection, Escape, mobile layout and fetch retry.
+- Live chatbot health is OK, the ingestion API responds with 0 completed documents and its Event Grid function remains enabled.
+- This final UI rollout did not modify indexes, source blobs or Function code. The user will upload PDFs after handoff.
+
+## Current rollout authorization (2026-10-08)
+
+The user approved updating the existing Function and Container App, resetting Search indexes and deleting exactly the three listed PDFs. Do not recreate compute, networks, the resource group, DI, Foundry, Search or the storage account.
+
+- Subscription: `347e0df7-94e9-4feb-b42d-57d7e49566f2`
+- Resource group / region: `rg-mirae-ai-agent-poc` / `koreacentral`
+- Function: `blobsearch-v4xy5m5d3ltw6`
+- Container App: `ca-mirae-v4xy5m5d3ltw6`
+- Search: `srch-mirae-v4xy5m5d3ltw6`
+- Storage: `stmiraev4xy5m5d3ltw6`; input container `pdfs`
+- Approved source deletions: `OTKCEC240650.pdf`, `kt-securegate-terms.pdf`, `open source guide.pdf`
+- Preserve local PDFs and all unrelated blobs/containers. Add only missing data containers/settings/identity roles required by the new code.
+
+## Initial Blob rollout results (05:55 UTC)
+
+Completed and verified at `2026-10-08T05:55:12Z`.
+
+- Updated the existing Function and Container App only; no compute, network, Search, DI, Foundry or storage account was recreated.
+- Chatbot revision `ca-mirae-v4xy5m5d3ltw6--blob-ingest-20261008-1425` is Healthy/Provisioned and receives 100% latest-revision traffic.
+- Chatbot image: `acrmiraev4xy5m5d3ltw6.azurecr.io/mirae-chat:blob-ingest-20261008-1425`, digest `sha256:f30d069ad1b82081c5e5a50711376c8d0ec544292cb65c6fe09836875d906c2b`.
+- Final Function deployment `2be164da-5c73-4916-85b3-15b08121184d` completed at `2026-10-08T05:52:05Z`; all five handlers are registered. The Event Grid `index` trigger is enabled.
+- Function SDK versions are pinned to the verified application lock. The first remote build selected a newer OpenAI major version, so a pinned package was redeployed before data reset.
+- Azure CLI/Core Tools deployment stalled in SCM app-setting synchronization. The authorized SCM ZIP deployment API completed remote Oryx builds; Function triggers were then synchronized through ARM.
+- Added the two resource-scoped DI/Foundry roles to the existing Function identity and created only the private `document-assets` data container.
+- Reset all five indexes: narrative, table, figure, catalog and facts now each contain **0 documents**. The legacy `demo-blob-index` no longer exists. The three content schemas have 3072-dimensional vectors and source/image fields.
+- Deleted only the three approved `pdfs` objects, using their recorded ETags as preconditions. The `pdfs` container now contains **0 blobs**.
+- Preserved `azure-webjobs-hosts`, `deploymentpackage`, `source-docs`, all local PDFs and the storage account itself.
+- Function `/api/documents` returns `[]`; chatbot `/health` returns `{"status":"ok"}` and `/source-docs` shows 0 PDFs.
+- No PDF was reuploaded during this rollout: the user will supply the next source upload.
+
+Endpoints:
+- Upload: https://blobsearch-v4xy5m5d3ltw6.azurewebsites.net/api/upload
+- Chatbot: https://ca-mirae-v4xy5m5d3ltw6.purplesky-16661974.koreacentral.azurecontainerapps.io
+
+### All validation checks pass
+
+- [x] CLI authentication, existing target health, fresh local application tests and Bicep compilation.
+- [x] Existing Function/Container App configuration and code-package compatibility.
+- [x] Required identity role definitions/scopes, model deployments, Azure policies and operator data-plane access.
+- [x] ACR image build and immutable image identity before updating the chatbot.
+
+## Validation Proof — current rollout, 2026-10-08
+
+- Operator subscription matches the approved target. RG, Container Apps environment, ACR and current revision `0000019` are healthy.
+- Fresh offline suite: 444 passed, 10 skipped, 7 deselected; live Search/evaluation smoke modules excluded.
+- Shared Bicep validation helper: CLI/auth/build/ARM validation/what-if all passed. The broad template preview contains property removals, so the template will **not** be applied; only targeted existing-resource CLI updates are authorized.
+- Search keyless inventory: narrative 2339, table 802, catalog 89, facts 2340, legacy demo 171 documents. Operator can list source blobs and query DI resource details.
+- All configured Foundry deployments are `Succeeded`; embedding remains `text-embedding-3-large`.
+- ACR build `deq` succeeded at `2026-10-08T05:32:29Z`. Image `mirae-chat:blob-ingest-20261008-1425`, digest `sha256:f30d069ad1b82081c5e5a50711376c8d0ec544292cb65c6fe09836875d906c2b`.
+- Existing Container App UAMI has AcrPull, Search Index Data Reader and Foundry roles. No registry identity changes are necessary.
+- Static Function role verification: preserve its Storage Blob Data Owner and both Search roles; add resource-scoped DI Cognitive Services User and Foundry Cognitive Services OpenAI User before activation. These two grants are defined in `infra/modules/ingestion-rbac.bicep`.
+- Current RG policy assignment query returned no applicable assignments; ARM validation passed. Existing storage now permits public network access, and no storage network/security setting will be changed.
+
+## Approved Blob ingestion update (2026-10-08)
+
+- Replace the independent Blob demo with the existing Python ingestion pipeline.
+- Reuse the existing Dedicated Function, storage network and identities; add Document Intelligence and Foundry permissions.
+- Preserve fund catalog/fact extraction and indexes. Route evidence to narrative, table and new figure indexes.
+- Store extracted DI images, immutable source snapshots and completed document manifests in `document-assets`.
+- Use the Function read API from the chatbot so private Storage needs no public access or new Container Apps network integration.
+- Package Function code with `ingest/` and `config/`; DI figure output avoids a Poppler requirement in the Function.
+- Explicit reset recreates the five named indexes, removes `demo-blob-index` and clears completion manifests. Original uploads remain.
+- Generate and validate code only in this change. Live resource selection, deployment and destructive reset require target verification.
+- Historical deployment/validation records below describe earlier versions, not this update.
+
+### Local verification for this update
+
+- 444 offline tests passed, 10 cache-dependent tests skipped. Seven live tests were deselected and the live Search/evaluation smoke files were excluded because this worktree has no service endpoints configured.
+- The isolated Function deployment layout discovers `index`, `upload`, `documents`, `document`, and `figure` without importing the chatbot runtime.
+- `infra/ingestion.bicep` and `infra/main.bicep` compile; deployment shell syntax, `uv lock --check` and `git diff --check` pass.
+- No Azure indexes, data, role assignments, deployments or event subscriptions have been changed by this implementation session.
+- ARM validation, live identities/network checks, actual PDF ingestion and the destructive initial reset remain deployment-time gates.
+- Final code review fixes cover dirty-state recovery after partial writes, stable successful-version PDF/image links, and Blob provenance for existing fact/catalog citations.
 
 ## Goal
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import json
 
 from ingest.models import Chunk, ParsedDoc, ParsedParagraph, ParsedTable
 
@@ -61,6 +62,10 @@ def merge_continuation_tables(tables: list[ParsedTable]) -> list[ParsedTable]:
         ):
             prev = merged[-1]
             prev.markdown = prev.markdown + "\n" + _table_body(t.markdown)  # 본문 행 이어붙임
+            prev.bounding_regions = json.dumps(
+                json.loads(prev.bounding_regions or "[]")
+                + json.loads(t.bounding_regions or "[]")
+            )
             last_page = t.page
             continue
         merged.append(t.model_copy())
@@ -145,7 +150,8 @@ def chunk_document(
     # Merge paragraphs and tables into single stream ordered by offset
     items: list[tuple[str, ParsedParagraph | ParsedTable]] = []
     for p in doc.paragraphs:
-        items.append(("paragraph", p))
+        if p.region_type is None:
+            items.append(("paragraph", p))
     for t in merge_continuation_tables(doc.tables):
         items.append(("table", t))
     items.sort(key=lambda x: x[1].offset)
@@ -163,6 +169,8 @@ def chunk_document(
                     depth = _heading_depth(p.content)
                     heading_stack = heading_stack[:depth] + [p.content]
                 continue
+            if buffer and buffer[-1].page != p.page:
+                flush()
             buffer.append(p)
         elif item_type == "table":
             # Flush narrative buffer FIRST, then emit table with current section_path
@@ -183,6 +191,7 @@ def chunk_document(
                     doc_type=doc_type,
                     fund_name=derive_fund_name(section_path),
                     fund_scale=derive_fund_scale(section_path, fund_scale_default),
+                    bounding_regions=t.bounding_regions,
                 )
             )
             idx += 1

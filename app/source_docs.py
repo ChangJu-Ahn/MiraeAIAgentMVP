@@ -4,11 +4,16 @@ import unicodedata
 from dataclasses import dataclass
 from html import escape
 from pathlib import Path
+import tempfile
+from urllib.request import urlopen
 
 from fastapi import HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
+from config.settings import get_settings
 from ingest.corpus import CORPUS, CorpusDoc
+from ingest.figures import render_page_png
+from search.documents import indexed_documents
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,7 +24,8 @@ DOCS_DIR = ROOT / "Docs"
 class SourceDocument:
     doc_id: str
     label: str
-    path: Path
+    path: Path | None = None
+    url: str | None = None
 
     @property
     def href(self) -> str:
@@ -52,6 +58,11 @@ def _source_label(corpus_doc: CorpusDoc) -> str:
 
 
 def source_documents() -> list[SourceDocument]:
+    if get_settings().ingest_api_endpoint:
+        return [
+            SourceDocument(doc_id=doc.doc_id, label=doc.source_file, url=doc.source_url)
+            for doc in indexed_documents()
+        ]
     documents: list[SourceDocument] = []
     for corpus_doc in CORPUS:
         path = _resolve_source_path(corpus_doc)
@@ -174,13 +185,17 @@ def source_docs_page() -> HTMLResponse:
     )
 
 
-def source_document_response(doc_id: str) -> FileResponse:
+def source_document_response(doc_id: str) -> Response:
     document = next(
         (document for document in source_documents() if document.doc_id == doc_id),
         None,
     )
     if document is None:
         raise HTTPException(status_code=404, detail="Source document not found")
+    if document.url:
+        return RedirectResponse(document.url)
+    if document.path is None:
+        raise HTTPException(status_code=404, detail="Source PDF not found")
     return FileResponse(
         document.path,
         media_type="application/pdf",
@@ -188,3 +203,21 @@ def source_document_response(doc_id: str) -> FileResponse:
         content_disposition_type="inline",
         headers={"X-Content-Type-Options": "nosniff"},
     )
+
+
+def source_page_png(doc_id: str, page: int) -> bytes:
+    if page < 1:
+        raise ValueError("Page must be positive")
+    document = next((d for d in source_documents() if d.doc_id == doc_id), None)
+    if document is None:
+        raise ValueError(f"Unknown indexed document: {doc_id}")
+    if document.path:
+        return render_page_png(str(document.path), page)
+    if not document.url:
+        raise ValueError(f"No original PDF for {doc_id}")
+    with urlopen(document.url, timeout=60) as response:
+        data = response.read()
+    with tempfile.TemporaryDirectory(prefix="source-page-") as directory:
+        pdf = Path(directory) / "source.pdf"
+        pdf.write_bytes(data)
+        return render_page_png(str(pdf), page)

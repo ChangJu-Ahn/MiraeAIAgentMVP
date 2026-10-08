@@ -54,9 +54,9 @@ favorites = false
 # Add emoji reaction when message is received (requires reactions:write OAuth scope)
 reaction_on_message_received = false
 
-# Authorize users to spontaneously upload files with messages
+# Documents are uploaded through the separate Blob ingestion page, not chat.
 [features.spontaneous_file_upload]
-    enabled = true
+    enabled = false
     # Define accepted file types using MIME types
     # Examples:
     # 1. For specific file types:
@@ -165,6 +165,13 @@ default_avatar_file_url = ""
 # This can be used to customize the frontend code.
 # Be careful: If this is a relative path, it should not start with a slash.
 # custom_build = "./public/build"
+
+[[UI.header_links]]
+name = "질문 예시"
+display_name = "질문 예시"
+icon_url = "/public/question-examples.svg"
+url = "#question-examples"
+target = "_self"
 
 [[UI.header_links]]
 name = "Evaluation"

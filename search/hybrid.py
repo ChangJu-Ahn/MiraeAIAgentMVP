@@ -15,6 +15,10 @@ class SearchHit(BaseModel):
     page_physical: int
     chunk_type: str
     score: float
+    doc_id: str | None = None
+    source_file: str | None = None
+    source_url: str | None = None
+    image_url: str | None = None
 
 
 def hybrid_search(
@@ -47,6 +51,10 @@ def hybrid_search(
                 page_physical=r.get("page_physical", 0),
                 chunk_type=r.get("chunk_type", ""),
                 score=score,
+                doc_id=r.get("doc_id"),
+                source_file=r.get("source_file"),
+                source_url=r.get("source_url"),
+                image_url=r.get("image_url"),
             )
         )
     return hits

@@ -8,7 +8,7 @@
 
 ## 제공 자료
 
-이 챗봇은 다음 **5개 원본 PDF**를 사용합니다.
+기본 코퍼스는 다음 **5개 원본 PDF**입니다. Blob 인제스트 연결 시 **원본자료**에는 현재 적재 완료된 문서가 표시됩니다.
 
 - 2025회계연도 기금운용평가보고서 (자산운용부문)
 - 2022회계연도 기금운용평가보고서 II (자산운용부문)
@@ -20,8 +20,8 @@
 
 ## 답변 방식
 
-1. Azure Document Intelligence로 추출한 본문, 표, 페이지 구조를 사용합니다.
-2. Azure AI Search에서 질문에 맞는 서술 근거와 표를 함께 검색합니다.
+1. Azure Document Intelligence로 추출한 본문, 표, 그림과 페이지 구조를 사용합니다.
+2. Azure AI Search의 본문·표·그림 인덱스에서 근거를 검색합니다.
 3. Microsoft Agent Framework가 질문에 필요한 검색·구조화 도구를 선택합니다.
 4. 확인된 근거만으로 답하고 출처 번호, 문서 구역, 물리 페이지를 표시합니다.
 5. 순위, 등급 분포, 연도 비교와 가감점 합계는 검색 상위 결과나 모델 추정이 아니라 전체 구조화 자료의 **결정적 계산**으로 처리합니다.
@@ -32,7 +32,7 @@
 - **정확한 기금 조회**: 정식 기금명과 별칭을 확인한 뒤 점수, 등급, 지표와 가감점을 조회합니다.
 - **전체 모집단 분석**: 상·하위 순위, 등급 분포, 다년도 변화와 공통 기금을 계산합니다.
 - **시각화**: 확인된 값으로 표와 차트를 만들고, 요청 시 원문 페이지 이미지를 표시합니다.
-- **원본 확인**: **원본자료**에서 RAG에 등록된 5개 PDF를 그대로 열 수 있습니다.
+- **원본 확인**: **원본자료**에서 적재 완료된 PDF를 열고, 그림 검색 결과에서 추출 이미지를 확인할 수 있습니다.
 
 ## 질문 예시
 
@@ -46,6 +46,7 @@
 
 ## 화면과 설정
 
+- **질문 예시**: Evaluation의 16개 질문에서 선택해 입력창에 채웁니다. 수정 후 직접 전송하며, 작성 중인 질문은 확인 없이 덮어쓰지 않습니다.
 - **Readme**: 현재 안내와 지원 범위를 표시합니다.
 - **Evaluation**: 고객 검증 질문 16개의 답변과 다섯 품질 기준별 점수·판정 근거를 표시합니다.
 - **원본자료**: 검색에 사용한 실제 원본 PDF를 표시합니다.
@@ -73,7 +74,7 @@
 ## 흐름
 
 1. Azure Document Intelligence가 PDF의 본문, 표, 그림, 페이지 구조를 추출합니다.
-2. 인제스트 파이프라인이 추출 결과를 검증하고 Azure AI Search의 4개 인덱스에 적재합니다.
+2. Blob PDF 업로드 이벤트가 기존 인제스트를 실행합니다. 본문·표·그림을 3개 인덱스로 분리하고, 기존 기금 후처리 인덱스 2개도 유지합니다.
 3. Microsoft Agent Framework가 질문에 필요한 검색 도구를 선택해 답변하고, 자가 점검을 켠 경우 근거가 부족하면 보완 질의로 두 번째 agent run을 수행합니다.
 4. Chainlit이 답변을 스트리밍하고 인용 출처와 요청된 표, 차트, 원문 페이지를 표시합니다.
 5. 평가 파이프라인이 동일한 Foundry judge deployment로 답변과 실제 검색 근거의 다섯 품질 기준을 검증합니다.
@@ -112,7 +113,8 @@
 | Azure 서비스 | 구성 | 역할 |
 |---|---|---|
 | Microsoft Foundry | AIServices S0, Foundry project, 모델 배포 3개 | 답변, reasoning, embedding, vision, reflection과 평가 |
-| Azure AI Search | Basic, Semantic Ranker, 시스템 할당 ID | 4개 검색 인덱스의 BM25·벡터·semantic·OData 조회 |
+| Azure AI Search | Basic, Semantic Ranker, 시스템 할당 ID | 5개 검색 인덱스의 BM25·벡터·semantic·OData 조회 |
+| Azure Functions · Blob Storage · Event Grid | 기존 Dedicated B1, 관리 ID, 프라이빗 Blob 접근 | PDF 업로드 → DI 분석 → 본문·표·그림 및 기존 후처리 적재 |
 | Azure AI Document Intelligence | S0 | PDF layout, 본문, 표, 그림과 페이지 구조 추출 |
 | Azure Container Registry | Basic | `mirae-chat` 컨테이너 이미지 저장과 ACR remote build |
 | Azure Container Apps | Managed Environment, 외부 ingress, 1 vCPU·2 GiB, 1 replica | Chainlit 애플리케이션과 WebSocket 트래픽 호스팅 |
@@ -124,18 +126,19 @@
 
 ## Azure AI Search 인덱스 및 검색 전략
 
-애플리케이션은 증거 검색용 벡터 인덱스 2개와 전체 모집단 조회 및 계산용 비벡터 인덱스 2개를 사용합니다. 기본 인덱스명은 `config/settings.py`에서 환경 변수로 바꿀 수 있습니다.
+애플리케이션은 증거 검색용 벡터 인덱스 3개와 전체 모집단 조회 및 계산용 비벡터 인덱스 2개를 사용합니다. 기본 인덱스명은 `config/settings.py`에서 환경 변수로 바꿀 수 있습니다.
 
 | 인덱스 | 환경 변수 | 문서 단위 | 역할 | 조회 방식 |
 |---|---|---|---|---|
-| `narrative-index` | `SEARCH_INDEX_NARRATIVE` | 표가 아닌 본문, 제목, 그림 설명 등의 청크 | 정성 평가, 총평, 권고, 제도 설명 등 서술형 근거 검색 | BM25 + HNSW 벡터 + Semantic Ranker |
+| `narrative-index` | `SEARCH_INDEX_NARRATIVE` | DI 표·그림 영역을 제외한 본문 청크 | 정성 평가, 총평, 권고, 제도 설명 등 서술형 근거 검색 | BM25 + HNSW 벡터 + Semantic Ranker |
 | `table-index` | `SEARCH_INDEX_TABLE` | `chunk_type == "table"`인 표 청크 | 점수, 등급, 수치가 포함된 원문 표와 주변 문맥 검색 | BM25 + HNSW 벡터 + Semantic Ranker |
+| `figure-index` | `SEARCH_INDEX_FIGURE` | DI가 감지한 사진·그림·차트의 설명과 추출 이미지 참조 | 이미지 설명 검색 및 원본 이미지 열기 | BM25 + HNSW 벡터 + Semantic Ranker |
 | `fund-catalog-index` | `SEARCH_INDEX_CATALOG` | 연도별 TOC의 기금 1개 | 평가 대상 전체 목록, 정식 기금명, 별칭, 소관부처, 페이지 범위 확인 | `search_text="*"` + OData 정확 필터 |
 | `evaluation-facts-index` | `SEARCH_INDEX_FACTS` | 기금, 연도, 평가지표 또는 가감점별 정규화 팩트 1개 | 지표값, 점수, 등급, 가감점, 출처와 모집단 기반 결정적 집계 | `search_text="*"` + OData 정확 필터 + Python 계산 |
 
 ### 벡터 인덱스 스키마
 
-`narrative-index`와 `table-index`는 같은 스키마를 사용하고, 인제스트 시 청크 유형에 따라 저장 위치만 나뉩니다.
+`narrative-index`, `table-index`, `figure-index`는 같은 스키마를 사용하고, 인제스트 시 청크 유형에 따라 저장 위치만 나뉩니다. 이미지 바이너리는 Search가 아니라 Blob에 보존하며, 그림 설명을 텍스트 임베딩합니다.
 
 | 필드 | 형식 및 속성 | 용도 |
 |---|---|---|
@@ -151,6 +154,8 @@
 | `ministry` | `Edm.String`, filterable, facetable | 소관부처 |
 | `year` | `Edm.Int32`, filterable, facetable | 회계연도 |
 | `page_physical`, `page_printed` | `Edm.Int32`, filterable | PDF 물리 페이지와 인쇄 페이지 |
+| `source_file`, `source_url` | `Edm.String` | 원본 Blob 이름 및 원본 PDF 조회 URL |
+| `image_url`, `bounding_regions` | `Edm.String` | 추출 그림 URL 및 DI 페이지·영역 좌표 JSON |
 
 벡터 검색은 `hnsw` 알고리즘과 `hnsw-profile` 프로필을 사용합니다. Semantic Ranker 설정 `sem`은 `section_path`를 title, `content`를 content 우선 필드로 사용합니다.
 
@@ -198,12 +203,13 @@
 
 ## 에이전트 툴
 
-`agent/orchestrator.py`는 `make_search_tools()`의 검색·구조화 툴 7개와 `make_visual_tools()`의 시각화 툴 3개를 합쳐 총 10개 function-call 툴을 등록합니다. Agent Framework는 Python 타입 힌트와 docstring을 입력 스키마 및 description으로 사용합니다.
+`agent/orchestrator.py`는 `make_search_tools()`의 검색·구조화 툴 8개와 `make_visual_tools()`의 시각화 툴 3개를 합쳐 총 11개 function-call 툴을 등록합니다. Agent Framework는 Python 타입 힌트와 docstring을 입력 스키마 및 description으로 사용합니다.
 
 | 분류 | 툴 | 하는 일 | 주요 반환 또는 부작용 |
 |---|---|---|---|
 | 검색 | `search_narrative` | 보고서·지침의 서술형 본문을 하이브리드 검색 | 최대 5개 본문 근거와 `[출처 N]` |
 | 검색 | `search_tables` | 표와 수치 문맥을 하이브리드 검색 | 최대 5개 표 근거와 `[출처 N]` |
+| 검색 | `search_figures` | 사진·그림·차트 설명을 하이브리드 검색 | 근거, 원본 문서 ID 및 추출 이미지 URL |
 | 구조화 | `list_funds` | 연도·소관부처별 평가 대상 전체 기금 조회 | TOC 순서 목록, 모집단 수, catalog 출처 |
 | 구조화 | `resolve_fund` | 기금명 또는 별칭을 정식 기금 엔티티로 해석 | 정식 명칭, `fund_id`, 연도, 소관부처, 별칭 |
 | 구조화 | `get_fund_evaluations` | 개별 기금의 점수·등급·가감점 팩트 조회 | 구조화 값과 fact 출처, 조건부 평가완료 모집단 순위 |
@@ -431,10 +437,60 @@ uv run python scripts/smoke_test.py
 
 Bicep은 AI Search, Document Intelligence, Foundry, Application Insights, managed identity, ACR, Container Apps를 배포합니다. 애플리케이션은 `DefaultAzureCredential`과 managed identity를 사용합니다.
 
-## 인제스트
+## Blob 자동 인제스트
+
+별도 `demo-blob-index`/`pypdf` 파이프라인은 제거했습니다. `functions/ingestion/function_app.py`의 Event Grid 트리거가 `ingest/blob.py`를 통해 **동일한 `ingest.run.run()`**을 실행합니다. 기금 카탈로그·평가팩트 추출 및 집계 기능은 그대로 유지됩니다.
+
+처리 순서: `pdfs` 업로드 → DI `prebuilt-layout` → 본문/표/그림 영역 분리 → 그림 설명 및 임베딩 → 콘텐츠 3개 인덱스 → 보고서의 기존 후처리 2개 인덱스 → 완료 문서 등록.
+
+- DI 원문 문단은 후처리를 위해 유지하되, 표·그림에 속하는 문단은 본문 청크에서 제외합니다.
+- 본문은 페이지·섹션 기준 3,600자/540자 오버랩, 표는 Markdown 구조를 유지합니다.
+- 그림은 DI의 `output=figures`로 추출한 PNG를 `document-assets`에 저장합니다. DI가 인식하지 못한 그림을 별도로 감지하는 모델은 포함하지 않습니다.
+- 기존 5개 PDF는 `CORPUS`와 동일한 파일명으로 컨테이너 루트에 올리면 연도·문서유형·완전성 검증 설정이 자동 적용됩니다. 새 파일은 일반 문서(`document`)가 기본입니다. 기금 보고서/지침은 업로드 폼 또는 Blob metadata의 `doc_type`, `year`를 지정합니다.
+- Blob 원본은 보존합니다. PDF 내용·메타데이터가 같으면 중복 이벤트를 건너뛰며, 수정본은 재분석하고 해당 문서의 오래된 청크를 제거합니다. 처리 중에는 원본에 lease를 걸어 같은 파일의 동시 덮어쓰기를 막습니다.
+- 부분 실패한 작업은 미완료 표시를 남깁니다. 마지막 성공 파일을 다시 올리더라도 미완료 표시가 있으면 재처리하여 혼합된 인덱스를 복구합니다.
+- 완료한 원본의 스냅샷·이미지·manifest는 별도 컨테이너에 저장하므로 재귀 트리거되지 않습니다. PDF 재업로드마다 전체 인덱스를 지우지는 않습니다.
+- 원문·그림 인용 URL은 성공한 버전에 고정됩니다. 재업로드 후에도 이전 답변의 PDF 페이지와 추출 이미지를 같은 버전으로 열 수 있습니다.
+- 완료 목록은 `/api/documents`, 업로드는 `/api/upload`입니다. 업로드 응답 `202`는 Blob 저장 완료이며 인덱싱 성공이 아닙니다. 실패는 Function 로그/Application Insights에서 확인합니다.
+
+### 배포
+
+기존 리소스를 명시적으로 지정합니다. 배포자에게 리소스 수정·역할 할당 권한이 필요합니다. Function 관리 ID에는 Storage Blob Data Owner, Search Service Contributor, Search Index Data Contributor, DI Cognitive Services User, Foundry Cognitive Services OpenAI User를 부여합니다.
 
 ```bash
-# 전체 등록 코퍼스 검증: Azure Search 쓰기와 모델 호출 없음
+export SUB="<subscription-id>" RG="<resource-group>"
+export UPLOAD_STORAGE_ACCOUNT="<storage>" SEARCH_SERVICE_NAME="<search>"
+export DOC_INTELLIGENCE_NAME="<di>" FOUNDRY_NAME="<foundry>"
+export FOUNDRY_PROJECT_ENDPOINT="https://<foundry>.services.ai.azure.com/api/projects/<project>"
+export APP_INSIGHTS_NAME="<application-insights>"
+bash scripts/deploy_ingestion.sh
+```
+
+기존 `blobsearch-<suffix>` Function/네트워크/`blob-to-search-demo` 이벤트 구독 이름을 재사용하여 이전 실행 코드를 교체합니다. 이름이 다른 배포라면 `infra/ingestion.bicep`의 `namePrefix`/`suffix`를 해당 대상에 맞춰야 합니다. 배포 자체는 Search 데이터를 지우지 않습니다.
+
+챗봇도 이 브랜치의 새 이미지로 배포하고 `INGEST_API_ENDPOINT=https://<function>.azurewebsites.net`을 설정합니다. `infra/main.bicepparam`은 같은 환경변수를 읽습니다. 배포 스크립트의 선택적 `CONTAINER_APP_NAME`은 기존 앱 환경변수만 갱신하며 이미지를 빌드하지 않습니다. 설정 후 원본자료 목록과 연도별 자료 유무는 정적 `CORPUS`가 아닌 적재 완료 목록을 사용합니다.
+
+### 최초 데이터 초기화와 재업로드
+
+업로드를 멈추고 진행 중 인제스트가 끝난 뒤 실행하세요. **아래 명령은 기존 데이터 전체를 지웁니다.** `.env`의 Search/Storage/Function 설정과 인증을 준비하고, Storage private endpoint에 접근 가능한 실행 환경에서 사용합니다.
+
+```bash
+uv run python -m ingest.reset --confirm-endpoint "https://<search>.search.windows.net"
+```
+
+이 명령은 콘텐츠 3개와 후처리 2개 인덱스를 같은 이름으로 재생성하고 `demo-blob-index`를 삭제합니다. 완료 manifest도 비우므로 같은 PDF를 다시 올려도 인덱싱됩니다. 원본 PDF와 이전 이미지 스냅샷은 삭제하지 않습니다. 기존 파일의 자동 소급 처리는 없으므로 업로드 페이지에서 다시 올리거나 네트워크 접근 가능한 곳에서 다음을 실행합니다.
+
+```bash
+az storage blob upload --account-name "<storage>" --container-name pdfs \
+  --auth-mode login --overwrite --file "Docs/<file>.pdf" --name "<file>.pdf"
+```
+
+이 구성은 공개 데모입니다. 업로드·원본 조회 HTTP API에는 사용자 인증이 없으므로 민감한 자료를 올리지 마세요. 5개 인덱스 간 원자적 교체, Blob 삭제 이벤트 동기화, 중간 단계 재개는 범위에 포함하지 않습니다. 일부 단계가 실패하면 완료로 등록되지 않으며 같은 파일 재업로드로 재시도합니다.
+
+## 로컬 인제스트
+
+```bash
+# 전체 등록 코퍼스 검증: 임베딩·Vision·Search 쓰기 없음 (DI 호출은 발생 가능)
 uv run python -m ingest.run --all --validate-only
 
 # 전체 등록 코퍼스 적재
@@ -458,7 +514,11 @@ uv run chainlit run app/chat.py -w
 
 채팅마다 하나의 Agent Framework 세션을 재사용하므로 후속 질문의 대화 문맥은 유지됩니다. 각 메시지는 기본적으로 한 번 실행되며, 자가 점검을 활성화하고 근거가 부족할 때만 보완 질의로 두 번째 run을 수행합니다. 자료에 근거가 없으면 없다고 답합니다.
 
-Chainlit 헤더의 `원본자료` 링크는 RAG에 등록된 5개 실제 PDF 목록을 표시합니다. 각 항목은 컨테이너 이미지에 포함된 manifest 문서만 안정적인 문서 ID로 열며, 요청 경로를 파일 경로로 직접 해석하지 않습니다.
+Chainlit 헤더의 `원본자료` 링크는 `INGEST_API_ENDPOINT` 설정 시 Blob 적재 완료 문서 목록과 원본 스냅샷을 표시합니다. 설정하지 않으면 기존 5개 로컬 PDF를 사용합니다. 요청 경로를 임의의 파일 경로나 Blob 경로로 직접 해석하지 않습니다.
+
+헤더의 **질문 예시** 버튼은 `public/evaluation-data.json`의 16개 질문을 보여줍니다. 선택하면 입력창에만 채워지며, 사용자가 수정하고 직접 전송합니다. 작성 중인 질문이 있으면 교체 여부를 확인합니다. 저장된 평가 답변을 복사하지 않고 전송 시 현재 인덱스를 검색합니다. 평가 질문에는 자료 부재 확인용 사례도 포함되어 있습니다. 채팅 파일 첨부는 비활성화되어 있으며 문서는 별도 Blob 업로드 페이지를 사용합니다.
+
+브라우저 회귀 검사는 로컬 Chainlit 실행 후 `CHAT_URL=http://127.0.0.1:8765 PLAYWRIGHT_MODULE=<설치된 playwright 모듈 경로> node tests/browser/question_examples.cjs`로 실행할 수 있습니다. Chrome과 Playwright가 필요하며 질문 자동 전송 없이 입력·수정, 기존 초안 보호, 오류 재시도와 모바일 대화상자를 확인합니다.
 
 ## 평가
 

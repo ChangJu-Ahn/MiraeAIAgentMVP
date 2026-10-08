@@ -44,3 +44,10 @@ def test_show_source_page_records_image_marker():
     assert len(rec.items) == 1
     assert rec.items[0].kind == "image"
     assert rec.items[0].path == "__page__:241"
+
+
+def test_show_source_page_identifies_document():
+    rec = VisualRecorder()
+    show_source_page = make_visual_tools(rec)[2]
+    show_source_page(3, doc_id="report-2022")
+    assert rec.items[0].path == "__page__:3:report-2022"

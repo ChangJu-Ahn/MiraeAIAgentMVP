@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     search_endpoint: str = ""
     search_index_narrative: str = "narrative-index"
     search_index_table: str = "table-index"
+    search_index_figure: str = "figure-index"
     search_index_catalog: str = "fund-catalog-index"
     search_index_facts: str = "evaluation-facts-index"
     foundry_project_endpoint: str = ""
@@ -22,6 +23,11 @@ class Settings(BaseSettings):
     foundry_api_version: str = "2024-10-21"
     source_pdf_path: str = "Docs/2025회계연도 기금운용평가보고서(자산운용부문).pdf"
     appinsights_connection_string: str = ""
+    storage_blob_endpoint: str = ""
+    upload_container: str = "pdfs"
+    assets_container: str = "document-assets"
+    ingest_api_endpoint: str = ""
+    max_upload_mb: int = 50
 
 
 @lru_cache
