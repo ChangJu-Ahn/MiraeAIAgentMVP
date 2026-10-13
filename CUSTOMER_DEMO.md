@@ -44,10 +44,12 @@ flowchart LR
 | 배포명 | 모델 / 버전 | 배포 유형 / 용량 |
 |---|---|---|
 | `chat` | `gpt-4o` / `2024-11-20` | GlobalStandard / 10 |
-| `reasoning` | `gpt-5.4-mini` / `2026-03-17` | GlobalStandard / 10 |
+| `reasoning` | `gpt-5.4-mini` / `2026-03-17` | GlobalStandard / 100 |
 | `embedding` | `text-embedding-3-large` / `1` | Standard / 50 |
 
 용량은 Azure의 모델별 배포 용량 단위입니다. 분당 토큰·요청 수와 변환 관계는 모델마다 다릅니다. 배포 명령은 실제 모델/SKU 목록과 남은 할당량을 확인하며, 모델을 임의로 대체하지 않습니다.
+
+여러 연도·기금을 집계하는 질문은 한 답변에서 모델을 여러 번 호출합니다. 실제 검증에서 reasoning 용량 10은 분당 토큰 제한에 걸려, 고객 기본값을 100으로 조정했습니다. 더 낮은 `--reasoning-capacity`를 선택하면 긴 질문이나 연속 질문이 제한에 걸릴 수 있습니다. 이 구성은 GlobalStandard 종량제이며, 호출한 토큰의 사용료와 필요한 할당량을 별도로 확인하세요.
 
 **로컬 Docker, Functions Core Tools, azd는 필요하지 않습니다.** 챗봇 이미지와 Function의 Linux 의존성은 고객 ACR에서 빌드합니다. Function ZIP은 scratch 이미지의 단일 아티팩트 레이어에서 digest를 검증해 가져오므로, 로컬에서 Linux wheel을 다시 설치하지 않습니다. 최초 `uv` 환경 준비에는 GitHub/PyPI 접근이 필요하며, 배포에는 컨테이너 레지스트리 및 Azure 관리/데이터 API 접근이 필요합니다. 고급 `--function-build local`은 기존 로컬 wheel 패키징 방식을 선택합니다.
 
@@ -161,6 +163,7 @@ API 키 모드는 배포자의 object ID를 요구하지 않습니다. 고급 `-
 | Linux wheel 다운로드 실패 | 기본 cloud 빌드는 ACR 빌드 로그의 PyPI/CDN 접근 확인. local 모드라면 로컬 프록시/인증서 확인. TLS를 끄지 않음 |
 | Function 배포 실패/timeout | Function SCM → Deployments와 Application Insights. 재실행 전에 PDF 작업 완료 여부 확인 |
 | PDF 처리 실패 | `/api/jobs`의 `stage`·`error`, Function 로그의 `ingest` 단계 |
+| `E_STREAM` / 모델 token rate limit | Container Apps 로그에서 원인 확인. reasoning 배포 quota·용량과 질문 빈도 확인; 기본 reasoning 용량은 100 |
 | 챗봇 이미지 pull 실패 | ACR 자격증명 비밀 참조. identity 모드라면 `AcrPull` 역할 |
 
 모델 목록과 현재 quota 확인을 통과해도 실제 지역 capacity·정책·구독 리소스 한도에 따라 ARM 검증이나 생성이 실패할 수 있습니다. 모든 Azure 구독에서 무조건 배포된다고 보장하는 패키지는 아닙니다.

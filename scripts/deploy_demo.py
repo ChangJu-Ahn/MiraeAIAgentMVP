@@ -52,7 +52,7 @@ def parse_args(argv=None):
     parser.add_argument("--chat-capacity", type=int, default=10)
     parser.add_argument("--reasoning-model", default="gpt-5.4-mini")
     parser.add_argument("--reasoning-version", default="2026-03-17")
-    parser.add_argument("--reasoning-capacity", type=int, default=10)
+    parser.add_argument("--reasoning-capacity", type=int, default=100)
     parser.add_argument("--embedding-capacity", type=int, default=50)
     parser.add_argument("--sample-pdf", type=Path, help="Instead of the small generated smoke-test PDF")
     parser.add_argument("--check", action="store_true", help="Read-only preflight; no resources or uploads")

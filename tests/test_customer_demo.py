@@ -14,6 +14,8 @@ def test_plan_requires_a_customer_resource_group_and_does_not_target_author_subs
     assert "347e0df7" not in text and "rg-mirae-ai-agent-poc" not in text
     assert args.check and not args.yes
     assert args.function_build == "cloud"
+    assert args.reasoning_capacity == 100
+    assert "param reasoningCapacity int = 100" in (ROOT / "infra/customer-demo.bicep").read_text()
     for filename in ("deploy.sh", "verify_availability.sh"):
         assert "347e0df7" not in (ROOT / "scripts" / filename).read_text()
 

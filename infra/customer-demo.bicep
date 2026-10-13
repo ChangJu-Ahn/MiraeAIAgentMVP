@@ -15,7 +15,7 @@ param chatCapacity int = 10
 param reasoningModelName string = 'gpt-5.4-mini'
 param reasoningModelVersion string = '2026-03-17'
 @minValue(1)
-param reasoningCapacity int = 10
+param reasoningCapacity int = 100
 param embeddingModelName string = 'text-embedding-3-large'
 param embeddingModelVersion string = '1'
 @minValue(1)
