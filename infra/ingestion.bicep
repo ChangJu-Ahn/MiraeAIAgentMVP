@@ -14,6 +14,12 @@ param namePrefix string = 'blobsearch'
 param suffix string = uniqueString(resourceGroup().id)
 param uploadContainer string = 'pdfs'
 param assetsContainer string = 'document-assets'
+@description('Use private Blob networking for the existing restricted-storage deployment.')
+param privateStorage bool = true
+param prebuiltDeployment bool = false
+param pauseProcessing bool = false
+@allowed(['identity', 'keys'])
+param authMode string = 'identity'
 
 resource sa 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: existingStorageAccountName
@@ -39,12 +45,18 @@ resource assets 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-
 resource di 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = {
   name: existingDocIntelligenceName
 }
+resource searchService 'Microsoft.Search/searchServices@2024-06-01-preview' existing = {
+  name: existingSearchName
+}
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
+  name: existingFoundryName
+}
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: existingAppInsightsName
 }
 
-module net 'modules/ingestion-network.bicep' = {
+module net 'modules/ingestion-network.bicep' = if (privateStorage) {
   name: 'blobdemo-net'
   params: {
     location: location
@@ -60,16 +72,25 @@ module fn 'modules/ingestion-function.bicep' = {
     location: location
     storageAccountName: existingStorageAccountName
     searchEndpoint: 'https://${existingSearchName}.search.windows.net'
-    funcSubnetId: net.outputs.funcSubnetId
+    funcSubnetId: net.?outputs.funcSubnetId ?? ''
     appInsightsConnectionString: appInsights.properties.ConnectionString
     docIntelligenceEndpoint: di.properties.endpoint
     foundryProjectEndpoint: foundryProjectEndpoint
     assetsContainer: assetsContainer
     uploadContainer: uploadContainer
+    prebuiltDeployment: prebuiltDeployment
+    pauseProcessing: pauseProcessing
+    authMode: authMode
+    searchApiKey: authMode == 'keys' ? searchService.listAdminKeys().primaryKey : ''
+    docIntelligenceApiKey: authMode == 'keys' ? di.listKeys().key1 : ''
+    foundryApiKey: authMode == 'keys' ? foundry.listKeys().key1 : ''
+    storageConnectionString: authMode == 'keys'
+      ? 'DefaultEndpointsProtocol=https;AccountName=${sa.name};AccountKey=${sa.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
+      : ''
   }
 }
 
-module rbac 'modules/ingestion-rbac.bicep' = {
+module rbac 'modules/ingestion-rbac.bicep' = if (authMode == 'identity') {
   name: 'blobdemo-rbac'
   params: {
     functionPrincipalId: fn.outputs.principalId
@@ -85,3 +106,4 @@ output functionAppId string = fn.outputs.id
 output functionHostName string = fn.outputs.defaultHostName
 output uploadUrl string = 'https://${fn.outputs.defaultHostName}/api/upload'
 output apiEndpoint string = 'https://${fn.outputs.defaultHostName}'
+output functionPrincipalId string = fn.outputs.principalId

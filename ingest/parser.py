@@ -13,6 +13,7 @@ from azure.core.rest import HttpRequest
 from azure.identity import DefaultAzureCredential
 
 from config.settings import get_settings
+from config.azure_auth import service_credential
 from ingest.models import ParsedDoc, ParsedFigure, ParsedParagraph, ParsedTable
 
 CACHE_DIR = Path(".ingest_cache")
@@ -165,7 +166,8 @@ def analyze_pdf(
 
     s = get_settings()
     client = DocumentIntelligenceClient(
-        endpoint=s.doc_intelligence_endpoint.rstrip("/"), credential=DefaultAzureCredential()
+        endpoint=s.doc_intelligence_endpoint.rstrip("/"),
+        credential=service_credential("doc_intelligence", DefaultAzureCredential),
     )
     log.info("ingest stage=di_analyze doc_id=%s bytes=%d", doc_id, len(content))
     data, operation_id = _analyze_layout(

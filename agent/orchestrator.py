@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from agent.tools import RetrievedSource, TraceRecorder, TraceStep, make_search_tools
 from agent.visuals import Visual, VisualRecorder, make_visual_tools
 from config.settings import get_settings
+from config.azure_auth import chat_client
 
 SYSTEM_PROMPT = """당신은 기금운용평가보고서 전문 분석 어시스턴트입니다.
 일반 PDF도 본문·표·그림 검색으로 답할 수 있습니다. 기금 평가와 무관한 문서 질문에는 기금·연도·보고서 유형 필터와 기금 집계 도구를 강제로 적용하지 마세요.
@@ -92,11 +93,7 @@ def build_agent(
     recorder: TraceRecorder, visual_recorder: VisualRecorder, effort: str = "medium"
 ):
     settings = get_settings()
-    client = FoundryChatClient(
-        project_endpoint=settings.foundry_project_endpoint,
-        model=settings.foundry_chat_deployment,
-        credential=DefaultAzureCredential(),
-    )
+    client = chat_client(settings.foundry_chat_deployment, FoundryChatClient, DefaultAzureCredential)
     tools = make_search_tools(recorder) + make_visual_tools(visual_recorder)
     instructions = SYSTEM_PROMPT.replace("{today}", date.today().isoformat())
     return client.as_agent(

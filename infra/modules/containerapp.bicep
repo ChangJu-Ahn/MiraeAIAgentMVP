@@ -9,11 +9,16 @@ param uamiId string
 param image string
 @description('환경변수 배열 [{name, value}]')
 param envVars array
+@secure()
+param secretsJson string = ''
+param registryUsername string = ''
+@secure()
+param registryPasswordSecretRef string = ''
 
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
-  identity: {
+  identity: empty(uamiId) ? null : {
     type: 'UserAssigned'
     userAssignedIdentities: {
       '${uamiId}': {}
@@ -30,11 +35,16 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
         allowInsecure: false
       }
       registries: [
-        {
+        empty(registryUsername) ? {
           server: acrLoginServer
           identity: uamiId
+        } : {
+          server: acrLoginServer
+          username: registryUsername
+          passwordSecretRef: registryPasswordSecretRef
         }
       ]
+      secrets: empty(secretsJson) ? [] : json(secretsJson)
     }
     template: {
       containers: [

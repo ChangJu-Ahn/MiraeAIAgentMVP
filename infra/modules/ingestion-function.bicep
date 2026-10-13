@@ -14,6 +14,17 @@ param foundryProjectEndpoint string
 param assetsContainer string = 'document-assets'
 param uploadContainer string = 'pdfs'
 param maxUploadMb int = 50
+param prebuiltDeployment bool = false
+param pauseProcessing bool = false
+param authMode string = 'identity'
+@secure()
+param searchApiKey string = ''
+@secure()
+param docIntelligenceApiKey string = ''
+@secure()
+param foundryApiKey string = ''
+@secure()
+param storageConnectionString string = ''
 
 resource sa 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
@@ -51,27 +62,28 @@ resource funcApp 'Microsoft.Web/sites@2024-04-01' = {
     serverFarmId: plan.id
     httpsOnly: true
     // 지역 VNet 통합(아웃바운드) → 스토리지 프라이빗 엔드포인트 접근 경로
-    virtualNetworkSubnetId: funcSubnetId
+    virtualNetworkSubnetId: empty(funcSubnetId) ? null : funcSubnetId
     siteConfig: {
       linuxFxVersion: 'Python|3.12'
       alwaysOn: true
       ftpsState: 'Disabled'
       // 모든 아웃바운드를 VNet으로 라우팅 → 스토리지 프라이빗 엔드포인트 + 프라이빗 DNS 사용
-      vnetRouteAllEnabled: true
-      appSettings: [
+      vnetRouteAllEnabled: !empty(funcSubnetId)
+      appSettings: concat([
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
         { name: 'FUNCTIONS_WORKER_PROCESS_COUNT', value: '1' }
         // AzureWebJobsStorage를 연결 문자열 대신 blob 엔드포인트 + 관리 ID로 지정 (키리스)
-        { name: 'AzureWebJobsStorage__blobServiceUri', value: blobEndpoint }
-        { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }
         // 함수 키를 스토리지 대신 파일시스템에 저장 → 시작 시 스토리지 의존도 최소화
         { name: 'AzureWebJobsSecretStorageType', value: 'files' }
         // 프라이빗 DNS 존(privatelink.blob) 조회를 위해 Azure DNS 사용
         { name: 'WEBSITE_DNS_SERVER', value: '168.63.129.16' }
         // 배포 시 Oryx 원격 빌드(pip install)를 wwwroot에서 수행
-        { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'true' }
-        { name: 'ENABLE_ORYX_BUILD', value: 'true' }
+        { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: prebuiltDeployment ? 'false' : 'true' }
+        { name: 'ENABLE_ORYX_BUILD', value: prebuiltDeployment ? 'false' : 'true' }
+        { name: 'WEBSITE_RUN_FROM_PACKAGE', value: prebuiltDeployment ? '1' : '0' }
+        { name: 'AzureWebJobs.index.Disabled', value: string(pauseProcessing) }
+        { name: 'AzureWebJobs.process_jobs.Disabled', value: string(pauseProcessing) }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
         { name: 'SEARCH_ENDPOINT', value: searchEndpoint }
         { name: 'SEARCH_INDEX_NARRATIVE', value: 'narrative-index' }
@@ -88,7 +100,17 @@ resource funcApp 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'UPLOAD_CONTAINER', value: uploadContainer }
         { name: 'ASSETS_CONTAINER', value: assetsContainer }
         { name: 'MAX_UPLOAD_MB', value: string(maxUploadMb) }
-      ]
+        { name: 'AZURE_AUTH_MODE', value: authMode }
+      ], authMode == 'keys' ? [
+        { name: 'AzureWebJobsStorage', value: storageConnectionString }
+        { name: 'STORAGE_CONNECTION_STRING', value: storageConnectionString }
+        { name: 'SEARCH_API_KEY', value: searchApiKey }
+        { name: 'DOC_INTELLIGENCE_API_KEY', value: docIntelligenceApiKey }
+        { name: 'FOUNDRY_API_KEY', value: foundryApiKey }
+      ] : [
+        { name: 'AzureWebJobsStorage__blobServiceUri', value: blobEndpoint }
+        { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }
+      ])
     }
   }
 }

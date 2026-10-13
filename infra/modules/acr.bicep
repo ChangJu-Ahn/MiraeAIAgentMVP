@@ -1,6 +1,7 @@
 @description('Container Registry 이름 (전역 유니크, 영숫자)')
 param name string
 param location string
+param adminUserEnabled bool = false
 
 resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: name
@@ -9,7 +10,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
     name: 'Basic'
   }
   properties: {
-    adminUserEnabled: false
+    adminUserEnabled: adminUserEnabled
   }
 }
 

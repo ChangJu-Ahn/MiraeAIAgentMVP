@@ -8,6 +8,7 @@ from azure.identity import DefaultAzureCredential
 from pydantic import BaseModel
 
 from config.settings import get_settings
+from config.azure_auth import chat_client
 
 
 class ReflectionVerdict(BaseModel):
@@ -56,11 +57,7 @@ async def critique(
     question: str, answer: str, sources: list
 ) -> ReflectionVerdict:
     settings = get_settings()
-    client = FoundryChatClient(
-        project_endpoint=settings.foundry_project_endpoint,
-        model=settings.foundry_eval_deployment,
-        credential=DefaultAzureCredential(),
-    )
+    client = chat_client(settings.foundry_eval_deployment, FoundryChatClient, DefaultAzureCredential)
     agent = client.as_agent(
         name="reflection-critic",
         instructions="You output only JSON.",

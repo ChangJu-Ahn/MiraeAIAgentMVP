@@ -19,6 +19,7 @@ from azure.ai.evaluation import (
 
 from agent.orchestrator import ask
 from config.settings import get_settings
+from config.azure_auth import secret_value
 from eval.golden import GoldenItem
 from eval.report import EvalRow
 
@@ -49,8 +50,9 @@ def _judge():
         azure_endpoint=base,
         azure_deployment=s.foundry_eval_deployment,
         api_version=s.foundry_api_version,
+        **({"api_key": secret_value("foundry_api_key")} if s.azure_auth_mode == "keys" else {}),
     )
-    cred = DefaultAzureCredential()
+    cred = None if s.azure_auth_mode == "keys" else DefaultAzureCredential()
     return mc, cred
 
 

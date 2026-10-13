@@ -20,6 +20,7 @@ from azure.search.documents.indexes.models import (
 )
 
 from config.settings import get_settings
+from config.azure_auth import service_credential
 from ingest.catalog import FundCatalogEntry
 from ingest.facts import EvaluationFact
 
@@ -106,7 +107,7 @@ def build_facts_index(name: str) -> SearchIndex:
 def ensure_structured_indexes() -> None:
     """Create-or-update both structured indexes using workspace credentials."""
     s = get_settings()
-    client = SearchIndexClient(endpoint=s.search_endpoint, credential=DefaultAzureCredential())
+    client = SearchIndexClient(endpoint=s.search_endpoint, credential=service_credential("search", DefaultAzureCredential))
     client.create_or_update_index(build_catalog_index(s.search_index_catalog))
     client.create_or_update_index(build_facts_index(s.search_index_facts))
 

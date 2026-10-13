@@ -1,6 +1,7 @@
 @description('Document Intelligence(FormRecognizer) 계정 이름')
 param name string
 param location string
+param disableLocalAuth bool = true
 
 resource di 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   name: name
@@ -14,7 +15,7 @@ resource di 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   }
   properties: {
     customSubDomainName: name
-    disableLocalAuth: true
+    disableLocalAuth: disableLocalAuth
     publicNetworkAccess: 'Enabled'
   }
 }

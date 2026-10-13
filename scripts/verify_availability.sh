@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SUB="347e0df7-94e9-4feb-b42d-57d7e49566f2"
+: "${SUB:?Set SUB explicitly, or use scripts/deploy_demo.py --check.}"
 LOCATION="${LOCATION:-koreacentral}"
 CHAT_MODEL="${CHAT_MODEL:-gpt-4o}"
 EMBED_MODEL="${EMBED_MODEL:-text-embedding-3-large}"

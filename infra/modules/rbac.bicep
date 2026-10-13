@@ -1,5 +1,7 @@
 @description('개발자(현재 사용자) objectId')
 param developerObjectId string
+@allowed(['User', 'ServicePrincipal'])
+param developerPrincipalType string = 'User'
 @description('Search 서비스 시스템 관리 ID principalId')
 param searchPrincipalId string
 param searchName string
@@ -28,7 +30,7 @@ resource devSearchData 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', searchIndexDataContributor)
     principalId: developerObjectId
-    principalType: 'User'
+    principalType: developerPrincipalType
   }
 }
 resource devSearchSvc 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -37,7 +39,7 @@ resource devSearchSvc 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', searchServiceContributor)
     principalId: developerObjectId
-    principalType: 'User'
+    principalType: developerPrincipalType
   }
 }
 
@@ -48,7 +50,7 @@ resource devDI 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesUser)
     principalId: developerObjectId
-    principalType: 'User'
+    principalType: developerPrincipalType
   }
 }
 
@@ -59,7 +61,7 @@ resource devFoundry 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', openAIUser)
     principalId: developerObjectId
-    principalType: 'User'
+    principalType: developerPrincipalType
   }
 }
 

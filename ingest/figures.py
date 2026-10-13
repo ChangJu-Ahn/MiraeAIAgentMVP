@@ -7,15 +7,15 @@ import subprocess
 import tempfile
 from collections.abc import Callable
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity import DefaultAzureCredential
 from openai import AzureOpenAI
 from PIL import Image
 
 from config.settings import get_settings
+from config.azure_auth import openai_auth
 from ingest.chunker import HEADING_ROLES, _heading_depth
 from ingest.models import Chunk, ParsedDoc
 
-_SCOPE = "https://cognitiveservices.azure.com/.default"
 _PROMPT = (
     "이 그림/차트를 한국어로 2~4문장으로 설명하세요. "
     "제목, 축·범례, 핵심 수치나 추세를 최대한 구체적으로 포함하세요. "
@@ -51,9 +51,8 @@ def render_figure_png(
 def describe_figure(png: bytes) -> str:
     s = get_settings()
     base = s.foundry_project_endpoint.split("/api/projects")[0]
-    provider = get_bearer_token_provider(DefaultAzureCredential(), _SCOPE)
     client = AzureOpenAI(
-        azure_endpoint=base, api_version=s.foundry_api_version, azure_ad_token_provider=provider
+        azure_endpoint=base, api_version=s.foundry_api_version, **openai_auth(DefaultAzureCredential),
     )
     b64 = base64.b64encode(png).decode()
     resp = client.chat.completions.create(

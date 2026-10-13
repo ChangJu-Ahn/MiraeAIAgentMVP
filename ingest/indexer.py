@@ -20,6 +20,7 @@ from azure.search.documents.indexes.models import (
 )
 
 from config.settings import get_settings
+from config.azure_auth import service_credential
 from ingest.models import Chunk
 from ingest.structured_indexer import _check_results, _delete_keys, _fetch_existing_keys
 
@@ -77,7 +78,7 @@ def build_index(name: str) -> SearchIndex:
 
 def ensure_indexes() -> None:
     s = get_settings()
-    client = SearchIndexClient(endpoint=s.search_endpoint, credential=DefaultAzureCredential())
+    client = SearchIndexClient(endpoint=s.search_endpoint, credential=service_credential("search", DefaultAzureCredential))
     for name in (s.search_index_narrative, s.search_index_table, s.search_index_figure):
         client.create_or_update_index(build_index(name))
 
@@ -90,7 +91,7 @@ def reset_indexes() -> None:
     삭제 후에는 반드시 재인제스트(upload_chunks)로 문서를 다시 채워야 한다.
     """
     s = get_settings()
-    client = SearchIndexClient(endpoint=s.search_endpoint, credential=DefaultAzureCredential())
+    client = SearchIndexClient(endpoint=s.search_endpoint, credential=service_credential("search", DefaultAzureCredential))
     for name in (s.search_index_narrative, s.search_index_table, s.search_index_figure):
         try:
             client.delete_index(name)
@@ -119,7 +120,7 @@ def _chunk_to_doc(chunk: Chunk) -> dict:
 
 def upload_chunks(chunks: list[Chunk], *, doc_id: str | None = None) -> int:
     s = get_settings()
-    cred = DefaultAzureCredential()
+    cred = service_credential("search", DefaultAzureCredential)
     targets = {
         "narrative": s.search_index_narrative, "table": s.search_index_table,
         "figure": s.search_index_figure,
@@ -162,7 +163,7 @@ def upload_chunks(chunks: list[Chunk], *, doc_id: str | None = None) -> int:
 def delete_stale_chunks(doc_id: str, current_ids: dict[str, set[str]]) -> None:
     """Finalize a complete document, never an individual range or upload batch."""
     s = get_settings()
-    credential = DefaultAzureCredential()
+    credential = service_credential("search", DefaultAzureCredential)
     targets = {
         "narrative": s.search_index_narrative, "table": s.search_index_table,
         "figure": s.search_index_figure,

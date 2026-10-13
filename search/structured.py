@@ -25,6 +25,7 @@ from azure.search.documents import SearchClient
 from pydantic import BaseModel
 
 from config.settings import get_settings
+from config.azure_auth import service_credential
 from ingest.catalog import FundCatalogEntry, normalize_fund_name
 from ingest.facts import EvaluationFact, GRADE_RANKS, metric_code_for
 from ingest.structured_indexer import decode_search_key
@@ -41,7 +42,7 @@ def _catalog_client() -> SearchClient:
     return SearchClient(
         endpoint=s.search_endpoint,
         index_name=s.search_index_catalog,
-        credential=DefaultAzureCredential(),
+        credential=service_credential("search", DefaultAzureCredential),
     )
 
 
@@ -50,7 +51,7 @@ def _facts_client() -> SearchClient:
     return SearchClient(
         endpoint=s.search_endpoint,
         index_name=s.search_index_facts,
-        credential=DefaultAzureCredential(),
+        credential=service_credential("search", DefaultAzureCredential),
     )
 
 

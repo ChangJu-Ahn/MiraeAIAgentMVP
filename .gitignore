@@ -19,6 +19,7 @@ venv/
 .files/
 
 # Local artifacts
+.azure/customer/
 *.log
 .ingest_cache/
 .worktrees/

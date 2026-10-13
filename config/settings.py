@@ -1,4 +1,6 @@
 from functools import lru_cache
+from typing import Literal
+from pydantic import SecretStr
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -28,6 +30,11 @@ class Settings(BaseSettings):
     assets_container: str = "document-assets"
     ingest_api_endpoint: str = ""
     max_upload_mb: int = 50
+    azure_auth_mode: Literal["identity", "keys"] = "identity"
+    search_api_key: SecretStr | None = None
+    doc_intelligence_api_key: SecretStr | None = None
+    foundry_api_key: SecretStr | None = None
+    storage_connection_string: SecretStr | None = None
 
 
 @lru_cache

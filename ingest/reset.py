@@ -7,6 +7,7 @@ from azure.identity import DefaultAzureCredential
 from azure.search.documents.indexes import SearchIndexClient
 
 from config.settings import get_settings
+from config.azure_auth import service_credential
 from ingest.blob import BlobStore
 from ingest.indexer import build_index
 from ingest.structured_indexer import build_catalog_index, build_facts_index
@@ -22,7 +23,7 @@ def reset_all(
         raise ValueError("Confirmation must match the configured Search endpoint exactly")
     store = store or BlobStore()
     client = client or SearchIndexClient(
-        endpoint=settings.search_endpoint, credential=DefaultAzureCredential(),
+        endpoint=settings.search_endpoint, credential=service_credential("search", DefaultAzureCredential),
     )
     indexes = [
         build_index(settings.search_index_narrative),

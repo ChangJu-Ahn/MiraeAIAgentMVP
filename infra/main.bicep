@@ -3,6 +3,8 @@ targetScope = 'resourceGroup'
 param location string = resourceGroup().location
 @description('현재 개발자 objectId (az ad signed-in-user)')
 param developerObjectId string
+@allowed(['User', 'ServicePrincipal'])
+param developerPrincipalType string = 'User'
 @description('리소스 이름 접미사(전역 유니크)')
 param suffix string = uniqueString(resourceGroup().id)
 
@@ -10,6 +12,12 @@ param chatModelName string = 'gpt-4o'
 param chatModelVersion string = '2024-11-20'
 param embeddingModelName string = 'text-embedding-3-large'
 param embeddingModelVersion string = '1'
+param modelLocation string = location
+param chatCapacity int = 450
+param embeddingCapacity int = 50
+param reasoningModelName string = 'gpt-5.4-mini'
+param reasoningModelVersion string = '2026-03-17'
+param reasoningCapacity int = 2000
 
 @description('ACA 컨테이너 이미지 (초기 배포는 placeholder, 이후 실이미지로 갱신)')
 param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
@@ -18,6 +26,8 @@ param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-hellowo
 param deployApp bool = false
 @description('Blob 인제스트 Function URL. 빈 값이면 기존 로컬 원본자료 모드를 유지한다.')
 param ingestApiEndpoint string = ''
+@description('False is used only by the separate Contributor/API-key customer demo.')
+param useManagedIdentity bool = true
 
 module search 'modules/search.bicep' = {
   name: 'search'
@@ -25,6 +35,7 @@ module search 'modules/search.bicep' = {
     name: 'srch-mirae-${suffix}'
     location: location
     sku: 'basic'
+    disableLocalAuth: useManagedIdentity
   }
 }
 
@@ -33,6 +44,7 @@ module di 'modules/docintelligence.bicep' = {
   params: {
     name: 'di-mirae-${suffix}'
     location: location
+    disableLocalAuth: useManagedIdentity
   }
 }
 
@@ -40,18 +52,25 @@ module foundry 'modules/foundry.bicep' = {
   name: 'foundry'
   params: {
     name: 'aif-mirae-${suffix}'
-    location: location
+    location: modelLocation
     chatModelName: chatModelName
     chatModelVersion: chatModelVersion
     embeddingModelName: embeddingModelName
     embeddingModelVersion: embeddingModelVersion
+    chatCapacity: chatCapacity
+    embeddingCapacity: embeddingCapacity
+    reasoningModelName: reasoningModelName
+    reasoningModelVersion: reasoningModelVersion
+    reasoningCapacity: reasoningCapacity
+    disableLocalAuth: useManagedIdentity
   }
 }
 
-module rbac 'modules/rbac.bicep' = {
+module rbac 'modules/rbac.bicep' = if (useManagedIdentity) {
   name: 'rbac'
   params: {
     developerObjectId: developerObjectId
+    developerPrincipalType: developerPrincipalType
     searchPrincipalId: search.outputs.searchPrincipalId
     searchName: search.outputs.searchName
     docIntelligenceName: di.outputs.docIntelligenceName
@@ -76,7 +95,7 @@ output reasoningDeploymentName string = foundry.outputs.reasoningDeploymentName
 output appInsightsConnectionString string = observability.outputs.appInsightsConnectionString
 
 // ── ACA 앱 배포용 리소스 ──────────────────────────────────────────────
-module identity 'modules/identity.bicep' = {
+module identity 'modules/identity.bicep' = if (useManagedIdentity) {
   name: 'identity'
   params: {
     name: 'id-mirae-${suffix}'
@@ -89,6 +108,7 @@ module acr 'modules/acr.bicep' = {
   params: {
     name: 'acrmirae${suffix}'
     location: location
+    adminUserEnabled: !useManagedIdentity
   }
 }
 
@@ -108,7 +128,7 @@ module containerapp 'modules/containerapp.bicep' = if (deployApp) {
     location: location
     environmentId: containerenv.outputs.id
     acrLoginServer: acr.outputs.loginServer
-    uamiId: identity.outputs.id
+    uamiId: identity.?outputs.id ?? ''
     image: containerImage
     envVars: [
       { name: 'SEARCH_ENDPOINT', value: search.outputs.searchEndpoint }
@@ -123,15 +143,15 @@ module containerapp 'modules/containerapp.bicep' = if (deployApp) {
       { name: 'FOUNDRY_EMBEDDING_DEPLOYMENT', value: foundry.outputs.embeddingDeploymentName }
       { name: 'FOUNDRY_API_VERSION', value: '2024-10-21' }
       { name: 'APPINSIGHTS_CONNECTION_STRING', value: observability.outputs.appInsightsConnectionString }
-      { name: 'AZURE_CLIENT_ID', value: identity.outputs.clientId }
+      { name: 'AZURE_CLIENT_ID', value: identity.?outputs.clientId ?? '' }
     ]
   }
 }
 
-module apprbac 'modules/apprbac.bicep' = {
+module apprbac 'modules/apprbac.bicep' = if (useManagedIdentity) {
   name: 'apprbac'
   params: {
-    uamiPrincipalId: identity.outputs.principalId
+    uamiPrincipalId: identity.?outputs.principalId ?? ''
     searchName: search.outputs.searchName
     foundryName: foundry.outputs.foundryName
     acrName: acr.outputs.name
@@ -142,4 +162,11 @@ output acrLoginServer string = acr.outputs.loginServer
 output acrName string = acr.outputs.name
 output containerAppName string = containerapp.?outputs.name ?? ''
 output containerAppFqdn string = containerapp.?outputs.fqdn ?? ''
-output uamiClientId string = identity.outputs.clientId
+output uamiClientId string = identity.?outputs.clientId ?? ''
+output uamiId string = identity.?outputs.id ?? ''
+output uamiPrincipalId string = identity.?outputs.principalId ?? ''
+output containerEnvironmentId string = containerenv.outputs.id
+output searchName string = search.outputs.searchName
+output docIntelligenceName string = di.outputs.docIntelligenceName
+output foundryName string = foundry.outputs.foundryName
+output appInsightsName string = observability.outputs.appInsightsName
