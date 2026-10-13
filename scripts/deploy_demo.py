@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import tomllib
@@ -42,12 +43,16 @@ def parse_args(argv=None):
     parser.add_argument("--principal-id", help="Deploying Entra object ID (not application/client ID)")
     parser.add_argument("--auth-mode", choices=("keys", "identity"), default="keys",
                         help="keys: Contributor-only demo; identity: needs role-assignment permission")
+    parser.add_argument("--function-build", choices=("cloud", "local"), default="cloud",
+                        help="cloud: build Function dependencies in ACR; local: download Linux wheels locally")
+    parser.add_argument("--resource-tag", action="append", default=[], metavar="KEY=VALUE",
+                        help="Explicit organization-approved tags on new demo resources; never added automatically")
     parser.add_argument("--chat-model", default="gpt-4o")
     parser.add_argument("--chat-version", default="2024-11-20")
     parser.add_argument("--chat-capacity", type=int, default=10)
     parser.add_argument("--reasoning-model", default="gpt-5.4-mini")
     parser.add_argument("--reasoning-version", default="2026-03-17")
-    parser.add_argument("--reasoning-capacity", type=int, default=10)
+    parser.add_argument("--reasoning-capacity", type=int, default=100)
     parser.add_argument("--embedding-capacity", type=int, default=50)
     parser.add_argument("--sample-pdf", type=Path, help="Instead of the small generated smoke-test PDF")
     parser.add_argument("--check", action="store_true", help="Read-only preflight; no resources or uploads")
@@ -62,7 +67,14 @@ def parse_args(argv=None):
         parser.error("Model capacities must be positive")
     if args.sample_pdf and (not args.sample_pdf.is_file() or args.sample_pdf.suffix.lower() != ".pdf"):
         parser.error("--sample-pdf must identify an existing PDF")
+    for tag in args.resource_tag:
+        if "=" not in tag or not tag.split("=", 1)[0] or tag.split("=", 1)[0] == OWNER_TAG:
+            parser.error("--resource-tag must be KEY=VALUE and cannot replace the ownership tag")
     return args
+
+
+def resource_tags(args) -> dict[str, str]:
+    return dict(tag.split("=", 1) for tag in args.resource_tag)
 
 
 def command(argv: list[str], *, json_output: bool = False):
@@ -184,6 +196,7 @@ def deployment_values(args, principal: str, principal_type: str) -> dict:
         "location": args.location, "modelLocation": args.model_location or args.location,
         "developerObjectId": principal, "developerPrincipalType": principal_type,
         "authMode": args.auth_mode,
+        "resourceTags": resource_tags(args),
         "chatModelName": args.chat_model, "chatModelVersion": args.chat_version,
         "chatCapacity": args.chat_capacity,
         "reasoningModelName": args.reasoning_model, "reasoningModelVersion": args.reasoning_version,
@@ -215,6 +228,7 @@ def chat_parameters(outputs: dict, image: str, location: str) -> dict:
         "searchName": outputs.get("searchName", ""),
         "foundryName": outputs.get("foundryName", ""),
         "acrName": outputs.get("acrName", ""),
+        "resourceTags": outputs.get("resourceTags", {}),
         "envVars": [{"name": key, "value": value} for key, value in env.items()],
     }.items()}
 
@@ -259,6 +273,39 @@ def function_constraints(root: Path) -> str:
         f"{p['name']}=={p['version']}" for p in locked["package"]
         if "version" in p and p["name"] != "mirae-ai-agent-mvp"
     ) + "\n"
+
+
+def create_function_context(root: Path, destination: Path) -> None:
+    destination.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(root / "functions/ingestion/Dockerfile.package", destination / "Dockerfile")
+    shutil.copy2(root / "scripts/build_function_package.py", destination / "build_function_package.py")
+    for name in ("function_app.py", "host.json", "requirements.txt"):
+        shutil.copy2(root / "functions/ingestion" / name, destination / name)
+    for package in ("ingest", "config"):
+        (destination / package).mkdir()
+        for source in (root / package).glob("*.py"):
+            shutil.copy2(source, destination / package / source.name)
+    (destination / ".deployment").write_text(
+        "[config]\nSCM_DO_BUILD_DURING_DEPLOYMENT=false\n", encoding="utf-8",
+    )
+    (destination / "constraints.txt").write_text(function_constraints(root), encoding="utf-8")
+
+
+def extract_function_artifact(layer: Path, destination: Path, digest: str) -> None:
+    if hashlib.sha256(layer.read_bytes()).hexdigest() != digest.removeprefix("sha256:"):
+        raise RuntimeError("Function artifact layer digest does not match the registry manifest")
+    with tarfile.open(layer, "r:*") as archive:
+        member = next((member for member in archive.getmembers() if member.name.lstrip("./") == "function.zip"), None)
+        if member is None or not member.isfile():
+            raise RuntimeError("Cloud build layer does not contain a regular function.zip")
+        source = archive.extractfile(member)
+        if source is None:
+            raise RuntimeError("Cannot read the cloud Function ZIP")
+        with source, destination.open("wb") as output:
+            shutil.copyfileobj(source, output)
+    with ZipFile(destination) as archive:
+        if not {"function_app.py", "ingest/jobs.py", ".python_packages/lib/site-packages/pypdf/__init__.py"} <= set(archive.namelist()):
+            raise RuntimeError("Cloud Function package is incomplete")
 
 
 def wait_http(url: str, *, timeout: int = 600) -> requests.Response:
@@ -382,6 +429,8 @@ class Deployment:
         print(f"Dedicated RG: {self.args.resource_group}; region: {self.args.location}; "
               f"models: {self.args.model_location or self.args.location}", flush=True)
         print(f"Authentication: {self.args.auth_mode}. API keys are used only in the new customer demo, not the existing deployment.", flush=True)
+        if self.args.resource_tag:
+            print("Explicit resource tags:", resource_tags(self.args), flush=True)
         print("Preflight passed: model/SKU availability and current quota. ARM validation still checks policy/capacity.", flush=True)
 
     def _outputs(self, name: str) -> dict:
@@ -406,7 +455,14 @@ class Deployment:
             self.cli.run("provider", "register", "--namespace", provider, "--wait", json_output=False)
         if not self.group_exists:
             self.cli.run("group", "create", "--name", self.args.resource_group,
-                         "--location", self.args.location, "--tags", f"{OWNER_TAG}={OWNER_VALUE}")
+                         "--location", self.args.location, "--tags", f"{OWNER_TAG}={OWNER_VALUE}",
+                         *self.args.resource_tag)
+        elif self.args.resource_tag:
+            self.cli.run(
+                "tag", "update", "--resource-id",
+                f"/subscriptions/{self.cli.subscription}/resourceGroups/{self.args.resource_group}",
+                "--operation", "Merge", "--tags", *self.args.resource_tag,
+            )
         path = self.work / "services.parameters.json"
         write_parameters(path, deployment_values(self.args, self.principal, self.principal_type))
         common = ["-g", self.args.resource_group, "--template-file", str(self.root / "infra/customer-demo.bicep"),
@@ -416,17 +472,20 @@ class Deployment:
         self.outputs = self._outputs("mirae-customer-services")
 
     def deploy_function(self) -> None:
-        deps = self.work / "function-dependencies"
-        constraints = self.work / "constraints.txt"
-        constraints.write_text(function_constraints(self.root), encoding="utf-8")
-        command([
-            "uv", "pip", "install", "--target", str(deps),
-            "--python-platform", "x86_64-manylinux_2_28", "--python-version", "3.12",
-            "--only-binary", ":all:", "--constraint", str(constraints),
-            "--requirements", str(self.root / "functions/ingestion/requirements.txt"),
-        ])
         package = self.work / "function.zip"
-        package_function(self.root, deps, package)
+        if self.args.function_build == "cloud":
+            self._cloud_function_package(package)
+        else:
+            deps = self.work / "function-dependencies"
+            constraints = self.work / "constraints.txt"
+            constraints.write_text(function_constraints(self.root), encoding="utf-8")
+            command([
+                "uv", "pip", "install", "--target", str(deps),
+                "--python-platform", "x86_64-manylinux_2_28", "--python-version", "3.12",
+                "--only-binary", ":all:", "--constraint", str(constraints),
+                "--requirements", str(self.root / "functions/ingestion/requirements.txt"),
+            ])
+            package_function(self.root, deps, package)
         self._deploy_zip(package)
         self.cli.run("rest", "--method", "post", "--url",
                      f"https://management.azure.com{self.outputs['functionAppId']}/syncfunctiontriggers?api-version=2024-04-01",
@@ -437,6 +496,55 @@ class Deployment:
                      json_output=False)
         wait_http(self.outputs["apiEndpoint"] + "/api/jobs")
         wait_http(self.outputs["apiEndpoint"] + "/api/documents")
+
+    def _cloud_function_package(self, package: Path) -> None:
+        context = self.work / "function-build-context"
+        create_function_context(self.root, context)
+        digest = hashlib.sha256()
+        for path in sorted(p for p in context.rglob("*") if p.is_file()):
+            digest.update(str(path.relative_to(context)).encode())
+            digest.update(path.read_bytes())
+        repository = "mirae-function-package"
+        tag = "customer-" + digest.hexdigest()[:16]
+        self.cli.run("acr", "build", "--registry", self.outputs["acrName"],
+                     "--image", repository + ":" + tag, "--file", str(context / "Dockerfile"),
+                     "--no-logs", str(context))
+        server = self.outputs["acrLoginServer"]
+        if self.args.auth_mode == "keys":
+            login = self.cli.run("acr", "credential", "show", "--name", self.outputs["acrName"])
+            auth = (login["username"], login["passwords"][0]["value"])
+        else:
+            login = self.cli.run("acr", "login", "--name", self.outputs["acrName"], "--expose-token")
+            auth = ("00000000-0000-0000-0000-000000000000", login["accessToken"])
+        token_response = requests.get(
+            f"https://{server}/oauth2/token",
+            params={"service": server, "scope": f"repository:{repository}:pull"},
+            auth=auth, timeout=60,
+        )
+        token_response.raise_for_status()
+        token_data = token_response.json()
+        token = token_data.get("access_token") or token_data["token"]
+        headers = {"Authorization": "Bearer " + token}
+        manifest = requests.get(
+            f"https://{server}/v2/{repository}/manifests/{tag}",
+            headers={**headers, "Accept": "application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json"},
+            timeout=60,
+        )
+        manifest.raise_for_status()
+        layers = manifest.json().get("layers", [])
+        if len(layers) != 1:
+            raise RuntimeError("Function artifact image must contain exactly one scratch-image layer")
+        layer = self.work / "function-layer.tar"
+        with requests.get(
+            f"https://{server}/v2/{repository}/blobs/{layers[0]['digest']}",
+            headers=headers, stream=True, timeout=180,
+        ) as response:
+            response.raise_for_status()
+            with layer.open("wb") as stream:
+                for block in response.iter_content(1024 * 1024):
+                    stream.write(block)
+        extract_function_artifact(layer, package, layers[0]["digest"])
+        print("Function Linux dependencies built in ACR; artifact ZIP verified.", flush=True)
 
     def _deploy_zip(self, package: Path) -> None:
         scm = self.outputs["apiEndpoint"].replace(".azurewebsites.net", ".scm.azurewebsites.net")

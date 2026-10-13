@@ -20,6 +20,7 @@ param prebuiltDeployment bool = false
 param pauseProcessing bool = false
 @allowed(['identity', 'keys'])
 param authMode string = 'identity'
+param resourceTags object = {}
 
 resource sa 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: existingStorageAccountName
@@ -81,6 +82,7 @@ module fn 'modules/ingestion-function.bicep' = {
     prebuiltDeployment: prebuiltDeployment
     pauseProcessing: pauseProcessing
     authMode: authMode
+    resourceTags: resourceTags
     searchApiKey: authMode == 'keys' ? searchService.listAdminKeys().primaryKey : ''
     docIntelligenceApiKey: authMode == 'keys' ? di.listKeys().key1 : ''
     foundryApiKey: authMode == 'keys' ? foundry.listKeys().key1 : ''

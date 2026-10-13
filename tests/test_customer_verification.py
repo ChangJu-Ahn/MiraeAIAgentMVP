@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from scripts import deploy_demo as demo
+from ingest.blob import document_metadata
 
 
 def runner(tmp_path):
@@ -33,7 +34,6 @@ def test_default_smoke_never_overwrites_an_unrelated_customer_pdf(monkeypatch, t
 def test_real_verification_waits_for_exact_event_job_and_persists_no_credentials(monkeypatch, tmp_path, image_only):
     import azure.storage.blob
     import azure.search.documents
-    from ingest.blob import document_metadata
     from pathlib import Path
     import hashlib
     import json
@@ -91,7 +91,6 @@ def test_real_verification_waits_for_exact_event_job_and_persists_no_credentials
 
 def test_failed_job_does_not_write_a_verified_deployment_summary(monkeypatch, tmp_path):
     import azure.storage.blob
-    from ingest.blob import document_metadata
     import hashlib
     store = MagicMock()
     store.get_blob_client.return_value.exists.return_value = False

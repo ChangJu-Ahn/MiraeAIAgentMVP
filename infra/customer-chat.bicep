@@ -11,6 +11,7 @@ param authMode string = 'identity'
 param searchName string = ''
 param foundryName string = ''
 param acrName string = ''
+param resourceTags object = {}
 
 resource search 'Microsoft.Search/searchServices@2024-06-01-preview' existing = {
   name: searchName
@@ -42,6 +43,7 @@ module chat 'modules/containerapp.bicep' = {
     ]) : ''
     registryUsername: authMode == 'keys' ? registry.listCredentials().username : ''
     registryPasswordSecretRef: authMode == 'keys' ? 'acr-password' : ''
+    resourceTags: resourceTags
   }
 }
 

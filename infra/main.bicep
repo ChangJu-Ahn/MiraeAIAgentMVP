@@ -28,6 +28,7 @@ param deployApp bool = false
 param ingestApiEndpoint string = ''
 @description('False is used only by the separate Contributor/API-key customer demo.')
 param useManagedIdentity bool = true
+param resourceTags object = {}
 
 module search 'modules/search.bicep' = {
   name: 'search'
@@ -36,6 +37,7 @@ module search 'modules/search.bicep' = {
     location: location
     sku: 'basic'
     disableLocalAuth: useManagedIdentity
+    resourceTags: resourceTags
   }
 }
 
@@ -45,6 +47,7 @@ module di 'modules/docintelligence.bicep' = {
     name: 'di-mirae-${suffix}'
     location: location
     disableLocalAuth: useManagedIdentity
+    resourceTags: resourceTags
   }
 }
 
@@ -63,6 +66,7 @@ module foundry 'modules/foundry.bicep' = {
     reasoningModelVersion: reasoningModelVersion
     reasoningCapacity: reasoningCapacity
     disableLocalAuth: useManagedIdentity
+    resourceTags: resourceTags
   }
 }
 
@@ -83,6 +87,7 @@ module observability 'modules/observability.bicep' = {
   params: {
     name: 'mirae-${suffix}'
     location: location
+    resourceTags: resourceTags
   }
 }
 
@@ -100,6 +105,7 @@ module identity 'modules/identity.bicep' = if (useManagedIdentity) {
   params: {
     name: 'id-mirae-${suffix}'
     location: location
+    resourceTags: resourceTags
   }
 }
 
@@ -109,6 +115,7 @@ module acr 'modules/acr.bicep' = {
     name: 'acrmirae${suffix}'
     location: location
     adminUserEnabled: !useManagedIdentity
+    resourceTags: resourceTags
   }
 }
 
@@ -118,6 +125,7 @@ module containerenv 'modules/containerenv.bicep' = {
     name: 'cae-mirae-${suffix}'
     location: location
     logAnalyticsName: observability.outputs.logAnalyticsName
+    resourceTags: resourceTags
   }
 }
 
@@ -130,6 +138,7 @@ module containerapp 'modules/containerapp.bicep' = if (deployApp) {
     acrLoginServer: acr.outputs.loginServer
     uamiId: identity.?outputs.id ?? ''
     image: containerImage
+    resourceTags: resourceTags
     envVars: [
       { name: 'SEARCH_ENDPOINT', value: search.outputs.searchEndpoint }
       { name: 'SEARCH_INDEX_NARRATIVE', value: 'narrative-index' }

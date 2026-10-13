@@ -3,6 +3,7 @@ param name string
 param location string
 @description('기존 Log Analytics workspace 이름 (observability 모듈 생성분 재사용)')
 param logAnalyticsName string
+param resourceTags object = {}
 
 resource law 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: logAnalyticsName
@@ -11,6 +12,7 @@ resource law 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
 resource env 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: name
   location: location
+  tags: resourceTags
   properties: {
     appLogsConfiguration: {
       destination: 'log-analytics'

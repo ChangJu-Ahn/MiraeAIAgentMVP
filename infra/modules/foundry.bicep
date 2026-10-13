@@ -18,10 +18,12 @@ param reasoningModelVersion string = '2026-03-17'
 param reasoningDeploymentName string = 'reasoning'
 param reasoningCapacity int = 2000
 param disableLocalAuth bool = true
+param resourceTags object = {}
 
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: name
   location: location
+  tags: resourceTags
   kind: 'AIServices'
   sku: {
     name: 'S0'
@@ -41,6 +43,7 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
   parent: account
   name: projectName
   location: location
+  tags: resourceTags
   identity: {
     type: 'SystemAssigned'
   }
@@ -50,6 +53,7 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
 resource chat 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = {
   parent: account
   name: chatDeploymentName
+  dependsOn: [project]
   sku: {
     name: 'GlobalStandard'
     capacity: chatCapacity

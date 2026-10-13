@@ -4,6 +4,55 @@ Status: Validated
 
 Recipe: Azure CLI code updates on existing resources (Bicep retained as infrastructure reference)
 
+## Customer-persona live test (2026-10-13, explicitly authorized)
+
+- Deploy into new `rg-mirae-customer-e2e-20261013`, Korea Central, subscription `347e0df7-94e9-4feb-b42d-57d7e49566f2`.
+- Clone published main `6656b3d` into a separate disposable test checkout. Execute the documented `uv run --python 3.12 --frozen python scripts/deploy_demo.py ... --yes` path, API-key mode, without reusing existing service/runtime artifacts.
+- Preserve the existing keyless demo and all its resources/data. The user explicitly approved creating this additional billable RG and uploading all five bundled PDFs.
+- Verify one-command bootstrap, actual HTTP upload/Event Grid/timer processing, five completed PDFs, all five indexes, source/image links, hybrid search and live question-picker/chat responses.
+- If a deployment defect appears, reproduce it, add a regression test and fix the package; rerun safely against only this tagged test RG.
+- Produce a customer-facing results report with exact source revisions, commands, timings, issues/fixes, tested permission scope versus actual login, endpoints and retained resource/cost notes. No service keys or tokens in report/logs.
+- Existing authenticated user/subscription is reused; this proves a new resource-group deployment, not a truly empty subscription or a restricted-Contributor-only identity.
+- Fresh clone resolved to published commit `6656b3d6add34cc7d5d21f2842058c849d7f115a`; its unchanged `--check` command passed model/SKU/quota and template compilation checks.
+- Customer-specific suite: 32 passed. Prior API-key ARM validation/what-if succeeded; the deploy command repeats ARM validation in the newly created RG before provisioning.
+- Target RG was absent before the test. Region/subscription are the same user-authorized target as earlier deployments; no existing test/demo RG is reused.
+- Initial published command failed on Foundry child-operation concurrency (`RequestConflict`). The project/model resources are now serialized; a regression test reproduces the original template gap.
+- User supplied and authorized `SecurityControl=Ignore` for this policy-restricted subscription. An explicit `--resource-tag` option propagates only user-requested tags; defaults remain empty.
+- Local PyPI Linux-wheel downloads failed on the session's file-CDN connection. The default Function build now runs in customer ACR, packages a single scratch-image artifact layer and verifies its digest before deployment. No old runtime artifacts are used.
+- Revised customer command completed with exit 0 through provisioning, Function package/deploy, indexes/Event Grid, chatbot build and real default-sample ingestion. All test resources are in the new RG.
+- A live generic-document question initially skipped search and requested an attachment. The shared prompt now requires retrieval before claiming missing uploads; a regression test and actual API-key search/answer check pass.
+- Original five PDFs were submitted through the new HTTP upload API, with hashes recorded, and completed in checkpointed 25-page ranges. No manual queue enqueue or data-plane identity roles were used.
+- Source regression validation after these fixes: 505 passed, 10 skipped, 7 live-test cases deselected; lock consistency, whitespace and both customer Bicep compilations pass. Service key values were compared in memory against deployment logs, public output JSON and report; none were present.
+- All five PDFs completed at 13:46:49 UTC. Strict source checksum/ETag, page/type/ID, PNG/PDF, vector schema, hybrid searches, fund populations and fact provenance checks pass: narrative 2488 (one synthetic sample included), tables 802, figures 30, catalog 89, facts 2340.
+- First live 16-question run passed 14 cases; Q14/Q15 failed with E_STREAM. Centralized exceptions prove the default reasoning capacity 10 exhausted the measured 10 RPM/10000 TPM limit. Raise only the customer reasoning default to 100 (GlobalStandard consumption pricing, quota checked), repeat validation/deployment and all questions, and preserve the first-run failure evidence.
+
+### All validation checks pass — customer capacity correction
+
+- [x] Core validation: explicit-subscription CLI/auth, customer Bicep build, ARM validation and what-if via the shared validation helper.
+- [x] Docker build: existing customer ACR Function/chat images built successfully; no application image source changed for the capacity correction.
+- [x] Azure Policy validation: explicit user-approved tag retained; key-bearing resources permit local auth.
+- [x] Offline source regression: 505 passed, 10 skipped, 7 live cases deselected; corrected CLI/default template agree on capacity 100.
+
+### Validation Proof — customer correction, 2026-10-13
+
+- Shared `azure-validate/.../validate-deployment.sh --scope group --resource-group rg-mirae-customer-e2e-20261013 --subscription 347e0df7-94e9-4feb-b42d-57d7e49566f2 --template infra/customer-demo.bicep --parameters <non-secret customer-final-validate.parameters.json>` returned OVERALL: PASS for CLI, authentication, compile, ARM validation and what-if.
+- Independent ARM validation of API keys, `SecurityControl=Ignore` and reasoning capacity 100 returned Succeeded / error null. ResourceIdOnly what-if returned Succeeded with 16 Deploy, 2 Ignore and **zero resource Delete**; the helper's textual field-change counts are not resource deletion counts.
+- Corrected `scripts/deploy_demo.py ... --resource-tag SecurityControl=Ignore --check` passed actual model/SKU and available quota at capacity 100. Source compile, both Bicep entry points and 505 offline tests pass.
+- Static role verification: customer keys mode disables main RBAC/UAMI, operatorStorage and ingestion RBAC; data access uses the explicitly selected service keys. Existing identity-mode defaults remain unchanged.
+- Current login's actual management permissions include `*`; this is not a restricted-Contributor identity test. No roles/permissions were added. Actual five-document API-key data-plane acceptance already passes.
+- Policy assignments were retrieved for the explicit subscription. User-approved tag and observed local-auth/shared-key configuration were retained; no policy definitions were edited.
+- Already successful customer ACR Function/chat builds cover the unchanged runtime image inputs. The forthcoming same-command repeat rebuilds both artifacts and verifies the corrected capacity and key-auth registry retrieval.
+
+### Final customer acceptance — 2026-10-13
+
+- Published correction source `4fcdf890010a0bf16efabc1f32471e2ee12b7404`, clean customer clone. Exact documented command with the user-approved tag completed at 14:16:27 UTC, exit 0; elapsed 9m19s from 14:07:08.
+- Both cloud packages rebuilt through the documented flow. Key-mode ACR artifact retrieval, digest verification, ZIP deployment, model updates, indexes/events, chatbot and default sample all pass. Actual reasoning limits now 100 RPM / 100000 TPM.
+- Before/after source SHA256, ETags, fingerprints, per-document/index counts, selected content/source record digests and all catalog/fact record digests match. Strict key-auth index/source/figure/population/hybrid verification passes again.
+- Full real-browser 16-question rerun passes 16/16 with no E_STREAM. Mean 19.6s, median 12.35s, maximum 81.8s. The initial 14/16 failure and exact token-limit exception are preserved in evidence/report.
+- Existing keyless chatbot remains on `thinking-label-20261013`, same healthy revision. New group still has zero package-created role assignments. Existing resources/data were not modified.
+- Report records measured results plus scope limits: existing subscription, broader-than-Contributor login, corrected package repeat on the originally new RG rather than another empty RG, functional assertions rather than all LLM-judge/citation-quality metrics. Resources and all test PDFs are retained.
+- Fresh final gates after the full redeployment: 505 offline tests pass, both Bicep entry points/lock/diff checks pass; live figure renders visibly with positive naturalWidth (11.6s) and desktop/mobile question picker checks pass again. Final log/public output/report contain no actual Search/Foundry/DI/Storage/ACR service secrets.
+
 ## Customer deployment package (2026-10-13)
 
 - Request: let a customer copy the repository, sign in to Azure, run one command and test the chatbot plus Blob ingestion in their own environment.
@@ -28,7 +77,7 @@ Recipe: Azure CLI code updates on existing resources (Bicep retained as infrastr
 - [x] Fresh/resume command sequence, interrupted deployment recovery, safe sample handling, errors and secret-free output tests.
 - [x] Actual Linux x86_64 runtime archive composition checked; new wheel-fetch egress requirement documented.
 
-The first billable deployment into a new customer-owned RG is outside this package-preparation validation. It was not executed here; the package is not described as already deployed to a customer tenant.
+At package-preparation validation time, no new billable customer RG had been deployed. The separately authorized live customer-persona test and its actual results are recorded above and in the customer acceptance report.
 
 ## Reasoning label correction (2026-10-13)
 

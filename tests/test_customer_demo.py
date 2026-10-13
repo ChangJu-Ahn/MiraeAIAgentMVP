@@ -13,8 +13,29 @@ def test_plan_requires_a_customer_resource_group_and_does_not_target_author_subs
     text = (ROOT / "scripts/deploy_demo.py").read_text()
     assert "347e0df7" not in text and "rg-mirae-ai-agent-poc" not in text
     assert args.check and not args.yes
+    assert args.function_build == "cloud"
+    assert args.reasoning_capacity == 100
+    assert "param reasoningCapacity int = 100" in (ROOT / "infra/customer-demo.bicep").read_text()
     for filename in ("deploy.sh", "verify_availability.sh"):
         assert "347e0df7" not in (ROOT / "scripts" / filename).read_text()
+
+
+def test_policy_tags_are_explicit_and_propagate_without_automatic_exemption():
+    args = demo.parse_args(["--resource-group", "rg-demo", "--check"])
+    assert demo.resource_tags(args) == {}
+    args = demo.parse_args([
+        "--resource-group", "rg-demo", "--check", "--resource-tag", "SecurityControl=Ignore",
+        "--resource-tag", "purpose=customer-test",
+    ])
+    assert demo.resource_tags(args) == {"SecurityControl": "Ignore", "purpose": "customer-test"}
+    assert demo.deployment_values(args, "", "User")["resourceTags"]["value"]["SecurityControl"] == "Ignore"
+    assert demo.chat_parameters({
+        "containerAppName": "chat", "containerEnvironmentId": "env", "acrLoginServer": "acr",
+        "uamiId": "", "uamiClientId": "", "searchEndpoint": "search",
+        "foundryProjectEndpoint": "model", "apiEndpoint": "fn", "appInsightsConnectionString": "",
+        "reasoningDeploymentName": "reasoning", "chatDeploymentName": "chat",
+        "embeddingDeploymentName": "embedding", "resourceTags": demo.resource_tags(args),
+    }, "image", "koreacentral")["resourceTags"]["value"]["SecurityControl"] == "Ignore"
 
 
 def test_existing_unrelated_resource_group_is_refused():
@@ -140,7 +161,7 @@ def test_deployment_stops_after_a_stage_failure_without_delete_or_success(monkey
 
 
 def test_real_function_deployment_sequence_uses_prebuilt_linux_package_then_activates(monkeypatch, tmp_path):
-    args = demo.parse_args(["--resource-group", "rg-demo", "--yes"])
+    args = demo.parse_args(["--resource-group", "rg-demo", "--yes", "--function-build", "local"])
     runner = demo.Deployment(args, ROOT, tmp_path)
     runner.outputs = {
         "functionAppName": "demo-function", "functionAppId": "/resource/id",
@@ -165,6 +186,60 @@ def test_real_function_deployment_sequence_uses_prebuilt_linux_package_then_acti
     assert [step[0] for step in steps] == ["install", "zip", "az", "az", "http", "http"]
     assert "syncfunctiontriggers" in steps[2][1][-1]
     assert "AzureWebJobs.process_jobs.Disabled=false" in steps[3][1]
+
+
+def test_cloud_function_package_needs_no_local_linux_wheel_download(monkeypatch, tmp_path):
+    runner = demo.Deployment(
+        demo.parse_args(["--resource-group", "rg-demo", "--yes"]), ROOT, tmp_path,
+    )
+    runner.outputs = {"functionAppName": "function", "functionAppId": "/id",
+                      "apiEndpoint": "https://function.azurewebsites.net"}
+    events = []
+    class CLI:
+        def run(self, *args, **kwargs):
+            events.append("az")
+    runner.cli = CLI()
+    def cloud(path):
+        path.write_bytes(b"prebuilt")
+        events.append("cloud")
+    monkeypatch.setattr(runner, "_cloud_function_package", cloud)
+    monkeypatch.setattr(runner, "_deploy_zip", lambda path: events.append("zip"))
+    monkeypatch.setattr(demo, "command", lambda *a, **kw: pytest.fail("no local pip"))
+    monkeypatch.setattr(demo, "wait_http", lambda *a, **kw: events.append("http"))
+    runner.deploy_function()
+    assert events == ["cloud", "zip", "az", "az", "http", "http"]
+
+
+def test_cloud_package_context_cannot_include_environment_or_credentials(tmp_path):
+    demo.create_function_context(ROOT, tmp_path / "function")
+    files = {str(p.relative_to(tmp_path / "function")) for p in (tmp_path / "function").rglob("*") if p.is_file()}
+    assert {"Dockerfile", "build_function_package.py", "function_app.py", "ingest/jobs.py",
+            "config/azure_auth.py", "constraints.txt", "requirements.txt", ".deployment"} <= files
+    assert not any(".env" in f or "local.settings.json" in f or ".azure" in f for f in files)
+
+
+def test_cloud_artifact_is_digest_verified_and_never_extracts_unrelated_tar_entries(tmp_path):
+    import io
+    import hashlib
+    import tarfile
+    from zipfile import ZipFile
+    zipped = io.BytesIO()
+    with ZipFile(zipped, "w") as archive:
+        for name in ("function_app.py", "ingest/jobs.py", ".python_packages/lib/site-packages/pypdf/__init__.py"):
+            archive.writestr(name, "# test")
+    layer = tmp_path / "layer.tar"
+    with tarfile.open(layer, "w") as archive:
+        for name, content in (("function.zip", zipped.getvalue()), ("../../unrelated", b"never extract")):
+            member = tarfile.TarInfo(name)
+            member.size = len(content)
+            archive.addfile(member, io.BytesIO(content))
+    digest = "sha256:" + hashlib.sha256(layer.read_bytes()).hexdigest()
+    destination = tmp_path / "function.zip"
+    demo.extract_function_artifact(layer, destination, digest)
+    assert destination.read_bytes() == zipped.getvalue()
+    assert not (tmp_path.parent / "unrelated").exists()
+    with pytest.raises(RuntimeError, match="digest"):
+        demo.extract_function_artifact(layer, tmp_path / "bad.zip", "sha256:0000")
 
 
 def test_zip_failure_is_never_treated_as_success(monkeypatch, tmp_path):
@@ -255,6 +330,12 @@ def test_customer_template_wires_every_component_and_small_model_capacities():
     assert "Microsoft.Storage/storageAccounts" in text
     assert "allowSharedKeyAccess: authMode == 'keys'" in text
     assert "allowBlobPublicAccess: false" in text
+
+
+def test_foundry_project_and_model_creation_are_serialized():
+    text = (ROOT / "infra/modules/foundry.bicep").read_text()
+    chat = text.split("resource chat ", 1)[1].split("resource embedding ", 1)[0]
+    assert "dependsOn: [project]" in chat
 
 
 def test_cli_failures_propagate_and_never_return_success_shaped_empty_output(monkeypatch):

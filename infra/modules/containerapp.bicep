@@ -14,10 +14,12 @@ param secretsJson string = ''
 param registryUsername string = ''
 @secure()
 param registryPasswordSecretRef string = ''
+param resourceTags object = {}
 
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
+  tags: resourceTags
   identity: empty(uamiId) ? null : {
     type: 'UserAssigned'
     userAssignedIdentities: {
