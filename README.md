@@ -19,7 +19,7 @@ uv run --python 3.12 --frozen python scripts/deploy_demo.py --resource-group rg-
 
 `rg-my-mirae-component-demo`는 **고객이 사용할 새 전용 리소스 그룹 이름**으로 바꿉니다. 로그인한 현재 구독에 기본 `koreacentral` 지역으로 배포합니다. 특정 구독·지역을 사용하려면 `--subscription "<구독-ID>" --location "<지역>"`을 추가하세요. PowerShell에서도 같은 한 줄 명령을 사용합니다.
 
-명령 하나가 리소스·API 키 연결·챗봇 이미지·Function·이벤트 구독·Search 인덱스를 구성하고, 작은 샘플 PDF를 실제 업로드해 자동 적재까지 확인합니다. 실제 키는 Azure 앱 설정·비밀 참조에 저장하고 소스나 배포 결과 파일에 남기지 않습니다. 원본 PDF와 처리 결과는 고객 구독의 Storage에 저장되며 작성자의 기존 리소스를 사용하지 않습니다.
+명령 하나가 리소스·API 키 연결·챗봇 이미지·Function·이벤트 구독·Search 인덱스를 구성하고, 작은 샘플 PDF를 실제 업로드해 자동 적재까지 확인합니다. 챗봇과 Function 의존성은 고객 ACR에서 빌드하므로 로컬 Docker/Functions 도구가 필요하지 않습니다. 실제 키는 Azure 앱 설정·비밀 참조에 저장하고 소스나 배포 결과 파일에 남기지 않습니다. 원본 PDF와 처리 결과는 고객 구독의 Storage에 저장되며 작성자의 기존 리소스를 사용하지 않습니다.
 
 ### 배포 결과 확인
 
@@ -46,6 +46,8 @@ uv run --python 3.12 --frozen python scripts/deploy_demo.py --resource-group rg-
 같은 배포 명령을 다시 실행하면 **이 명령으로 만든 전용 그룹만 갱신**하며 기존 PDF나 인덱스를 초기화하지 않습니다. PDF 작업이 진행 중이면 완료 후 재실행합니다. 모델 접근·quota·Azure 정책·권한 문제는 오류로 보고하고 중단하므로, 해당 원인을 해결한 뒤 같은 명령을 다시 실행하세요.
 
 **유료 Azure 리소스와 공개 데모 페이지가 생성됩니다.** API 키/Storage 공유키 사용을 금지하는 정책이 있으면 배포가 중단됩니다. 민감한 문서는 업로드하지 마세요. 기존 키리스 배포는 변경하지 않으며, 고급 `--auth-mode identity` 비교 예제에는 역할 할당 권한이 별도로 필요합니다. 준비 사항, 구조도, 키 연결, 테스트·정리 방법은 **[고객용 데모 가이드](CUSTOMER_DEMO.md)**에 정리했습니다.
+
+조직에서 승인된 태그가 필요한 경우 `--resource-tag KEY=VALUE`를 추가합니다. `SecurityControl=Ignore` 같은 정책 예외 값은 해당 조직에서 명시적으로 허용된 경우에만 사용하며, 패키지의 기본값으로 넣지 않습니다.
 
 ## 흐름
 

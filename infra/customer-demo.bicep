@@ -5,6 +5,7 @@ param modelLocation string = location
 param developerObjectId string = ''
 @allowed(['keys', 'identity'])
 param authMode string = 'keys'
+param resourceTags object = {}
 @allowed(['User', 'ServicePrincipal'])
 param developerPrincipalType string = 'User'
 param chatModelName string = 'gpt-4o'
@@ -41,6 +42,7 @@ module base 'main.bicep' = {
     embeddingCapacity: embeddingCapacity
     deployApp: false
     useManagedIdentity: authMode == 'identity'
+    resourceTags: resourceTags
   }
 }
 
@@ -49,6 +51,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   location: location
   sku: { name: 'Standard_LRS' }
   kind: 'StorageV2'
+  tags: resourceTags
   properties: {
     accessTier: 'Hot'
     supportsHttpsTrafficOnly: true
@@ -84,6 +87,7 @@ module ingestion 'ingestion.bicep' = {
     prebuiltDeployment: true
     pauseProcessing: true
     authMode: authMode
+    resourceTags: resourceTags
   }
 }
 
@@ -114,3 +118,4 @@ output containerAppName string = 'ca-mirae-${suffix}'
 output appInsightsConnectionString string = base.outputs.appInsightsConnectionString
 output foundryName string = base.outputs.foundryName
 output authenticationMode string = authMode
+output resourceTags object = resourceTags

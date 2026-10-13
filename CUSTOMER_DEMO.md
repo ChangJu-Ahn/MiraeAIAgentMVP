@@ -49,7 +49,7 @@ flowchart LR
 
 용량은 Azure의 모델별 배포 용량 단위입니다. 분당 토큰·요청 수와 변환 관계는 모델마다 다릅니다. 배포 명령은 실제 모델/SKU 목록과 남은 할당량을 확인하며, 모델을 임의로 대체하지 않습니다.
 
-**로컬 Docker, Functions Core Tools, azd는 필요하지 않습니다.** 챗봇 이미지는 ACR에서 빌드하고 Function은 검증된 버전의 Linux Python wheel을 로컬에서 ZIP으로 패키징합니다. GitHub, PyPI 파일 CDN, 컨테이너 레지스트리 및 Azure 관리/데이터 API로의 네트워크 접근이 필요합니다.
+**로컬 Docker, Functions Core Tools, azd는 필요하지 않습니다.** 챗봇 이미지와 Function의 Linux 의존성은 고객 ACR에서 빌드합니다. Function ZIP은 scratch 이미지의 단일 아티팩트 레이어에서 digest를 검증해 가져오므로, 로컬에서 Linux wheel을 다시 설치하지 않습니다. 최초 `uv` 환경 준비에는 GitHub/PyPI 접근이 필요하며, 배포에는 컨테이너 레지스트리 및 Azure 관리/데이터 API 접근이 필요합니다. 고급 `--function-build local`은 기존 로컬 wheel 패키징 방식을 선택합니다.
 
 ## 3. 복사·로그인·한 명령 배포
 
@@ -86,7 +86,7 @@ uv run --python 3.12 --frozen python scripts/deploy_demo.py \
 
 1. 로그인 구독·배포자·모델 버전/SKU/용량·남은 quota·전용 RG 여부 확인, Bicep 컴파일
 2. 고객 리소스 그룹에 Search·DI·Foundry·Storage·Function·모니터링·ACR·Container Apps 환경 구성. API 키를 Azure 앱 설정·비밀 참조로 연결
-3. Function의 Linux 의존성과 애플리케이션을 패키징하고 배포. 서비스 준비 상태 확인
+3. Function의 Linux 의존성과 애플리케이션을 ACR에서 패키징하고 ZIP으로 배포. 서비스 준비 상태 확인
 4. Search 인덱스 5개 생성/갱신, BlobCreated 이벤트 구독 연결
 5. 챗봇 이미지를 ACR에서 빌드하고 **실제 이미지**로 챗봇 생성/갱신. 중간 placeholder 앱은 만들지 않음
 6. 작은 PDF를 생성해 실제 업로드 API로 전송하고, Event Grid → timer worker → Search 적재 → 완료 문서 목록까지 확인
@@ -137,6 +137,8 @@ Storage는 HTTPS를 사용하고 익명 Blob 접근은 끕니다. **고객용 AP
 
 **챗봇·업로드·진행 상태 페이지에는 사용자 인증이 없습니다.** 따라서 민감한 문서를 올리지 마세요. 고객용 기본 구성은 공개 네트워크를 사용합니다. 조직에서 private endpoint, 방화벽, 인증 등을 강제하는 환경은 해당 정책에 맞게 Bicep을 조정해야 합니다.
 
+조직에서 승인된 리소스 태그가 필요한 경우 `--resource-tag KEY=VALUE`를 지정할 수 있습니다. 태그는 전용 그룹과 생성 리소스에 전파됩니다. 예를 들어 **해당 조직 관리자가 허용한 경우에만** `--resource-tag SecurityControl=Ignore`를 사용합니다. 이 값은 기본값이 아니며 정책 예외 승인을 대신하지 않습니다.
+
 ## 7. 배포 전 확인·문제 해결
 
 리소스를 만들지 않는 사전 확인:
@@ -156,7 +158,7 @@ API 키 모드는 배포자의 object ID를 요구하지 않습니다. 고급 `-
 | 모델/할당량 없음 | 선택한 모델 지역의 Foundry 모델 목록·quota |
 | `AuthorizationFailed` | Contributor 권한의 범위, 공급자 등록, 서비스 키 조회·리소스 생성 권한 |
 | shared key / local auth 정책 거부 | API 키 방식 허용 여부. 기존 정책을 우회하지 말고 관리자와 대안 확인 |
-| Linux wheel 다운로드 실패 | PyPI/CDN egress, 프록시, 인증서. TLS를 끄지 말고 네트워크 설정 수정 |
+| Linux wheel 다운로드 실패 | 기본 cloud 빌드는 ACR 빌드 로그의 PyPI/CDN 접근 확인. local 모드라면 로컬 프록시/인증서 확인. TLS를 끄지 않음 |
 | Function 배포 실패/timeout | Function SCM → Deployments와 Application Insights. 재실행 전에 PDF 작업 완료 여부 확인 |
 | PDF 처리 실패 | `/api/jobs`의 `stage`·`error`, Function 로그의 `ingest` 단계 |
 | 챗봇 이미지 pull 실패 | ACR 자격증명 비밀 참조. identity 모드라면 `AcrPull` 역할 |

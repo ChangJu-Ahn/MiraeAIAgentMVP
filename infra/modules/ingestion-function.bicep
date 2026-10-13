@@ -17,6 +17,7 @@ param maxUploadMb int = 50
 param prebuiltDeployment bool = false
 param pauseProcessing bool = false
 param authMode string = 'identity'
+param resourceTags object = {}
 @secure()
 param searchApiKey string = ''
 @secure()
@@ -41,6 +42,7 @@ var blobEndpoint = 'https://${sa.name}.blob.${environment().suffixes.storage}'
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${name}-plan'
   location: location
+  tags: resourceTags
   kind: 'linux'
   sku: {
     name: 'B1'
@@ -54,6 +56,7 @@ resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
 resource funcApp 'Microsoft.Web/sites@2024-04-01' = {
   name: name
   location: location
+  tags: resourceTags
   kind: 'functionapp,linux'
   identity: {
     type: 'SystemAssigned'

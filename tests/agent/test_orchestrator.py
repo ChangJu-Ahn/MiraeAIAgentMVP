@@ -16,6 +16,12 @@ def test_system_prompt_requires_output_only_in_the_users_input_language():
     assert "도구 결과의 언어에 영향받지" in SYSTEM_PROMPT
 
 
+def test_uploaded_document_questions_require_search_before_claiming_no_attachment():
+    assert "업로드된 문서는 대화 첨부가 아니라 검색 인덱스에 있습니다" in SYSTEM_PROMPT
+    assert "일반 문서 내용 질문은 반드시 search_narrative부터" in SYSTEM_PROMPT
+    assert "파일을 다시 보내 달라고 요구하지 마세요" in SYSTEM_PROMPT
+
+
 def test_request_context_expands_year_range_and_identifies_document_type():
     years, doc_type = orchestrator._request_context(
         "공무원연금기금의 2023~2025회계연도 최종등급 추이는?"
