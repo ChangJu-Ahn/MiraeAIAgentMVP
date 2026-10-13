@@ -19,6 +19,7 @@ from azure.storage.blob import BlobClient, BlobServiceClient, ContentSettings
 from pydantic import BaseModel, Field
 
 from config.settings import get_settings
+from config.azure_auth import secret_value
 from ingest.corpus import CORPUS
 from ingest.run import run
 
@@ -67,9 +68,12 @@ class BlobStore:
         if not settings.storage_blob_endpoint or not settings.ingest_api_endpoint:
             raise ValueError("STORAGE_BLOB_ENDPOINT and INGEST_API_ENDPOINT are required")
         self.endpoint = settings.ingest_api_endpoint.rstrip("/")
-        self.service = BlobServiceClient(
-            settings.storage_blob_endpoint, credential=credential or DefaultAzureCredential(),
-        )
+        if credential is None and settings.azure_auth_mode == "keys":
+            self.service = BlobServiceClient.from_connection_string(secret_value("storage_connection_string"))
+        else:
+            self.service = BlobServiceClient(
+                settings.storage_blob_endpoint, credential=credential or DefaultAzureCredential(),
+            )
         self.inputs = self.service.get_container_client(settings.upload_container)
         self.assets = self.service.get_container_client(settings.assets_container)
 

@@ -2,6 +2,51 @@
 
 기금운용평가 보고서와 지침을 근거로 답하는 Microsoft Foundry 기반 Agentic RAG PoC입니다.
 
+## 고객용 Azure 컴포넌트 조합 예제
+
+레포를 복사한 고객이 **자신의 Azure 구독에 전체 데모를 배포하고 서비스 간 연결을 확인**할 수 있는 패키지입니다. 운영용 플랫폼이 아니라 Blob → Event Grid → Function → Document Intelligence/Foundry → AI Search → 챗봇의 조합 예시입니다.
+
+### 빠른 시작
+
+먼저 **Git, Azure CLI, uv**를 설치하고 **구독 범위 Contributor 권한과 Foundry 모델 quota**를 준비합니다. 고객용 기본 구성은 **API 키 방식**이며 역할 할당 권한이나 수동 키 입력이 필요하지 않습니다. 로컬 Docker나 Functions Core Tools는 필요하지 않습니다.
+
+```bash
+git clone https://github.com/ChangJu-Ahn/MiraeAIAgentMVP.git
+cd MiraeAIAgentMVP
+az login
+uv run --python 3.12 --frozen python scripts/deploy_demo.py --resource-group rg-my-mirae-component-demo --yes
+```
+
+`rg-my-mirae-component-demo`는 **고객이 사용할 새 전용 리소스 그룹 이름**으로 바꿉니다. 로그인한 현재 구독에 기본 `koreacentral` 지역으로 배포합니다. 특정 구독·지역을 사용하려면 `--subscription "<구독-ID>" --location "<지역>"`을 추가하세요. PowerShell에서도 같은 한 줄 명령을 사용합니다.
+
+명령 하나가 리소스·API 키 연결·챗봇 이미지·Function·이벤트 구독·Search 인덱스를 구성하고, 작은 샘플 PDF를 실제 업로드해 자동 적재까지 확인합니다. 실제 키는 Azure 앱 설정·비밀 참조에 저장하고 소스나 배포 결과 파일에 남기지 않습니다. 원본 PDF와 처리 결과는 고객 구독의 Storage에 저장되며 작성자의 기존 리소스를 사용하지 않습니다.
+
+### 배포 결과 확인
+
+완료하면 **챗봇 URL, PDF 업로드 URL, 진행 상태 URL, Storage 계정명**을 출력합니다. 결과는 `.azure/customer/<리소스-그룹>/deployment.json`에도 저장됩니다.
+
+1. 챗봇에서 **“Azure component demo 문서의 내용을 알려줘”**라고 질문합니다.
+2. 출력된 업로드 페이지로 다른 PDF를 올리고, `/api/jobs`에서 처리 완료를 확인합니다.
+3. Azure Portal에서 Blob → Event Grid → Function → Document Intelligence/Foundry → Search의 리소스 연결과 앱 비밀 참조를 살펴봅니다.
+
+기금 보고서 기준 `질문 예시`를 테스트하려면 실제 보고서를 추가로 올립니다. 처음부터 실제 보고서를 자동 적재 확인에 사용하려면:
+
+```bash
+uv run --python 3.12 --frozen python scripts/deploy_demo.py --resource-group rg-my-mirae-component-demo --sample-pdf "Docs/2025회계연도 기금운용평가보고서(자산운용부문).pdf" --yes
+```
+
+### 배포 전 점검·재실행
+
+리소스를 만들기 전 로그인·모델·quota·템플릿만 확인하려면:
+
+```bash
+uv run --python 3.12 --frozen python scripts/deploy_demo.py --resource-group rg-my-mirae-component-demo --check
+```
+
+같은 배포 명령을 다시 실행하면 **이 명령으로 만든 전용 그룹만 갱신**하며 기존 PDF나 인덱스를 초기화하지 않습니다. PDF 작업이 진행 중이면 완료 후 재실행합니다. 모델 접근·quota·Azure 정책·권한 문제는 오류로 보고하고 중단하므로, 해당 원인을 해결한 뒤 같은 명령을 다시 실행하세요.
+
+**유료 Azure 리소스와 공개 데모 페이지가 생성됩니다.** API 키/Storage 공유키 사용을 금지하는 정책이 있으면 배포가 중단됩니다. 민감한 문서는 업로드하지 마세요. 기존 키리스 배포는 변경하지 않으며, 고급 `--auth-mode identity` 비교 예제에는 역할 할당 권한이 별도로 필요합니다. 준비 사항, 구조도, 키 연결, 테스트·정리 방법은 **[고객용 데모 가이드](CUSTOMER_DEMO.md)**에 정리했습니다.
+
 ## 흐름
 
 1. Azure Document Intelligence가 PDF의 본문, 표, 그림, 페이지 구조를 추출합니다.
@@ -11,6 +56,8 @@
 5. 평가 파이프라인이 동일한 Foundry judge deployment로 답변과 실제 검색 근거의 다섯 품질 기준을 검증합니다.
 
 ## 기술 스택
+
+아래 구성은 기존 키리스 PoC의 상세 설명입니다. **고객용 빠른 시작은 같은 서비스를 API 키로 연결**하며, 인증 차이는 [고객용 데모 가이드](CUSTOMER_DEMO.md#6-contributor-배포용-api-키-연결)를 참고하세요.
 
 ### 애플리케이션 및 오픈소스
 
@@ -358,9 +405,12 @@ show_source_page(page)
 uv sync
 ```
 
-## Azure 인프라
+## 기존 키리스 인프라 예제 (고급)
+
+고객의 Contributor/API 키 배포는 위 **빠른 시작의 `deploy_demo.py`**를 사용합니다. 아래는 관리 ID/RBAC 조합을 비교하기 위한 기존 인프라 스크립트이며 역할 할당 권한과 명시적 대상 설정이 필요합니다.
 
 ```bash
+export SUB="<구독-ID>" RG="<리소스-그룹>"
 bash scripts/verify_availability.sh
 bash scripts/deploy.sh
 uv run python scripts/smoke_test.py

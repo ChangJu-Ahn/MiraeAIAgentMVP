@@ -6,6 +6,7 @@ from azure.search.documents.models import VectorizedQuery
 from pydantic import BaseModel
 
 from config.settings import get_settings
+from config.azure_auth import service_credential
 from ingest.embedder import embed_texts
 
 
@@ -27,7 +28,8 @@ def hybrid_search(
     s = get_settings()
     vector = embed_texts([query])[0]
     client = SearchClient(
-        endpoint=s.search_endpoint, index_name=index_name, credential=DefaultAzureCredential()
+        endpoint=s.search_endpoint, index_name=index_name,
+        credential=service_credential("search", DefaultAzureCredential),
     )
     results = client.search(
         search_text=query,

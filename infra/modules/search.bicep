@@ -3,6 +3,7 @@ param name string
 param location string
 @allowed(['basic', 'standard', 'standard2'])
 param sku string = 'basic'
+param disableLocalAuth bool = true
 
 resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
   name: name
@@ -19,7 +20,7 @@ resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
     hostingMode: 'default'
     semanticSearch: 'standard'
     authOptions: null
-    disableLocalAuth: true
+    disableLocalAuth: disableLocalAuth
   }
 }
 

@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
 from config.settings import get_settings
+from config.azure_auth import service_credential
 from ingest.blob import (
     BlobStore, DocumentMetadata, document_fingerprint, document_metadata, source_lease,
 )
@@ -338,7 +339,7 @@ def _advance_job(
         prepared = PreparedDocument.model_validate(_required_json(store, f"{prefix}/prepared.json"))
         if job.metadata.doc_type == "report":
             s = get_settings()
-            credential = DefaultAzureCredential()
+            credential = service_credential("search", DefaultAzureCredential)
             replace_catalog(job.metadata.doc_id, prepared.catalog, SearchClient(
                 s.search_endpoint, s.search_index_catalog, credential,
             ))

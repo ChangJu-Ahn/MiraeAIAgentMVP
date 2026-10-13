@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity import DefaultAzureCredential
 from openai import AzureOpenAI
 
 from config.settings import get_settings
-
-_SCOPE = "https://cognitiveservices.azure.com/.default"
-
+from config.azure_auth import openai_auth
 
 def _client() -> tuple[AzureOpenAI, str]:
     s = get_settings()
     base = s.foundry_project_endpoint.split("/api/projects")[0]
-    provider = get_bearer_token_provider(DefaultAzureCredential(), _SCOPE)
     client = AzureOpenAI(
         azure_endpoint=base,
         api_version=s.foundry_api_version,
-        azure_ad_token_provider=provider,
+        **openai_auth(DefaultAzureCredential),
     )
     return client, s.foundry_embedding_deployment
 

@@ -17,6 +17,7 @@ param reasoningModelName string = 'gpt-5.4-mini'
 param reasoningModelVersion string = '2026-03-17'
 param reasoningDeploymentName string = 'reasoning'
 param reasoningCapacity int = 2000
+param disableLocalAuth bool = true
 
 resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: name
@@ -30,7 +31,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   }
   properties: {
     customSubDomainName: name
-    disableLocalAuth: true
+    disableLocalAuth: disableLocalAuth
     allowProjectManagement: true
     publicNetworkAccess: 'Enabled'
   }

@@ -1,8 +1,34 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Deployed and verified — reasoning status displays only 생각 중
+Status: Validated
 
 Recipe: Azure CLI code updates on existing resources (Bicep retained as infrastructure reference)
+
+## Customer deployment package (2026-10-13)
+
+- Request: let a customer copy the repository, sign in to Azure, run one command and test the chatbot plus Blob ingestion in their own environment.
+- Existing scripts are not a complete fresh-environment package: the base script is hardcoded to the author's subscription/RG, and ingestion assumes already-created services.
+- Deliver a portable entry point, fresh-environment Bicep wiring, clear prerequisites/permissions/model availability notes, generated deployment outputs and verification.
+- Preserve existing application behavior and all deployed resources/data. This task creates/tests packaging; do not provision chargeable resources merely to test it.
+- Validation will cover fresh/repeated deployment command flow, failure propagation, resource/model/identity wiring, package contents, Bicep compilation and safe test behavior.
+- User clarified the actual target: customers have Contributor and should deploy once, then upload documents. API-key authentication was explicitly selected.
+- `scripts/deploy_demo.py` defaults to keys, skips Graph object-ID lookup and all role-assignment deployments, and reads management-plane keys for deployment verification only. Function settings and Container Apps secretRef values are populated inside Azure from secure Bicep parameters/listKeys; no real keys are in source/public outputs.
+- Existing runtime/settings and original infrastructure modules default to identity/keyless authentication. The existing Azure demo was not updated or weakened.
+- README includes clone, login, one-command deployment, upload/test/status instructions, repeated deployment safeguards, costs and key-policy restrictions. CUSTOMER_DEMO.md explains the Azure component composition.
+- Read-only preflight passes against actual regional models/SKUs and quota. Customer API-key and existing identity templates compile; API-key composition ARM validation returned Succeeded without provisioning anything.
+- New Function archive composition was validated with actual Linux x86_64 runtime libraries. A fresh local wheel download could not finish because the session's PyPI file CDN connection is blocked; this prerequisite/error is explicit in the guide. No customer-owned live environment was provisioned just for verification.
+- Contributor's built-in role definition was read: resource management/listKeys actions are allowed but Microsoft.Authorization writes/deletes are excluded. The default customer template gates every RBAC module/resource off in keys mode.
+- Full offline regression suite passes 499 tests with 10 cache-dependent skips and 7 live-test deselections (live Search/evaluation smoke modules excluded). Existing identity-mode behavior remains covered, including body/table/figure-only sample verification.
+- ARM what-if using ResourceIdOnly returned Succeeded (16 Deploy, 11 Ignore); no secret values were requested/displayed and the preview was not applied. No customer resources were provisioned.
+
+### Customer package validation gates
+
+- [x] CLI authentication, model/SKU/version availability and quota preflight in the explicit subscription.
+- [x] Customer/demo/chat and existing identity Bicep compilation; customer API-key ARM validation succeeded.
+- [x] Fresh/resume command sequence, interrupted deployment recovery, safe sample handling, errors and secret-free output tests.
+- [x] Actual Linux x86_64 runtime archive composition checked; new wheel-fetch egress requirement documented.
+
+The first billable deployment into a new customer-owned RG is outside this package-preparation validation. It was not executed here; the package is not described as already deployed to a customer tenant.
 
 ## Reasoning label correction (2026-10-13)
 

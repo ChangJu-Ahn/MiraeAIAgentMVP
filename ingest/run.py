@@ -11,6 +11,7 @@ from azure.search.documents import SearchClient
 from pydantic import BaseModel, Field
 
 from config.settings import get_settings
+from config.azure_auth import service_credential
 from ingest.catalog import (
     CatalogCoverage,
     FundCatalogEntry,
@@ -212,7 +213,7 @@ def run(pdf: str, doc_id: str, pages: str | None, use_cache: bool, figures: bool
 
     if is_report:
         s = get_settings()
-        cred = DefaultAzureCredential()
+        cred = service_credential("search", DefaultAzureCredential)
         cat_client = SearchClient(
             endpoint=s.search_endpoint,
             index_name=s.search_index_catalog,

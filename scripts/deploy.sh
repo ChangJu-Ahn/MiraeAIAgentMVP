@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SUB="347e0df7-94e9-4feb-b42d-57d7e49566f2"
-RG="rg-mirae-ai-agent-poc"
+: "${SUB:?Set SUB explicitly. Customer demos should use scripts/deploy_demo.py.}"
+: "${RG:?Set RG explicitly. This is the advanced keyless infrastructure script.}"
 LOCATION="${LOCATION:-koreacentral}"
 
 az account set --subscription "$SUB"
