@@ -26,6 +26,12 @@
   --cp-highlight: rgba(177, 31, 75, 0.12);
 }
 
+/* Chainlit prepends generic tool status to reasoning step names, too. */
+[id="step-생각 중"] > span:first-child,
+[id^="step-생각 중 (총 "] > span:first-child {
+  display: none;
+}
+
 html[data-theme="dark"] {
   color-scheme: dark;
   --cp-bg: #3d3b3a;

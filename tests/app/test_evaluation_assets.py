@@ -88,6 +88,13 @@ def test_question_picker_is_mounted_above_the_composer():
     assert "new MutationObserver" in script
 
 
+def test_reasoning_status_prefix_is_hidden_without_hiding_tool_statuses():
+    css = (ROOT / "public" / "custom.css").read_text(encoding="utf-8")
+    assert '[id="step-생각 중"] > span:first-child' in css
+    assert '[id^="step-생각 중 (총 "] > span:first-child' in css
+    assert '[id^="step-"] > span:first-child' not in css
+
+
 def test_chainlit_readme_documents_the_verified_user_experience():
     readme = (ROOT / "chainlit.md").read_text(encoding="utf-8")
     repository_readme = (ROOT / "README.md").read_text(encoding="utf-8")

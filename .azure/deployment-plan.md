@@ -1,8 +1,20 @@
 # Azure Deployment Plan: MiraeAIAgentMVP
 
-Status: Deployed and verified — all five uploaded PDFs completed
+Status: Deployed and verified — reasoning status displays only 생각 중
 
 Recipe: Azure CLI code updates on existing resources (Bicep retained as infrastructure reference)
+
+## Reasoning label correction (2026-10-13)
+
+- The reported `사용 중 생각 중` comes from Chainlit's generic step-status translation being prepended to the application's reasoning step name.
+- Scope: hide only the translation span for `step-생각 중` and its completed-time variant. Preserve tool prefixes, reasoning details, elapsed time, streaming and backend behavior.
+- Deterministic browser fixture reproduced the exact unwanted prefix before the change. Afterward it verified the initial status, expandable reasoning status, completed-time status and unchanged active/completed tool labels.
+- Focused UI/streaming tests: 27 passed, 1 live-only streaming test deselected. Lock and diff checks passed.
+- Existing target remains `ca-mirae-v4xy5m5d3ltw6` in the previously approved subscription/resource group; current `ranged-ingest-20261008` image is healthy and UAMI AcrPull is present.
+- Rollout: replace only the chatbot image with `mirae-chat:thinking-label-20261013`. Do not modify ingestion, roles, infrastructure, Search or Blob data.
+- ACR build `dev` succeeded at `2026-10-13T02:29:06Z`; digest `sha256:f8a86c60236cea880c4fc5c19aa1d024a4a1ac4ab1d86d0e31d7817d8f754881`.
+- Activated `ca-mirae-v4xy5m5d3ltw6--thinking-label-20261013`, Healthy/Provisioned. A live question displayed exactly `생각 중` while running and `생각 중 (총 16.4s)` afterward; the nested tool retained its `사용됨` label.
+- Live answer still returned the correct 2025 공무원연금기금 grade, 우수, with `[출처 1]`. No ingestion Function, index or source-document changes occurred in this rollout.
 
 ## Durable page-range recovery (user approved autonomous implementation)
 
